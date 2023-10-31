@@ -13,7 +13,6 @@ from torch.nn import functional as F
 from stable_baselines3.common.utils import polyak_update
 
 from utils import logger_at_folder
-from ReplayBuffers import Memory
 
 
 class LogUNet(nn.Module):

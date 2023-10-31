@@ -248,15 +248,17 @@ class LogUActor:
 
             while not done:
                 # self.actor.set_training_mode(False)
-                if self.env_steps < self.learning_starts:
-                    # take a random action:
-                    noisy_action = self.env.action_space.sample()
-                else:
-                    with torch.no_grad():
-                        noisy_action, logprob, _ = self.actor.sample(state)
-                        # log the logprob:
-                        # self.logger.record("rollout/log_prob", logprob.mean().item())
-                        noisy_action = noisy_action.cpu().numpy()
+                # if self.env_steps < self.learning_starts:
+                #     # take a random action:
+                #     noisy_action = self.env.action_space.sample()
+                # else:
+                #     with torch.no_grad():
+                #         noisy_action, logprob, _ = self.actor.sample(state)
+                #         # log the logprob:
+                #         # self.logger.record("rollout/log_prob", logprob.mean().item())
+                #         noisy_action = noisy_action.cpu().numpy()
+                noisy_action = self.env.action_space.sample()
+
                 next_state, reward, terminated, truncated, infos = self.env.step(
                     noisy_action)
                 done = terminated or truncated
@@ -287,7 +289,8 @@ class LogUActor:
                 state = next_state
                 
                 self._log_stats()
-                self.logger.record("rollout/reward", self.rollout_reward)
+                if done:
+                    self.logger.record("rollout/reward", self.rollout_reward)
 
 
     def _log_stats(self):
@@ -353,15 +356,15 @@ def main():
     # env_id = 'LunarLanderContinuous-v2'
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
-    env_id = 'Pendulum-v1'
+    # env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
-    # env_id = 'Simple-v0'
-    from darer.hparams import cheetah_hparams2 as config
+    env_id = 'Simple-v0'
+    from darer.hparams import easy_hparams2 as config
     agent = LogUActor(env_id, **config, device='cpu',
                       num_nets=2, log_dir='pend',
-                      render=0, max_grad_norm=10, log_interval=1000)
+                      render=0, max_grad_norm=10, log_interval=100)
     agent.learn(total_timesteps=5_000_000)
 
 

@@ -16,6 +16,8 @@ LogU learning implementation in gym (mazes and cartpole)
 - [ ] More clever normalization to avoid logu divergence
 - [ ] Merge Rawlik with LogU as an option. e.g. prior_update_interval=0 for no updates, and otherwise use Rawlik iteration
 - [x] Switch to SB3 Replay Buffer
+- [x] Add grad monitor
+
 
 # Experimental questions:
 - [ ] Does stabilizing theta help stabilize logu? (i.e. fix theta to g.t. value)
@@ -68,13 +70,13 @@ I also placed "simple_env" in classic control folder.
 
 Model-based ground truth comparisons with tabular algorithms:
 
-![eigvec](figures/left_eigenvector_MB.png)
-![policy](figures/policy_MB.png)
+![eigvec](tabular/figures/left_eigenvector_MB.png)
+![policy](tabular/figures/policy_MB.png)
 
 Model-free ground truth comparisons:
 
 ![eigvec][eigvec_figure]
 ![policy][policy_figure]
 
-[policy_figure]: figures/policy_MF.png
-[eigvec_figure]: figures/left_eigenvector_MF.png
+[policy_figure]: tabular/figures/policy_MF.png
+[eigvec_figure]: tabularfigures/left_eigenvector_MF.png

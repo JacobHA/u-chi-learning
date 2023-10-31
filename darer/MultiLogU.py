@@ -110,16 +110,13 @@ class LogULearner:
             curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
                                    for online_logu in self.online_logus], dim=1)
             with torch.no_grad():
-                ref_logus = [logu(self.ref_next_state)
-                            for logu in self.online_logus]
+                ref_logus = [logu(self.ref_next_state) for logu in self.online_logus]
                 # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
                 ref_chi = torch.stack([torch.exp(ref_logu_val).sum(dim=-1) / self.nA
                                        for ref_logu_val in ref_logus], dim=-1)
                 new_thetas[grad_step, :] = self.ref_reward - torch.log(ref_chi)
 
-                #TODO: this looks wrong (expectation of logu?? should be of u)
-                target_next_logus = [target_logu(next_states)
-                                        for target_logu in self.target_logus]
+                target_next_logus = [target_logu(next_states) for target_logu in self.target_logus]
                 target_next_u = torch.stack([torch.exp(target_logu).sum(dim=-1) / self.nA
                                             for target_logu in target_next_logus], dim=-1)
                 target_next_logu = torch.log(target_next_u)
@@ -139,7 +136,6 @@ class LogULearner:
                 # next_chi = torch.stack([torch.exp(next_logu_val).sum(dim=-1) / self.env.action_space.n
                 # new_thetas = rewards + 1/self.beta * (next_chi - curr_logu)
 
-            
             self.logger.record("train/theta", self.theta.item())
             self.logger.record("train/avg logu", curr_logu.mean().item())
 
@@ -253,7 +249,7 @@ class LogULearner:
             self.t0 = time.thread_time_ns()
 
 
-    def evaluate(self, n_episodes=2):
+    def evaluate(self, n_episodes=3):
         # run the current policy and return the average reward
         avg_reward = 0.
         for ep in range(n_episodes):
@@ -279,15 +275,15 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
+    env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'Pong-v'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    from hparams import cartpole_hparams2 as config
-    agent = LogULearner(env_id, **config, device='cpu', log_interval=500,
-                        log_dir='pend', num_nets=1, render=0)
+    from hparams import acrobot_logu as config
+    agent = LogULearner(env_id, **config, device='cuda', log_interval=1500,
+                        log_dir='pend', num_nets=2, render=0)
 
     agent.learn(total_timesteps=1_000_000)
 
