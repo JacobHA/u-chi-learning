@@ -76,7 +76,7 @@ class LogULearner:
         self.num_episodes = 0
 
         # Set up the logger:
-        self.logger = logger_at_folder(log_dir, algo_name=f'acro1')
+        self.logger = logger_at_folder(log_dir, algo_name=f'check')
 
         self._n_updates = 0
         self.env_steps = 0
@@ -115,7 +115,7 @@ class LogULearner:
                 target_next_logu = torch.stack([target_logu(next_states).sum(dim=-1) / self.env.action_space.n
                                                 for target_logu in self.target_logus], dim=1)
 
-                next_logu, _ = torch.min(target_next_logu, dim=1)
+                next_logu, _ = torch.max(target_next_logu, dim=1)
                 next_logu = next_logu.unsqueeze(1)
 
                 expected_curr_logu = self.beta * \
@@ -287,7 +287,7 @@ def main():
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
     from hparams import acrobot_logu as config
-    agent = LogULearner(env_id, **config, device='cpu',
+    agent = LogULearner(env_id, **config, device='cuda',
                         log_dir='multinasium', num_nets=1, render=True)
     # agent = CustomDQN(env_id, device='cuda', **config)
 
