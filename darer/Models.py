@@ -6,6 +6,12 @@ import numpy as np
 from stable_baselines3.common.utils import zip_strict
 from gymnasium import spaces
 import gymnasium as gym
+from torch.optim.lr_scheduler import StepLR, MultiplicativeLR, LinearLR, ExponentialLR, LRScheduler
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.distributions import Normal
 
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
@@ -13,17 +19,19 @@ class LogUNet(nn.Module):
         self.env = env
         self.nA = env.action_space.n
         self.is_image_space = is_image_space(env.observation_space)
-
         self.device = device
+        # Start with an empty model:
+        model = nn.Sequential()
         if isinstance(env.observation_space, spaces.Discrete):
             self.nS = env.observation_space.n
+            input_dim = self.nS
         elif isinstance(env.observation_space, spaces.Box):
             # check if image:
             if is_image_space(env.observation_space):
                 self.nS = get_flattened_obs_dim(env.observation_space)
                 # Use a CNN:
                 n_channels = env.observation_space.shape[2]
-                model = nn.Sequential(
+                model.extend(nn.Sequential(
                     nn.Conv2d(n_channels, 64, kernel_size=8, stride=4),
                     activation(),
                     nn.Conv2d(64, 32, kernel_size=4, stride=2),
@@ -31,7 +39,7 @@ class LogUNet(nn.Module):
                     nn.Conv2d(32, 32, kernel_size=3, stride=1),
                     activation(),
                     nn.Flatten(start_dim=1, end_dim=-1),
-                )
+                ))
                 model.to(self.device)
                 # calculate resulting shape for FC layers:
                 rand_inp = env.observation_space.sample()
@@ -42,24 +50,20 @@ class LogUNet(nn.Module):
                 flat_size = model(x).shape[1]
                 print(f"Using a CNN with {flat_size}-dim. outputs.")
                 # flat part
-                model.extend(nn.Sequential(
-                    nn.Linear(flat_size, hidden_dim),
-                    activation(),
-                    nn.Linear(hidden_dim, hidden_dim),
-                    activation(),
-                    nn.Linear(hidden_dim, self.nA),
-                ))
+                input_dim = flat_size
             else:
                 self.nS = env.observation_space.shape[0]
+                input_dim = self.nS
 
-                model = (nn.Sequential(
-                    nn.Linear(self.nS, hidden_dim),
+        model.extend(nn.Sequential(
+                    nn.Linear(input_dim, hidden_dim),
                     activation(),
                     nn.Linear(hidden_dim, hidden_dim),
                     activation(),
                     nn.Linear(hidden_dim, self.nA),
                 ))
-            self.model = model
+        model.to(self.device)
+        self.model = model
         self.to(device)
      
     def forward(self, x):
@@ -95,26 +99,46 @@ class LogUNet(nn.Module):
             # clamp to avoid overflow:
             logu = torch.clamp(logu, min=-20, max=20)
             dist = torch.exp(logu) * prior
-            # dist = dist / torch.sum(dist)
+            dist = dist / torch.sum(dist)
             c = Categorical(dist)#, validate_args=True)
             # c = Categorical(logits=logu*prior)
             a = c.sample()
 
         return a.item()
 
+class EmptyScheduler(LRScheduler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    def get_lr(self):
+        return [pg['lr'] for pg in self.optimizer.param_groups]
+
+str_to_scheduler = {
+    "step": (StepLR, {'step_size': 100_000, 'gamma': 0.5}),
+    # "MultiplicativeLR": (MultiplicativeLR, ()), 
+    "linear": (LinearLR, {"start_factor":1./3, "end_factor":1.0, "last_epoch":-1}), 
+    "exponential": (ExponentialLR, {'gamma': 0.9}), 
+    "none": (EmptyScheduler, {"last_epoch":-1})
+}
 
 class Optimizers():
-    def __init__(self, list_of_optimizers: list):
+    def __init__(self, list_of_optimizers: list, scheduler_str: str = 'none'):
         self.optimizers = list_of_optimizers
+        scheduler_str = scheduler_str.lower()
+        scheduler, params = str_to_scheduler[scheduler_str]
+        
+        self.schedulers = [scheduler(opt, **params) for opt in self.optimizers]
 
     def zero_grad(self):
         for opt in self.optimizers:
             opt.zero_grad()
 
     def step(self):
-        for opt in self.optimizers:
+        for opt, scheduler in zip(self.optimizers, self.schedulers):
             opt.step()
+            scheduler.step()
 
+    def get_lr(self):
+        return self.schedulers[0].get_lr()[0]
 
 class TargetNets():
     def __init__(self, list_of_nets):
@@ -204,8 +228,8 @@ class OnlineNets():
             # logu = self.aggregator(logu, dim=-1)[0]
             
             # greedy_action = logu.argmax()
-            # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-            greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
+            greedy_actions = [net(state).argmax().cpu() for net in self.nets]
+            # greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
             greedy_action = np.random.choice(greedy_actions)
         return greedy_action
         # return greedy_action.item()
@@ -248,11 +272,6 @@ class LogUsa(nn.Module):
         x = self.relu(x)
         x = self.fc3(x)
         return x
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions import Normal
 
 LOG_SIG_MAX = 5
 LOG_SIG_MIN = -30

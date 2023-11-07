@@ -187,8 +187,8 @@ class LogUActor:
             actor_curr_logu = torch.stack([online_logu(states, actor_actions)
                                          for online_logu in self.online_logus], dim=-1)
 
-            # actor_loss = 0.5 * \
-                # F.smooth_l1_loss(curr_log_prob, actor_curr_logu.max(dim=-1)[0])
+            actor_loss = 0.5 * \
+                F.smooth_l1_loss(curr_log_prob, actor_curr_logu.max(dim=-1)[0])
             # PPO clips the prioritzed sampling
             # ratio = torch.exp(curr_logu - actor_curr_logu.min(dim=-1)[0] )
             # Clip the ratio:
@@ -196,7 +196,7 @@ class LogUActor:
             # ratio = torch.clamp(ratio, 1-eps, 1+eps)
             # actor_loss = torch.log(ratio)
                 
-            actor_loss = -(curr_log_prob - actor_curr_logu.min(dim=-1)[0]).mean()
+            # actor_loss = -(curr_log_prob - actor_curr_logu.min(dim=-1)[0]).mean()
 
             self.logger.record("train/log_prob", curr_log_prob.mean().item())
             self.logger.record("train/loss", loss.item())
@@ -360,9 +360,9 @@ def main():
     # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from darer.hparams import cheetah_hparams2 as config
-    agent = LogUActor(env_id, **config, device='cuda',
+    agent = LogUActor(env_id, **config, device='cpu',
                       num_nets=2, log_dir='pend', theta_update_interval=200,
-                      render=0, max_grad_norm=10, log_interval=1000)
+                      render=1, max_grad_norm=10, log_interval=2000)
     agent.learn(total_timesteps=5_000_000)
 
 

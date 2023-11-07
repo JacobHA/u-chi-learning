@@ -11,7 +11,7 @@ from darer.MultiLogU import LogULearner
 from darer.hparams import *
 config = cartpole_hparams2
 config.pop('beta')
-map_name = '4x4'
+map_name = '3x5uturn'
 def exact_solution(beta, env):
 
     dynamics, rewards = get_dynamics_and_rewards(env.unwrapped)
@@ -29,7 +29,7 @@ def exact_solution(beta, env):
 def FA_solution(beta, env):
     # Use MultiLogU to solve the environment
 
-    agent = LogULearner(env, **config, log_interval=100, num_nets=2, device='cpu', beta=beta, render=1)
+    agent = LogULearner(env, **config, log_interval=100, num_nets=2, device='cpu', beta=beta, render=1, aggregator='max')
     agent.learn(total_timesteps=70_000)
     # convert agent.theta to float
     theta = agent.theta.item()

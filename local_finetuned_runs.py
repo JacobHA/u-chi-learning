@@ -8,9 +8,9 @@ from hparams import *
 import time
 
 # env = 'CartPole-v1'
-# env = 'LunarLander-v2'
+env = 'LunarLander-v2'
 # env = 'Acrobot-v1'
-env = 'MountainCar-v0'
+# env = 'MountainCar-v0'
 
 str_to_algo = {
     'logu': LogULearner,
@@ -25,17 +25,19 @@ def runner(algo):
         configs = mcars
     elif env == 'CartPole-v1':
         configs = cartpoles
-    # elif env == 'LunarLander-v2':
-    #     configs = lunars
+    elif env == 'LunarLander-v2':
+        configs = lunars
     elif env == 'Acrobot-v1':
         configs = acrobots
+    else:
+        raise ValueError(f"env {env} not recognized.")
 
     # Now access the config for this algo:
     config = configs[algo]
     algo = str_to_algo[algo]
 
-    model = algo(env, **config, log_dir='ft/mcar',
-                 device='cuda', log_interval=250)
+    model = algo(env, **config, log_dir='ft/lunar',
+                 device='cpu', log_interval=250, aggregator='max')
                 #, num_nets=2, aggregator='max')
     model.learn(total_timesteps=500_000)
 

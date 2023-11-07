@@ -3,6 +3,8 @@ import gymnasium as gym
 from stable_baselines3.common.logger import configure
 import time
 
+import torch
+
 
 def logger_at_folder(log_dir=None, algo_name=None):
     # ensure no _ in algo_name:
@@ -49,3 +51,12 @@ def env_id_to_envs(env_id, render):
             "env_id must be a string or gym.Env instance.")
 
     return env, eval_env
+
+def log_class_vars(self, params):
+    logger = self.logger
+    for key, value in params.items():
+        value = self.__dict__[value]
+        # first check if value is a tensor:
+        if isinstance(value, torch.Tensor):
+            value = value.item()
+        logger.record(key, value)
