@@ -228,8 +228,8 @@ class OnlineNets():
             # logu = self.aggregator(logu, dim=-1)[0]
             
             # greedy_action = logu.argmax()
-            greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-            # greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
+            # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
+            greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
             greedy_action = np.random.choice(greedy_actions)
         return greedy_action
         # return greedy_action.item()

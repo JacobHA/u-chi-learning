@@ -29,8 +29,8 @@ def exact_solution(beta, env):
 def FA_solution(beta, env):
     # Use MultiLogU to solve the environment
 
-    agent = LogULearner(env, **config, log_interval=100, num_nets=2, device='cpu', beta=beta, render=1, aggregator='max')
-    agent.learn(total_timesteps=70_000)
+    agent = LogULearner(env, **config, log_interval=1000, num_nets=2, device='cuda', beta=beta, render=1, aggregator='max')
+    agent.learn(total_timesteps=120_000)
     # convert agent.theta to float
     theta = agent.theta.item()
     return theta
@@ -51,7 +51,7 @@ def main():
 
     # Set the beta values to test
     betas = np.logspace(1, 1, 4)
-    betas = [1, 3, 10]
+    betas = [7,12,17,23,28]
 
     exact = [exact_solution(beta, env) for beta in betas]
     print(exact)
@@ -59,11 +59,11 @@ def main():
 
     # save the data:
     data = pd.DataFrame({'beta': betas, 'exact': exact, 'FA': FA})
-    data.to_csv(f'{map_name}tabular_vs_FA.csv', index=False)
-
+    data.to_csv(f'{map_name}tabular_vs_FA2.csv', index=False)
+# [0.9999155228491464, 0.9987485370048285, 0.9891983268590409, 0.9777515697268231, 0.9681814068991201, 0.9603645308274785
     plt.figure()
     plt.plot(betas, exact, 'ko-', label='Exact')
-    plt.plot(betas, FA, label='FA')
+    plt.plot(betas, FA, 'bo', label='FA')
     plt.legend()
     plt.savefig(f'{map_name}tabular_vs_FA.png')
 

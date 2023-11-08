@@ -19,7 +19,7 @@ cartpole_hparams2 = {
     'gradient_steps': 1,
     'learning_rate': 1e-3,
     'target_update_interval': 300,
-    'tau': 0.34,
+    'tau': 0.64,
     'tau_theta': 0.967,
     'theta_update_interval': 8,
     'hidden_dim': 64,
@@ -41,17 +41,17 @@ mcar_hparams = {
 }
 
 lunar_logu = {
-    'beta': .06,
-    'batch_size': 220,
-    'buffer_size': 1_000_000,
-    'gradient_steps': 10,
-    'learning_rate': 2e-3,
-    'target_update_interval': 85,
-    'theta_update_interval': 100,
-    'tau': 0.95,
-    'tau_theta': 0.85,
+    'beta': 0.05,
+    'batch_size': 365,
+    'buffer_size': 100_000,
+    'gradient_steps': 1,
+    'learning_rate': 3e-4,
+    'target_update_interval': 80,
+    'theta_update_interval': 200,
+    'tau': 0.7,
+    'tau_theta': 0.99,
     'hidden_dim': 256,
-    'train_freq': 20,
+    'train_freq': 1,
     'learning_starts': 10_000
 }
 
@@ -159,17 +159,32 @@ cartpole_dqn = {
 }
 
 acrobot_logu = {
-    'beta': 0.2,
-    'batch_size': 855,
-    'buffer_size': 5_000,
+    'beta': 2.2,
+    'batch_size': 100,
+    'buffer_size': 100_000,
     'gradient_steps': 1,
-    'learning_rate': 7.e-3,
-    'target_update_interval': 6,
-    'tau': 0.57,
-    'tau_theta': 0.90,
+    'learning_rate': 1.e-4,
+    'target_update_interval': 1,
+    'tau': 0.95,
+    'tau_theta': 0.9,
     'train_freq': 1,
     'hidden_dim': 64,
-    'learning_starts': 1_000
+    'learning_starts': 5000
+}
+
+lunar_logu2 = {
+    'beta': 1.02,
+    'batch_size': 855,
+    'buffer_size': 100_000,
+    'gradient_steps': 1,
+    'learning_rate': 5.e-4,
+    'target_update_interval': 2,
+    'tau': 0.995,
+    'tau_theta': 0.90,
+    'train_freq': 1,
+    'hidden_dim': 128,
+    'learning_starts': 5000,
+    'theta_update_interval': 100
 }
 
 pong_logu = {
@@ -178,12 +193,12 @@ pong_logu = {
     'buffer_size': 100_000,
     'gradient_steps': 4,
     'learning_rate': 1.e-3,
-    'target_update_interval': 10_000,
-    'tau': 0.005,
+    'target_update_interval': 100,
+    'tau': 0.995,
     'tau_theta': 0.98,
     'train_freq': 16,
     'learning_starts': 15_000,
-    'theta_update_interval': 1,
+    'theta_update_interval': 1000,
 }
 
 
