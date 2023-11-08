@@ -38,10 +38,13 @@ class LogUActor:
                  render=False,
                  log_interval=1000,
                  save_checkpoints=False,
+                 n_vec_envs=None
                  ) -> None:
         self.env_id = env_id
         self.env = gym.make(env_id)
-        self.vec_env = gym.make_vec(self.env_id, num_envs=batch_size)
+        if n_vec_envs is None:
+            n_vec_envs = batch_size
+        self.vec_env = gym.make_vec(self.env_id, num_envs=n_vec_envs)
 
         # make another instance for evaluation purposes only:
         self.eval_env = gym.make(env_id,
@@ -335,6 +338,7 @@ class LogUActor:
         gym.wrappers.monitoring.video_recorder.VideoRecorder(video_env, path='video.mp4')
         raise NotImplementedError
 
+
 def main():
     # env_id = 'LunarLander-v2'
     # env_id = 'Pendulum-v1'
@@ -346,7 +350,7 @@ def main():
     agent = LogUActor(env_id, **config, device='cuda',
                       num_nets=2, learning_starts=10000, theta_update_interval=500,
                       actor_learning_rate=3e-4, log_dir='pend',
-                      render=0, max_grad_norm=10, log_interval=500)
+                      render=0, max_grad_norm=10, log_interval=500, n_vec_envs=4)
     agent.learn(total_timesteps=5_000_000)
 
 
