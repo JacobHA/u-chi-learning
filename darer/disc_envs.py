@@ -1,8 +1,8 @@
 # From https://github.com/argearriojas/UAI23-Arriojas_611/blob/main/classic_control_discrete_latest.py
 import numpy as np
-from gym.envs.classic_control import CartPoleEnv, MountainCarEnv, PendulumEnv, AcrobotEnv
-from gym.wrappers import TimeLimit, TransformReward
-from gym import spaces, ActionWrapper, Env
+from gymnasium.envs.classic_control import CartPoleEnv, MountainCarEnv, PendulumEnv, AcrobotEnv
+from gymnasium.wrappers import TimeLimit, TransformReward
+from gymnasium import spaces, ActionWrapper, Env
 
 
 class ExtendedCartPoleEnv(CartPoleEnv):
@@ -35,9 +35,9 @@ class ExtendedMountainCarEnv(MountainCarEnv):
 
 
 class ExtendedPendulum(PendulumEnv):
-    def __init__(self, g=10):
+    def __init__(self, render_mode='human', g=10):
         self.metadata["render_fps"] = 60
-        super().__init__(g=g)
+        super().__init__(render_mode=render_mode, g=g)
         high = np.array([np.pi, self.max_speed], dtype=np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
@@ -49,6 +49,9 @@ class ExtendedPendulum(PendulumEnv):
         th = (th + np.pi) % (2 * np.pi) - np.pi
 
         return np.array([th, thdot], dtype=np.float32)
+    
+    def render(self):
+        return super().render()
 
 
 class ExtendedAcrobot(AcrobotEnv):
