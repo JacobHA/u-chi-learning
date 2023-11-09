@@ -5,6 +5,7 @@ from torch.nn import functional as F
 import time
 from stable_baselines3.common.buffers import ReplayBuffer
 import wandb
+
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 from utils import env_id_to_envs, log_class_vars, logger_at_folder
 HPARAM_ATTRS = {
@@ -246,7 +247,7 @@ class LogULearner:
             done = False
             self.num_episodes += 1
             self.rollout_reward = 0
-            while not done:
+            while not done and self.env_steps < total_timesteps:
                 # take a random action:
                 if self.env_steps < self.learning_starts:
                     action = self.env.action_space.sample()

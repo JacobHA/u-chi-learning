@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from Models import OnlineNets, Optimizers, TargetNets
 from stable_baselines3.common.env_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
-from ReplayBuffers import SB3Memory
+from stable_baselines3.common.buffers import ReplayBuffer
 from utils import logger_at_folder
 from AtariModels import AtariLogU as LogUNet
 
@@ -62,8 +62,7 @@ class LogULearner:
         self.num_nets = num_nets
         self.prior = None
 
-        # self.replay_buffer = Memory(buffer_size, device=device)
-        self.replay_buffer = SB3Memory(buffer_size=buffer_size,
+        self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
                                         observation_space=self.env.observation_space,
                                         action_space=self.env.action_space,
                                         n_envs=1,
@@ -74,7 +73,6 @@ class LogULearner:
         self.theta = torch.Tensor([0]).to(self.device)
         self.eval_auc = 0
         self.num_episodes = 0
-        # self.replay_buffer = ReplayBuffer(buffer_size)
 
         # Set up the logger:
         self.logger = logger_at_folder(
@@ -238,7 +236,6 @@ class LogULearner:
         return avg_reward
     
 def main():
-
     from hparams import cartpole_hparams0 as config
     env_id = 'PongNoFrameskip-v4'
 
