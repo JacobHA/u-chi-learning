@@ -141,23 +141,15 @@ class LogUActor:
             with torch.no_grad():
                 # use same number of samples as the batch size for convenience:
                 sampled_action = self.env.action_space.sample()
-                prior_actions = np.array([sampled_action for _ in range(self.batch_size)])
-                prior_actions = torch.Tensor(prior_actions).to(self.device)
-                # repeat the ref_next_state n_samples times:
-                ref_next_state = torch.stack([torch.Tensor(self.ref_next_state) for _ in range(self.batch_size)], dim=1).T
-                # Calculate ref_logu for all prior_actions at once
-                # ref_logu = [logu(ref_next_state, prior_actions) for logu in self.online_logus]
-                # ref_logu = torch.stack(ref_logu, dim=-1).mean(dim=0)
-                ref_next_state = torch.stack([torch.Tensor(self.ref_next_state) for _ in range(self.batch_size)], dim=1).T
-                ref_logu = torch.stack([logu(ref_next_state, prior_actions) for logu in self.online_logus], dim=-1)
-
-
-                # Calculate ref_chi for all samples at once
-                ref_chi = torch.exp(ref_logu).mean(dim=0)
-
-                new_theta = self.ref_reward - torch.log(ref_chi)
-                new_thetas[grad_step, :] = new_theta
-
+                ref_logu_next = torch.stack([logu(self.ref_next_state, sampled_action)
+                            for logu in self.online_logus], dim=1)
+                ref_curr_logu = torch.stack([logu(self.ref_state, self.ref_action)
+                            for logu in self.online_logus], dim=0)
+                
+                dim=0
+                log_ref_chi = torch.logsumexp(ref_logu_next,dim=dim) - torch.log(torch.Tensor([self.nA])).to(self.device)
+                # new_thetas[grad_step, :] = self.ref_reward - log_ref_chi
+                new_thetas[grad_step, :] = -self.ref_reward - (log_ref_chi - ref_curr_logu.T) / self.beta
                 
                 rand_actions = np.array([sampled_action for _ in range(self.batch_size)])
                 rand_actions = torch.Tensor(rand_actions).to(self.device)               
@@ -166,10 +158,10 @@ class LogUActor:
                                                 for target_logu in self.target_logus], dim=-1)
 
                 next_logu, _ = torch.max(target_next_logu, dim=-1)
-                next_logu = next_logu * (1 - dones) + self.theta * dones
+                # next_logu = next_logu * (1 - dones) + self.theta * dones
 
-                expected_curr_logu = self.beta * \
-                    (rewards + self.theta) + (1 - dones) * next_logu
+                expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
+
                 
                 
                 # new_theta = torch.mean((self.beta * rewards + (1-dones)*next_logu - curr_logu) / -self.beta)
@@ -196,7 +188,7 @@ class LogUActor:
             # ratio = torch.clamp(ratio, 1-eps, 1+eps)
             # actor_loss = torch.log(ratio)
                 
-            # actor_loss = -(curr_log_prob - actor_curr_logu.min(dim=-1)[0]).mean()
+            # actor_loss = (curr_log_prob - actor_curr_logu.min(dim=-1)[0]).mean()
 
             self.logger.record("train/log_prob", curr_log_prob.mean().item())
             self.logger.record("train/loss", loss.item())
@@ -224,13 +216,14 @@ class LogUActor:
             ))
             self.logger.record("grad/actor_norm", actor_norm.item())
             self.optimizers.step()
-            # record both thetas:
-            for idx, theta in enumerate(new_theta.squeeze(0)):
-                self.logger.record(f"train/theta_{idx}", theta.item())
+        
         # TODO: Take the mean, then aggregate:
-        # new_theta = new_theta 
-        new_theta = torch.max(new_thetas.mean(dim=0), dim=0)[0]
-
+        # new_theta = new_theta
+        grad_avgd_new_thetas = new_thetas.mean(dim=0) 
+        new_theta = torch.max(grad_avgd_new_thetas, dim=0)[0]
+        # record both thetas:
+        for idx, theta in enumerate(grad_avgd_new_thetas):
+            self.logger.record(f"train/theta_{idx}", theta.item())
         if self._n_updates % self.theta_update_interval == 0:
             self.theta = self.tau_theta * self.theta + \
                 (1 - self.tau_theta) * new_theta
@@ -356,13 +349,13 @@ def main():
     # env_id = 'CartPole-v1'
     env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
-    env_id = 'HalfCheetah-v4'
+    # env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from darer.hparams import cheetah_hparams2 as config
     agent = LogUActor(env_id, **config, device='cpu',
-                      num_nets=2, log_dir='pend', theta_update_interval=200,
-                      render=1, max_grad_norm=10, log_interval=2000)
+                      num_nets=2, log_dir='pend', theta_update_interval=500,
+                      render=0, max_grad_norm=10, log_interval=1000)
     agent.learn(total_timesteps=5_000_000)
 
 
