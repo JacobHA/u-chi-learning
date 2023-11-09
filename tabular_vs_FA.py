@@ -29,8 +29,8 @@ def exact_solution(beta, env):
 def FA_solution(beta, env):
     # Use MultiLogU to solve the environment
 
-    agent = LogULearner(env, **config, log_interval=1000, num_nets=2, device='cuda', beta=beta, render=1, aggregator='max')
-    agent.learn(total_timesteps=120_000)
+    agent = LogULearner(env, **config, log_interval=1000, num_nets=2, device='cuda', beta=beta, render=1, aggregator='min')
+    agent.learn(total_timesteps=250_000)
     # convert agent.theta to float
     theta = agent.theta.item()
     return theta
@@ -51,7 +51,8 @@ def main():
 
     # Set the beta values to test
     betas = np.logspace(1, 1, 4)
-    betas = [7,12,17,23,28]
+    betas = [14,19,24,30,37]
+    betas = np.linspace(1, 50, 50)
 
     exact = [exact_solution(beta, env) for beta in betas]
     print(exact)
@@ -59,7 +60,7 @@ def main():
 
     # save the data:
     data = pd.DataFrame({'beta': betas, 'exact': exact, 'FA': FA})
-    data.to_csv(f'{map_name}tabular_vs_FA2.csv', index=False)
+    data.to_csv(f'{map_name}tabular_vs_FA50.csv', index=False)
 # [0.9999155228491464, 0.9987485370048285, 0.9891983268590409, 0.9777515697268231, 0.9681814068991201, 0.9603645308274785
     plt.figure()
     plt.plot(betas, exact, 'ko-', label='Exact')
@@ -67,5 +68,32 @@ def main():
     plt.legend()
     plt.savefig(f'{map_name}tabular_vs_FA.png')
 
+def plot():
+    # Plot the data in all CSV files
+    map_name = '3x5uturn'
+    data = pd.read_csv(f'{map_name}tabular_vs_FA.csv')
+    # add the data from the second run
+    data2 = pd.read_csv(f'{map_name}tabular_vs_FA2.csv')
+    data3 = pd.read_csv(f'{map_name}tabular_vs_FA3.csv')
+    data4 = pd.read_csv(f'{map_name}tabular_vs_FA4.csv')
+    data = pd.concat([data, data2, data3, data4])
+    # Sort by beta
+    data = data.sort_values(by=['beta'])
+    # tske mean of the data with the same beta
+    data = data.groupby(['beta']).mean().reset_index()
+    betas = data['beta'].values
+    exact = data['exact'].values
+    FA = data['FA'].values
+    plt.figure()
+    plt.plot(betas, exact, 'ko-', label='Exact')
+    plt.plot(betas, FA, 'ro', label='FA')
+    plt.xlabel
+    plt.xlabel(r'$\beta$')
+    plt.ylabel(r'$\theta$')
+    plt.title(f'Free energy vs. inverse temperature on {map_name}')
+    plt.legend()
+    plt.savefig(f'{map_name}tabular_vs_FA.png')
+
 if __name__ == '__main__':
     main()
+    # plot()
