@@ -32,13 +32,13 @@ class LogUNet(nn.Module):
                 # Use a CNN:
                 n_channels = env.observation_space.shape[2]
                 model.extend(nn.Sequential(
-                    nn.Conv2d(n_channels, 64, kernel_size=8, stride=4),
+                    nn.Conv2d(n_channels, 64, kernel_size=8, stride=4, dtype=torch.float32),
                     activation(),
-                    nn.Conv2d(64, 32, kernel_size=4, stride=2),
+                    nn.Conv2d(64, 32, kernel_size=4, stride=2, dtype=torch.float32),
                     activation(),
-                    nn.Conv2d(32, 32, kernel_size=3, stride=1),
+                    nn.Conv2d(32, 32, kernel_size=3, stride=1, dtype=torch.float32),
                     activation(),
-                    nn.Flatten(start_dim=1, end_dim=-1),
+                    nn.Flatten(start_dim=1, end_dim=-1, dtype=torch.float32),
                 ))
                 model.to(self.device)
                 # calculate resulting shape for FC layers:
@@ -56,19 +56,22 @@ class LogUNet(nn.Module):
                 input_dim = self.nS
 
         model.extend(nn.Sequential(
-                    nn.Linear(input_dim, hidden_dim),
+                    nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
                     activation(),
-                    nn.Linear(hidden_dim, hidden_dim),
+                    nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
                     activation(),
-                    nn.Linear(hidden_dim, self.nA),
+                    nn.Linear(hidden_dim, self.nA, dtype=torch.float32),
                 ))
         model.to(self.device)
         self.model = model
+        
         self.to(device)
      
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+        
+        assert x.dtype == torch.float32, "Input must be a float tensor."
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space)
         # Reshape the image:
@@ -87,6 +90,7 @@ class LogUNet(nn.Module):
         if prior is None:
             prior = 1 / self.nA
         with torch.no_grad():
+            state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
             logu = self.forward(state)
 
             if greedy:
