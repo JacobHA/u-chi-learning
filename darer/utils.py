@@ -47,8 +47,13 @@ def env_id_to_envs(env_id, render):
         import copy
         eval_env = copy.deepcopy(env_id)
     else:
-        raise ValueError(
-            "env_id must be a string or gym.Env instance.")
+        env = env_id
+
+        # Make a new copy for the eval env:
+        import copy
+        eval_env = copy.deepcopy(env_id)
+        # raise ValueError(
+            # "env_id must be a string or gym.Env instance.")
 
     return env, eval_env
 
