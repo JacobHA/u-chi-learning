@@ -7,6 +7,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 import wandb
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 from utils import env_id_to_envs, log_class_vars, logger_at_folder
+
 HPARAM_ATTRS = {
     'beta', 'learning_rate', 'batch_size', 'buffer_size', 
     'target_update_interval', 'tau', 'theta_update_interval', 
@@ -246,7 +247,7 @@ class LogULearner:
             done = False
             self.num_episodes += 1
             self.rollout_reward = 0
-            while not done:
+            while not done and self.env_steps < total_timesteps:
                 # take a random action:
                 if self.env_steps < self.learning_starts:
                     action = self.env.action_space.sample()
@@ -349,6 +350,8 @@ class LogULearner:
 
 
 def main():
+    from disc_envs import get_environment
+
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
@@ -358,12 +361,14 @@ def main():
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    from hparams import lunar_logu2 as config
-    agent = LogULearner(env_id, **config, device='cpu', log_interval=500,
-                        log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='none', algo_name='dt-max', beta_end=10)
+    env_id = get_environment('Pendulum', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    agent.learn(total_timesteps=100_000, beta_schedule='linear')
+    from hparams import lunar_logu2 as config
+    agent = LogULearner(env_id, **config, device='cuda', log_interval=500,
+                        log_dir='pend', num_nets=2, render=1, aggregator='max',
+                        scheduler_str='none', algo_name='dt-max', beta_end=8)
+
+    agent.learn(total_timesteps=30_000, beta_schedule='linear')
 
 
 if __name__ == '__main__':
