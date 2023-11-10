@@ -1,9 +1,12 @@
 import os
 import gymnasium as gym
+import numpy as np
 from stable_baselines3.common.logger import configure
 import time
 
 import torch
+
+from tabular.utils import get_dynamics_and_rewards, solve_unconstrained
 
 
 def logger_at_folder(log_dir=None, algo_name=None):
@@ -65,3 +68,30 @@ def log_class_vars(self, params):
         if isinstance(value, torch.Tensor):
             value = value.item()
         logger.record(key, value)
+
+def get_eigvec_values(fa, save_name=None):
+    env = fa.env
+    nS = env.unwrapped.nS
+    nA = fa.nA
+    eigvec = np.zeros((nS, nA))
+    for i in range(nS):
+        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.online_logus.nets],axis=0)
+
+    if save_name is not None:
+        np.save(f'{save_name}.npy', eigvec)
+
+    return eigvec
+
+def get_true_eigvec(fa):
+    dynamics, rewards = get_dynamics_and_rewards(fa.env.unwrapped)
+    # uniform prior:
+    n_states, SA = dynamics.shape
+    n_actions = int(SA / n_states)
+    prior_policy = np.ones((n_states, n_actions)) / n_actions
+    solution = solve_unconstrained(
+        fa.beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
+    l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
+    return u_true
+
+def is_tabular(env):
+    return isinstance(env.observation_space, gym.spaces.Discrete) and isinstance(env.action_space, gym.spaces.Discrete)

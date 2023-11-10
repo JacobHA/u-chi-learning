@@ -7,7 +7,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 import wandb
 
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
-from utils import env_id_to_envs, log_class_vars, logger_at_folder
+from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 
 HPARAM_ATTRS = {
     'beta', 'learning_rate', 'batch_size', 'buffer_size', 
@@ -60,6 +60,12 @@ class LogULearner:
         
         self.env, self.eval_env = env_id_to_envs(env_id, render)
         self.beta = beta
+        self.is_tabular = is_tabular(self.env)
+        if self.is_tabular:
+            # calculate the eigvec:
+            self.true_eigvec = get_true_eigvec(self).A.flatten()
+            # normalize:
+            self.true_eigvec /= np.linalg.norm(self.true_eigvec)
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.buffer_size = buffer_size
@@ -310,6 +316,14 @@ class LogULearner:
             # Get the current learning rate from the optimizer:
             lr = self.optimizers.get_lr()
             self.logger.record('train/lr', lr)
+
+            if self.is_tabular:
+                # Record the error in the eigenvector:
+                fa_eigvec = get_eigvec_values(self).flatten()
+                # normalize:
+                fa_eigvec /= np.linalg.norm(fa_eigvec)
+                err = np.abs(self.true_eigvec - fa_eigvec).mean()
+                self.logger.record('train/eigvec_err', err.item())
 
             if self.use_wandb:
                 wandb.log({'env_steps': self.env_steps,
