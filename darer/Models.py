@@ -13,6 +13,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
+from utils import is_tabular
+
 
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
@@ -20,6 +22,7 @@ class LogUNet(nn.Module):
         self.env = env
         self.nA = env.action_space.n
         self.is_image_space = is_image_space(env.observation_space)
+        self.is_tabular = is_tabular(env)
         self.device = device
         # Start with an empty model:
         model = nn.Sequential()
@@ -35,9 +38,9 @@ class LogUNet(nn.Module):
                 model.extend(nn.Sequential(
                     nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.float32),
                     activation(),
-                    nn.Conv2d(32, 32, kernel_size=4, stride=2, dtype=torch.float32),
+                    nn.Conv2d(32, 16, kernel_size=4, stride=2, dtype=torch.float32),
                     activation(),
-                    nn.Conv2d(32, 32, kernel_size=3, stride=1, dtype=torch.float32),
+                    nn.Conv2d(16, 8, kernel_size=3, stride=1, dtype=torch.float32),
                     activation(),
                     nn.Flatten(start_dim=1),
                 ))
@@ -65,9 +68,9 @@ class LogUNet(nn.Module):
                 ))
         # intialize weights with xavier:
         # for m in model:
-            # if isinstance(m, nn.Linear):
-                # nn.init.xavier_uniform_(m.weight, gain=1)
-                # nn.init.constant_(m.bias, 0)
+        #     if isinstance(m, nn.Linear):
+        #         nn.init.xavier_uniform_(m.weight, gain=1)
+        #         nn.init.constant_(m.bias, 0)
         model.to(self.device)
         self.model = model
         
@@ -90,13 +93,27 @@ class LogUNet(nn.Module):
             else:
                 # Batch of images
                 x = x.permute([0,3,1,2])
-        else:
-            if (x.shape == self.nS).all():
-                # is a single state
+        elif self.is_tabular:
+            # Single state
+            if x.shape[0] == self.nS:
                 x = x.unsqueeze(0)
-            else:
-                # batch of states
+            else: 
+                x = x.squeeze(1)
                 pass
+        else:
+            if len(x.shape) > len(self.nS):
+                # in batch mode:
+                pass
+            else:
+                # is a single state
+                if isinstance(x.shape, torch.Size):
+                    if x.shape == self.nS:
+                        x = x.unsqueeze(0)
+                else:
+                    if (x.shape == self.nS).all():
+                        x = x.unsqueeze(0)
+                    
+
             
         x = self.model(x)
         return x
