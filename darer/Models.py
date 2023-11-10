@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
+
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(LogUNet, self).__init__()

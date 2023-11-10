@@ -1,4 +1,6 @@
 import argparse
+import sys
+sys.path.append("darer")
 import wandb
 from darer.MultiLogU import LogULearner
 from new_logac import LogUActor
@@ -9,7 +11,7 @@ from new_logac import LogUActor
 # env_id = 'HalfCheetah-v4'
 env_id = 'Acrobot-v1'
 # env_id = 'Pendulum-v1'
-
+env_id = None
 
 def runner(config=None, run=None, device='cpu'):
     # Convert the necessary kwargs to ints:
@@ -43,15 +45,20 @@ def wandb_agent():
 
 if __name__ == "__main__":
     # set up wandb variables (TODO: these should be set up as globals per user):
-    entity = "jacobhadamczyk"
-    project="LogU-Cartpole"
-    sweep_id="rbtzmhyx"
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device", type=str, default='cpu')
     parser.add_argument("-c", "--count", type=int, default=100)
-
+    parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
+    parser.add_argument("-p", "--project", type=str, default='LogU-Cartpole')
+    parser.add_argument("-s", "--sweep_id", type=str, default='rbtzmhyx')
+    parser.add_argument("-env", "--env_id", type=str, default='LunarLander-v2')
     args = parser.parse_args()
+    entity = args.entity
+    project = args.project
+    sweep_id = args.sweep_id
+    env_id = args.env_id
+
     full_sweep_id = f"{entity}/{project}/{sweep_id}"
 
     # TODO: Before calling the agent on this full_sweep_id, make sure it exists (i.e. the project and sweep):
