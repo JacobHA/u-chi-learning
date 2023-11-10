@@ -1,7 +1,7 @@
 """Customized Frozen lake enviroment"""
 import sys
 from contextlib import closing
-from tabular.utils import DiscreteEnv
+from tabular.tabular_utils import DiscreteEnv
 from gymnasium.envs.toy_text import FrozenLakeEnv
 from gymnasium import utils
 import numpy as np

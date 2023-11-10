@@ -5,14 +5,15 @@ import torch
 from tabular.frozen_lake_env import ModifiedFrozenLake, MAPS
 from gymnasium.wrappers import TimeLimit
 
-from tabular.utils import get_dynamics_and_rewards, solve_unconstrained
+from tabular.tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 
 
 from darer.MultiLogU import LogULearner
 from darer.hparams import *
+from utils import get_eigvec_values
 config = cartpole_hparams2
 config.pop('beta')
-map_name = '3x5uturn'
+map_name = '4x4'
 def exact_solution(beta, env):
 
     dynamics, rewards = get_dynamics_and_rewards(env.unwrapped)
@@ -32,9 +33,11 @@ def exact_solution(beta, env):
 def FA_solution(beta, env):
     # Use MultiLogU to solve the environment
 
-    agent = LogULearner(env, **config, log_interval=1000, num_nets=2, device='cpu', beta=beta, render=1, aggregator='min')
+    agent = LogULearner(env, **config, log_interval=1000, log_dir='pend',
+                        num_nets=2, device='cpu', 
+                        beta=beta, render=0, aggregator='max')
     agent.learn(total_timesteps=100_000)
-    save_eigvec(agent, map_name)
+    get_eigvec_values(agent, save_name=f'{map_name}eigvec')
     # convert agent.theta to float
     theta = agent.theta.item()
     return theta
@@ -75,13 +78,11 @@ def main():
 
 def plot():
     # Plot the data in all CSV files
-    map_name = '3x5uturn'
-    data = pd.read_csv(f'{map_name}tabular_vs_FA.csv')
-    # add the data from the second run
-    data2 = pd.read_csv(f'{map_name}tabular_vs_FA2.csv')
-    data3 = pd.read_csv(f'{map_name}tabular_vs_FA3.csv')
-    data4 = pd.read_csv(f'{map_name}tabular_vs_FA4.csv')
-    data = pd.concat([data, data2, data3, data4])
+    # look for all files beginning with "map_name"tabular_vs_FA...:
+    import glob
+    files = glob.glob(f'{map_name}tabular_vs_FA*.csv')
+    # concat the csvs in a single df:
+    data = pd.concat([pd.read_csv(f) for f in files])
     # Sort by beta
     data = data.sort_values(by=['beta'])
     # tske mean of the data with the same beta
@@ -116,20 +117,6 @@ def plot():
     plt.legend()
     plt.savefig(f'{map_name}eigvec.png')
 
-
-
-
-def save_eigvec(fa, map_name):
-    env = fa.env
-    nS = env.unwrapped.nS
-    nA = fa.nA
-    eigvec = np.zeros((nS, nA))
-    for i in range(nS):
-        # state = torch.Tensor([i]).long().to(fa.device)
-        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.online_logus.nets],axis=0)
-    np.save(f'{map_name}eigvec.npy', eigvec)
-
-        
 
 if __name__ == '__main__':
     main()

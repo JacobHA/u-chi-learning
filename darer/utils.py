@@ -5,8 +5,9 @@ from stable_baselines3.common.logger import configure
 import time
 
 import torch
-
-from tabular.utils import get_dynamics_and_rewards, solve_unconstrained
+import sys
+sys.path.append("tabular")
+from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 
 
 def logger_at_folder(log_dir=None, algo_name=None):
