@@ -33,13 +33,13 @@ class LogUNet(nn.Module):
                 # Use a CNN:
                 n_channels = env.observation_space.shape[2]
                 model.extend(nn.Sequential(
-                    nn.Conv2d(n_channels, 64, kernel_size=8, stride=4, dtype=torch.float32),
+                    nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.float32),
                     activation(),
-                    nn.Conv2d(64, 32, kernel_size=4, stride=2, dtype=torch.float32),
+                    nn.Conv2d(32, 32, kernel_size=4, stride=2, dtype=torch.float32),
                     activation(),
                     nn.Conv2d(32, 32, kernel_size=3, stride=1, dtype=torch.float32),
                     activation(),
-                    nn.Flatten(start_dim=1, end_dim=-1, dtype=torch.float32),
+                    nn.Flatten(start_dim=1),
                 ))
                 model.to(self.device)
                 # calculate resulting shape for FC layers:
@@ -53,8 +53,8 @@ class LogUNet(nn.Module):
                 # flat part
                 input_dim = flat_size
             else:
-                self.nS = env.observation_space.shape[0]
-                input_dim = self.nS
+                self.nS = env.observation_space.shape
+                input_dim = self.nS[0]
 
         model.extend(nn.Sequential(
                     nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
@@ -90,6 +90,14 @@ class LogUNet(nn.Module):
             else:
                 # Batch of images
                 x = x.permute([0,3,1,2])
+        else:
+            if (x.shape == self.nS).all():
+                # is a single state
+                x = x.unsqueeze(0)
+            else:
+                # batch of states
+                pass
+            
         x = self.model(x)
         return x
         

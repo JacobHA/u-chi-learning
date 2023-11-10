@@ -5,7 +5,9 @@ from torch.nn import functional as F
 import time
 from stable_baselines3.common.buffers import ReplayBuffer
 import wandb
-
+import sys
+sys.path.append("tabular")
+sys.path.append("darer")
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 
@@ -146,22 +148,23 @@ class LogULearner:
             
             with torch.no_grad():
                 ref_logu_next = torch.stack([logu(self.ref_next_state)
-                            for logu in self.online_logus], dim=1)
+                            for logu in self.online_logus], dim=0)
                 ref_curr_logu = torch.stack([logu(self.ref_state)[:,self.ref_action]#[:,self.ref_action]
                             for logu in self.online_logus], dim=0)
                 # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
                 # ref_chi = torch.stack([torch.exp(ref_logu_val).sum(dim=-1) / self.nA
                                     #    for ref_logu_val in ref_logus], dim=-1)
                 # Instead do logsumexp:
-                if isinstance(self.env.observation_space, gym.spaces.Discrete):
-                    dim=-1
-                # elif is_image_space(self.env.observation_space):
-                    # dim=-1
-                else:
-                    dim=0
+                # if isinstance(self.env.observation_space, gym.spaces.Discrete):
+                #     dim=-1
+                # # elif is_image_space(self.env.observation_space):
+                # #     dim=-1
+                # else:
+                #     dim=-1#0
+                dim=-1
                 log_ref_chi = torch.logsumexp(ref_logu_next,dim=dim) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # new_thetas[grad_step, :] = self.ref_reward - log_ref_chi
-                new_thetas[grad_step, :] = -self.ref_reward - (log_ref_chi - ref_curr_logu.T)/ self.beta
+                new_thetas[grad_step, :] = -(self.ref_reward - (log_ref_chi - ref_curr_logu) / self.beta).T
 
                 target_next_logus = [target_logu(next_states)
                                         for target_logu in self.target_logus]
@@ -171,7 +174,7 @@ class LogULearner:
                 # logsumexp over actions:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                next_logu, _ = self.aggregator_fn(next_logus, dim=1)
+                next_logu, _ = self.aggregator_fn(next_logus, dim=1)#, keepdims=True)
                 # next_logu = torch.mean(next_logus, dim=1)
 
                 # or the other order:
@@ -185,11 +188,9 @@ class LogULearner:
                 # new_thetas[grad_step,:] = torch.mean(batch_theta, dim=0)
 
                 # next_logu, _ = self.aggregator_fn(target_next_logu, dim=1)
-                if isinstance(self.env.observation_space, gym.spaces.Discrete):
-                    pass
-                else:
-                    next_logu = next_logu.unsqueeze(1)
+                
                 # When an episode terminates, next_logu should be theta or zero?:
+                next_logu = next_logu.reshape(-1,1)
                 assert next_logu.shape == dones.shape
                 next_logu = next_logu * (1-dones)# + self.theta * dones
 
@@ -377,7 +378,7 @@ def main():
     # env_id = 'Drug-v0'
     # env_id = get_environment('Pendulum', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    from hparams import lunar_logu2 as config
+    from hparams import pong_logu as config
     agent = LogULearner(env_id, **config, device='cuda', log_interval=500,
                         log_dir='pend', num_nets=2, render=0, aggregator='min',
                         scheduler_str='none', algo_name='dt-max', beta_end=4)
