@@ -140,7 +140,7 @@ class LogULearner:
             with torch.no_grad():
                 ref_logu_next = torch.stack([logu(self.ref_next_state)
                             for logu in self.online_logus], dim=1)
-                ref_curr_logu = torch.stack([logu(self.ref_state)[self.ref_action]#[:,self.ref_action]
+                ref_curr_logu = torch.stack([logu(self.ref_state)[:,self.ref_action]#[:,self.ref_action]
                             for logu in self.online_logus], dim=0)
                 # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
                 # ref_chi = torch.stack([torch.exp(ref_logu_val).sum(dim=-1) / self.nA
@@ -154,9 +154,7 @@ class LogULearner:
                     dim=0
                 log_ref_chi = torch.logsumexp(ref_logu_next,dim=dim) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # new_thetas[grad_step, :] = self.ref_reward - log_ref_chi
-                new_thetas[grad_step, :] = -self.ref_reward - (log_ref_chi - ref_curr_logu)/ self.beta
-
-
+                new_thetas[grad_step, :] = -self.ref_reward - (log_ref_chi - ref_curr_logu.T)/ self.beta
 
                 target_next_logus = [target_logu(next_states)
                                         for target_logu in self.target_logus]
@@ -167,6 +165,7 @@ class LogULearner:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 next_logu, _ = self.aggregator_fn(next_logus, dim=1)
+                # next_logu = torch.mean(next_logus, dim=1)
 
                 # or the other order:
                 # target_next_logu, _ = self.aggregator_fn(target_next_logus, dim=1)
@@ -185,7 +184,7 @@ class LogULearner:
                     next_logu = next_logu.unsqueeze(1)
                 # When an episode terminates, next_logu should be theta or zero?:
                 assert next_logu.shape == dones.shape
-                # next_logu = next_logu * (1-dones)# + self.theta * dones
+                next_logu = next_logu * (1-dones)# + self.theta * dones
 
                 # "Backup" eigenvector equation:
                 expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
@@ -318,7 +317,7 @@ class LogULearner:
             self.t0 = time.thread_time_ns()
 
 
-    def evaluate(self, n_episodes=3):
+    def evaluate(self, n_episodes=5):
         # run the current policy and return the average reward
         avg_reward = 0.
         # log the action frequencies:
@@ -355,20 +354,20 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    env_id = 'Acrobot-v1'
+    # env_id = 'Acrobot-v1'
     env_id = 'LunarLander-v2'
     # env_id = 'Pong-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    env_id = get_environment('Pendulum', nbins=3, max_episode_steps=200, reward_offset=0)
+    # env_id = get_environment('Pendulum', nbins=3, max_episode_steps=200, reward_offset=0)
 
     from hparams import lunar_logu2 as config
     agent = LogULearner(env_id, **config, device='cuda', log_interval=500,
-                        log_dir='pend', num_nets=2, render=1, aggregator='max',
-                        scheduler_str='none', algo_name='dt-max', beta_end=8)
+                        log_dir='pend', num_nets=2, render=0, aggregator='min',
+                        scheduler_str='none', algo_name='dt-max', beta_end=4)
 
-    agent.learn(total_timesteps=30_000, beta_schedule='linear')
+    agent.learn(total_timesteps=100_000, beta_schedule='linear')
 
 
 if __name__ == '__main__':
