@@ -4,7 +4,7 @@ LogU learning implementation in gym (mazes and cartpole)
 - [ ] Compare multilogu w/ and w/o the 1/A factor in chi calc.
 - [ ] Same w/ periodic updates of ref s,a,s'
 - [x] Implement LR schedule
-- [ ] Create a folder when one is missing for logging
+- [x] Create a folder when one is missing for logging
 - [ ] Correct log interval for PPO
 # New (Simple) Features:
 - [x] Monitor FPS

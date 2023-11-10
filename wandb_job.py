@@ -2,7 +2,7 @@ import argparse
 import sys
 sys.path.append("darer")
 import wandb
-from darer.MultiLogU import LogULearner
+from MultiLogU import LogULearner
 from new_logac import LogUActor
 
 # env_id = 'CartPole-v1'
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='LogU-Cartpole')
     parser.add_argument("-s", "--sweep_id", type=str, default='rbtzmhyx')
-    parser.add_argument("-env", "--env_id", type=str, default='LunarLander-v2')
+    parser.add_argument("-env", "--env_id", type=str, default='ALE/Pong-v5')
     args = parser.parse_args()
     entity = args.entity
     project = args.project
