@@ -5,8 +5,9 @@ from new_logac import LogUActor
 
 # env_id = 'CartPole-v1'
 # env_id = 'MountainCar-v0'
-env_id = 'LunarLander-v2'
+# env_id = 'LunarLander-v2'
 # env_id = 'HalfCheetah-v4'
+env_id = 'Acrobot-v1'
 # env_id = 'Pendulum-v1'
 
 
@@ -14,20 +15,20 @@ def runner(config=None, run=None, device='cpu'):
     # Convert the necessary kwargs to ints:
     for int_kwarg in ['batch_size', 'target_update_interval', 'theta_update_interval']:
         config[int_kwarg] = int(config[int_kwarg])
-    config['buffer_size'] = 50_000
+    config['buffer_size'] = 10_000
     config['gradient_steps'] = 1
     config['train_freq'] = 1
-    config['learning_starts'] = 10_000
+    config['learning_starts'] = 1_000
 
     config.pop('actor_learning_rate')
-    runs_per_hparam = 2
+    runs_per_hparam = 3
     auc = 0
     wandb.log({'env_id': env_id})
 
     for _ in range(runs_per_hparam):
-        model = LogULearner(env_id, **config, log_interval=1500, use_wandb=True,
+        model = LogULearner(env_id, **config, log_interval=500, use_wandb=True,
                             device=device, render=0)
-        model.learn(total_timesteps=50_000)
+        model.learn(total_timesteps=10_000)
         auc += model.eval_auc
     auc /= runs_per_hparam
     wandb.log({'avg_eval_auc': auc})

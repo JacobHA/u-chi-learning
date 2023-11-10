@@ -17,10 +17,10 @@ cartpole_hparams2 = {
     'beta': 10,
     'buffer_size': 100_000,
     'gradient_steps': 1,
-    'learning_rate': 1e-3,
+    'learning_rate': 1e-4,
     'target_update_interval': 300,
     'tau': 0.64,
-    'tau_theta': 0.967,
+    'tau_theta': 0.99,
     'theta_update_interval': 8,
     'hidden_dim': 64,
     'train_freq': 1,
@@ -173,30 +173,30 @@ acrobot_logu = {
 }
 
 lunar_logu2 = {
-    'beta': 1.02,
-    'batch_size': 855,
+    'beta': 0.02,
+    'batch_size': 385,
     'buffer_size': 100_000,
-    'gradient_steps': 1,
-    'learning_rate': 5.e-4,
-    'target_update_interval': 2,
-    'tau': 0.995,
+    'gradient_steps': 10,
+    'learning_rate': 1.e-3,
+    'target_update_interval': 200,
+    'tau': 0.85,
     'tau_theta': 0.90,
-    'train_freq': 1,
-    'hidden_dim': 128,
+    'train_freq': 100,
+    'hidden_dim': 32,
     'learning_starts': 5000,
     'theta_update_interval': 100
 }
 
 pong_logu = {
-    'beta': 0.02,
+    'beta': 1.2,
     'batch_size': 64,
     'buffer_size': 100_000,
-    'gradient_steps': 4,
-    'learning_rate': 1.e-3,
+    'gradient_steps': 20,
+    'learning_rate': 1.e-4,
     'target_update_interval': 100,
     'tau': 0.995,
     'tau_theta': 0.98,
-    'train_freq': 16,
+    'train_freq': 50,
     'learning_starts': 15_000,
     'theta_update_interval': 1000,
 }
@@ -217,32 +217,49 @@ acrobot_logu2 = {
     'learning_starts': 1_000
 }
 
-cheetah_hparams = {
-    'batch_size': 600,
-    'beta': 10,
-    'buffer_size': 1_000_000,
+
+acrobot_logu3 = {
+    'beta': 2.5,
+    'batch_size': 20,
+    'buffer_size': 10_000,
     'gradient_steps': 1,
-    'learning_rate': 8e-6,
-    'target_update_interval': 10,
-    'tau': 0.99,
-    'tau_theta': 0.9,
+    'learning_rate': 7.e-3,
+    'target_update_interval': 4,
+    'tau': 0.65,
+    'tau_theta': 0.97,
     'train_freq': 1,
     'hidden_dim': 64,
+    'theta_update_interval': 4,
+    'learning_starts': 1_000
+}
+
+cheetah_hparams = {
+    'batch_size': 600,
+    'beta': 2,
+    'buffer_size': 100_000,
+    'gradient_steps': 1,
+    'learning_rate': 5e-4,
+    'target_update_interval': 2,
+    'tau': 0.995,
+    'tau_theta': 0.9,
+    'train_freq': 1,
+    'hidden_dim': 128,
+    'learning_starts': 1000
 }
 
 
 cheetah_hparams2 = {
     'batch_size': 600,
-    'beta': 1,
+    'beta': 0.5,
     'buffer_size': 1_000_000,
-    'gradient_steps': 1,
+    'gradient_steps': 10,
     'learning_rate': 3e-4,
     'target_update_interval': 650,
     'tau': 0.95,
     'tau_theta': 0.98,
-    'train_freq': 1,
+    'train_freq': 20,
     'hidden_dim': 128,
-    'learning_starts': 5_000
+    'learning_starts': 15_000
 }
 
 acrobot_dqn = {
