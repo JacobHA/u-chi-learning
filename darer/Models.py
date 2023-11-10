@@ -62,6 +62,11 @@ class LogUNet(nn.Module):
                     activation(),
                     nn.Linear(hidden_dim, self.nA, dtype=torch.float32),
                 ))
+        # intialize weights with xavier:
+        # for m in model:
+            # if isinstance(m, nn.Linear):
+                # nn.init.xavier_uniform_(m.weight, gain=1)
+                # nn.init.constant_(m.bias, 0)
         model.to(self.device)
         self.model = model
         
@@ -71,9 +76,10 @@ class LogUNet(nn.Module):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
         
-        assert x.dtype == torch.float32, "Input must be a float tensor."
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space)
+        assert x.dtype == torch.float32, "Input must be a float tensor."
+
         # Reshape the image:
         if self.is_image_space:
             if len(x.shape) == 3:
@@ -90,7 +96,7 @@ class LogUNet(nn.Module):
         if prior is None:
             prior = 1 / self.nA
         with torch.no_grad():
-            state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
             logu = self.forward(state)
 
             if greedy:
@@ -187,11 +193,7 @@ class TargetNets():
             # zip does not raise an exception if length of parameters does not match.
             for new_params, target_params in zip(online_nets.parameters(), self.parameters()):
                 for new_param, target_param in zip_strict(new_params, target_params):
-                    # target_param.data.mul_(tau)
-                    # new_param.data.mul_(1 - tau)
-                    # target_param.data.add_(new_param.data)
                     target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
-                    # torch.add(target_param.data, new_param.data, out=target_param.data)
 
     def parameters(self):
         """
