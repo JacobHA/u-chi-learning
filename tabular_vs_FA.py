@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 from tabular.frozen_lake_env import ModifiedFrozenLake, MAPS
 from gymnasium.wrappers import TimeLimit
 
@@ -24,13 +25,16 @@ def exact_solution(beta, env):
     l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
 
     print(f"l_true: {l_true}")
+    # save u true:
+    np.save(f'{map_name}u_true.npy', u_true)
     return -np.log(l_true) / beta
 
 def FA_solution(beta, env):
     # Use MultiLogU to solve the environment
 
-    agent = LogULearner(env, **config, log_interval=1000, num_nets=2, device='cuda', beta=beta, render=1, aggregator='min')
-    agent.learn(total_timesteps=250_000)
+    agent = LogULearner(env, **config, log_interval=1000, num_nets=2, device='cpu', beta=beta, render=1, aggregator='min')
+    agent.learn(total_timesteps=100_000)
+    save_eigvec(agent, map_name)
     # convert agent.theta to float
     theta = agent.theta.item()
     return theta
@@ -53,6 +57,7 @@ def main():
     betas = np.logspace(1, 1, 4)
     betas = [14,19,24,30,37]
     betas = np.linspace(1, 50, 50)
+    betas = [10]
 
     exact = [exact_solution(beta, env) for beta in betas]
     print(exact)
@@ -94,6 +99,38 @@ def plot():
     plt.legend()
     plt.savefig(f'{map_name}tabular_vs_FA.png')
 
+    # Plot the eigenvectors:
+    true_eigvec = np.load(f'{map_name}u_true.npy')
+    fa_logeigvec = np.load(f'{map_name}eigvec.npy')
+    fa_u = np.exp(fa_logeigvec.flatten())
+    true_u = true_eigvec.flatten()
+    # normalize them to have the same norm:
+    true_u /= np.linalg.norm(true_u)
+    fa_u /= np.linalg.norm(fa_u)
+    plt.figure()
+    plt.plot(true_u, 'ko-', label='Exact')
+    plt.plot(fa_u, 'ro', label='FA')
+    plt.xlabel('State-action pairs')
+    plt.ylabel('Eigenvector')
+    plt.title(f'Eigenvectors on {map_name}')
+    plt.legend()
+    plt.savefig(f'{map_name}eigvec.png')
+
+
+
+
+def save_eigvec(fa, map_name):
+    env = fa.env
+    nS = env.unwrapped.nS
+    nA = fa.nA
+    eigvec = np.zeros((nS, nA))
+    for i in range(nS):
+        # state = torch.Tensor([i]).long().to(fa.device)
+        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.online_logus.nets],axis=0)
+    np.save(f'{map_name}eigvec.npy', eigvec)
+
+        
+
 if __name__ == '__main__':
     main()
-    # plot()
+    plot()
