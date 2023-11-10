@@ -13,6 +13,7 @@ def logger_at_folder(log_dir=None, algo_name=None):
     algo_name = algo_name.replace('_', '-')
     # Generate a logger object at the specified folder:
     if log_dir is not None:
+        os.makedirs(log_dir, exist_ok=True)
         files = os.listdir(log_dir)
         # Get the number of existing "LogU" directories:
         num = len([int(f.split('_')[1]) for f in files if algo_name in f]) + 1
@@ -22,7 +23,6 @@ def logger_at_folder(log_dir=None, algo_name=None):
         while os.path.exists(tmp_path):
             num += 1
             tmp_path = f"{log_dir}/{algo_name}_{num}"
-            time.sleep(0.2)
             # try:
             #     os.makedirs(tmp_path, exist_ok=False)
             # except FileExistsError:
