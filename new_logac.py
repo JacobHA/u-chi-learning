@@ -158,7 +158,7 @@ class LogUActor:
                                                 for target_logu in self.target_logus], dim=-1)
 
                 next_logu, _ = torch.max(target_next_logu, dim=-1)
-                # next_logu = next_logu * (1 - dones) + self.theta * dones
+                next_logu = next_logu * (1 - dones) #+ self.theta * dones
 
                 expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
 
@@ -349,12 +349,12 @@ def main():
     # env_id = 'CartPole-v1'
     env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
-    # env_id = 'HalfCheetah-v4'
+    env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
-    from darer.hparams import cheetah_hparams2 as config
+    from darer.hparams import cheetah_hparams as config
     agent = LogUActor(env_id, **config, device='cpu',
-                      num_nets=2, log_dir='pend', theta_update_interval=500,
+                      num_nets=2, log_dir='pend', theta_update_interval=150,
                       render=0, max_grad_norm=10, log_interval=1000)
     agent.learn(total_timesteps=5_000_000)
 
