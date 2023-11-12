@@ -1,6 +1,8 @@
 LogU learning implementation in gym (mazes and cartpole)
 
 # Simple TODOs:
+- [ ] Add Heaven & Hell experiment in the tabular case
+- [ ] Start thinking about bigger WHY question (lifelong learning, episode length hparam, gamma->1 ...)
 - [ ] Compare multilogu w/ and w/o the 1/A factor in chi calc.
 - [ ] Same w/ periodic updates of ref s,a,s'
 - [x] Implement LR schedule
@@ -42,14 +44,6 @@ LogU learning implementation in gym (mazes and cartpole)
 - [ ] Rawlik scheme
 
 # Notes:
-- I had to change this in SB3 code to allow for next_actions in replay buffer (stable_baselines3.common.type_aliases)
-class ReplayBufferSamples(NamedTuple):
-    observations: th.Tensor
-    actions: th.Tensor
-    next_observations: th.Tensor
-    next_actions: th.Tensor
-    dones: th.Tensor
-    rewards: th.Tensor
 
 I added this line to the `gymnasium/envs/__init__.py` file:
 ```
