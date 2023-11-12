@@ -152,7 +152,7 @@ str_to_scheduler = {
     "step": (StepLR, {'step_size': 100_000, 'gamma': 0.5}),
     # "MultiplicativeLR": (MultiplicativeLR, ()), 
     "linear": (LinearLR, {"start_factor":1./3, "end_factor":1.0, "last_epoch":-1}), 
-    "exponential": (ExponentialLR, {'gamma': 0.9}), 
+    "exponential": (ExponentialLR, {'gamma': 0.9999}), 
     "none": (EmptyScheduler, {"last_epoch":-1})
 }
 
@@ -350,11 +350,13 @@ class GaussianPolicy(nn.Module):
         x = F.relu(self.linear1(obs))
         x = F.relu(self.linear2(x))
         mean = self.mean_linear(x)
-        log_std = self.log_std_linear(x)
-        log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+        # log_std = self.log_std_linear(x)
+        # log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+        log_std = torch.ones_like(mean) * -2
         return mean, log_std
 
     def sample(self, state):
+        # with torch.no_grad():
         mean, log_std = self.forward(state)
         std = log_std.exp()
         # print(std)
