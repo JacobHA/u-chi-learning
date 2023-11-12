@@ -140,20 +140,24 @@ class LogUActor:
                                    for online_logu in self.online_logus], dim=-1).squeeze(1)
             with torch.no_grad():
                 # use same number of samples as the batch size for convenience:
-                sampled_action = self.env.action_space.sample()
-                ref_logu_next = torch.stack([logu(self.ref_next_state, sampled_action)
-                            for logu in self.online_logus], dim=1)
-                ref_curr_logu = torch.stack([logu(self.ref_state, self.ref_action)
+                sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
+                                               _ in range(self.batch_size)])).to(self.device)
+                
+                ref_logu_next = torch.stack([logu(next_states, sampled_action)
                             for logu in self.online_logus], dim=0)
-                
-                dim=0
-                log_ref_chi = torch.logsumexp(ref_logu_next,dim=dim) - torch.log(torch.Tensor([self.nA])).to(self.device)
+                ref_curr_logu = torch.stack([logu(states, actions)
+                            for logu in self.online_logus], dim=0)  
+                dim=-1
+                log_next_chi = torch.logsumexp(ref_logu_next,dim=dim) - torch.log(torch.Tensor([self.nA])).to(self.device)
+                log_next_chi = log_next_chi.unsqueeze(-1)
                 # new_thetas[grad_step, :] = self.ref_reward - log_ref_chi
-                new_thetas[grad_step, :] = -self.ref_reward - (log_ref_chi - ref_curr_logu.T) / self.beta
+                new_thetas[grad_step, :] = torch.mean(-(rewards + (log_next_chi - ref_curr_logu) / self.beta), dim=1).T
                 
-                rand_actions = np.array([sampled_action for _ in range(self.batch_size)])
-                rand_actions = torch.Tensor(rand_actions).to(self.device)               
-                
+                # rand_actions = np.array([rand_action for _ in range(self.batch_size)])
+
+                rand_actions = torch.Tensor(np.array([self.env.action_space.sample() for 
+                                               _ in range(self.batch_size)])).to(self.device)
+                                
                 target_next_logu = torch.stack([target_logu(next_states, rand_actions)
                                                 for target_logu in self.target_logus], dim=-1)
 
@@ -179,8 +183,8 @@ class LogUActor:
             actor_curr_logu = torch.stack([online_logu(states, actor_actions)
                                          for online_logu in self.online_logus], dim=-1)
 
-            actor_loss = 0.5 * \
-                F.smooth_l1_loss(curr_log_prob, actor_curr_logu.max(dim=-1)[0])
+            # actor_loss = 0.5 * \
+                # F.smooth_l1_loss(curr_log_prob, actor_curr_logu.max(dim=-1)[0])
             # PPO clips the prioritzed sampling
             # ratio = torch.exp(curr_logu - actor_curr_logu.min(dim=-1)[0] )
             # Clip the ratio:
@@ -188,17 +192,17 @@ class LogUActor:
             # ratio = torch.clamp(ratio, 1-eps, 1+eps)
             # actor_loss = torch.log(ratio)
                 
-            # actor_loss = (curr_log_prob - actor_curr_logu.min(dim=-1)[0]).mean()
+            # actor_loss = -(curr_log_prob - actor_curr_logu.max(dim=-1)[0]).mean()
 
             self.logger.record("train/log_prob", curr_log_prob.mean().item())
             self.logger.record("train/loss", loss.item())
-            self.logger.record("train/actor_loss", actor_loss.item())
+            # self.logger.record("train/actor_loss", actor_loss.item())
             self.optimizers.zero_grad()
             # Increase update counter
             self._n_updates += self.gradient_steps
 
             # if self._n_updates % 100 == 0:
-            actor_loss.backward()
+            # actor_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
             
             # Clip gradient norm
@@ -211,10 +215,10 @@ class LogUActor:
                 [p.grad.detach().abs().max() for p in logu.parameters()]
                 ))
                 self.logger.record(f"grad/logu{idx}_norm", norm.item())
-            actor_norm = torch.max(torch.stack(
-                [p.grad.detach().abs().max() for p in self.actor.parameters()]
-            ))
-            self.logger.record("grad/actor_norm", actor_norm.item())
+            # actor_norm = torch.max(torch.stack(
+            #     [p.grad.detach().abs().max() for p in self.actor.parameters()]
+            # ))
+            # self.logger.record("grad/actor_norm", actor_norm.item())
             self.optimizers.step()
         
         # TODO: Take the mean, then aggregate:
@@ -349,12 +353,13 @@ def main():
     # env_id = 'CartPole-v1'
     env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
-    env_id = 'HalfCheetah-v4'
+    # env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from darer.hparams import cheetah_hparams as config
-    agent = LogUActor(env_id, **config, device='cpu',
+    agent = LogUActor(env_id, **config, device='cuda',
                       num_nets=2, log_dir='pend', theta_update_interval=150,
+                      actor_learning_rate=1e-4,
                       render=0, max_grad_norm=10, log_interval=1000)
     agent.learn(total_timesteps=5_000_000)
 
