@@ -28,7 +28,7 @@ export MUJOCO_GL="glfw"
 echo "Start Run"
 echo `date`
 # python uchi_agent_NN.py
-python wandb_job.py
+python experiments/wandb_job.py
 # python darer/MultiLogU.py
 # python local_finetuned_runs.py -a logu
 

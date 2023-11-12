@@ -1,3 +1,4 @@
+import threading
 import gymnasium as gym
 import numpy as np
 import torch
@@ -10,9 +11,7 @@ sys.path.append("tabular")
 sys.path.append("darer")
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
-import threading
-
-
+from multiprocessing import Pool
 HPARAM_ATTRS = {
     'beta', 'learning_rate', 'batch_size', 'buffer_size', 
     'target_update_interval', 'tau', 'theta_update_interval', 
@@ -252,21 +251,21 @@ class LogULearner:
                 if self.env_steps % self.log_interval == 0:
                     self.eval_thread.join()
 
-                    self.logger.record("eval/avg_reward", self.avg_eval_rwd)
+                    # self.logger.record("eval/avg_reward", self.avg_eval_rwd)
                     self.eval_auc += self.avg_eval_rwd
-                    self.logger.record("eval/auc", self.eval_auc)
-                    self.logger.record("eval/time", self.eval_time)
-                    self.logger.record("eval/fps", self.eval_fps)
-                    self.eval_thread = threading.Thread(target=self.evaluate, args=(10,))
+                    # self.logger.record("eval/auc", self.eval_auc)
+                    # self.logger.record("eval/time", self.eval_time)
+                    # self.logger.record("eval/fps", self.eval_fps)
+                    self.eval_thread = threading.Thread(target=self.evaluate, args=(5,))
                     self.eval_thread.start()
 
                 # take a random action:
                 if self.env_steps < self.learning_starts:
                     action = self.env.action_space.sample()
                 else:
-                    # action = self.online_logus.choose_action(state)
+                    action = self.online_logus.choose_action(state)
                     # action = self.online_logus.greedy_action(state)
-                    action = self.env.action_space.sample()
+                    # action = self.env.action_space.sample()
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
                     action)
@@ -305,10 +304,10 @@ class LogULearner:
             # fps averaged over log_interval steps:
             self.fps = self.log_interval / ((t_final - self.t0) / 1e9)
 
-            if self.env_steps >= 0:
+            # if self.env_steps >= 0:
                 
-                self.avg_eval_rwd = self.evaluate()
-                self.eval_auc += self.avg_eval_rwd
+                # self.avg_eval_rwd = self.evaluate()
+                # self.eval_auc += self.avg_eval_rwd
             if self.save_checkpoints:
                 raise NotImplementedError
                 torch.save(self.online_logu.state_dict(),
@@ -336,7 +335,7 @@ class LogULearner:
 
     def evaluate(self, n_episodes=5):
         # run the current policy and return the average reward
-        initial_time = time.time()
+        initial_time = time.thread_time_ns()
         avg_reward = 0.
         # log the action frequencies:
         action_freqs = torch.zeros(self.nA)
@@ -346,10 +345,8 @@ class LogULearner:
             done = False
             while not done:
                 action = self.online_logus.greedy_action(state)
-                # action = self.online_logus.choose_action(state)
                 action_freqs[action] += 1
                 action = action.item()
-                # action = self.online_logus.choose_action(state)
                 n_steps += 1
 
                 next_state, reward, terminated, truncated, info = self.eval_env.step(
@@ -359,19 +356,21 @@ class LogULearner:
                 done = terminated or truncated
 
         avg_reward /= n_episodes
-        # log the action frequencies:
         action_freqs /= n_episodes
         for i, freq in enumerate(action_freqs):
             self.logger.record(f'eval/action_freq_{i}', freq.item())
-        final_time = time.time()
+        final_time = time.thread_time_ns()
         eval_time = (final_time - initial_time) / 1e9
         eval_fps = n_steps / eval_time
-        # self.logger.record('eval/time', eval_time)
-        # self.logger.record('eval/fps', eval_fps)
+        self.logger.record('eval/time', eval_time)
+        self.logger.record('eval/fps', eval_fps)
         self.eval_time = eval_time
         self.eval_fps = eval_fps
         self.avg_eval_rwd = avg_reward
-        return avg_reward
+        self.eval_auc += avg_reward
+        self.logger.record('eval/avg_reward', avg_reward)
+        self.logger.record('eval/auc', self.eval_auc)
+        return 
 
 
 def main():
@@ -389,12 +388,12 @@ def main():
     # env_id = get_environment('Pendulum', nbins=3, max_episode_steps=200, reward_offset=0)
 
     from hparams import acrobot_logu3 as config
-    agent = LogULearner(env_id, **config, device='cpu', log_interval=100,
+    agent = LogULearner(env_id, **config, device='cpu', log_interval=500,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='exponential', algo_name='dt-max', beta_end=5)
+                        scheduler_str='none', algo_name='mthread', beta_end=5)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000, beta_schedule='linear')
+    agent.learn(total_timesteps=10_000, beta_schedule='none')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

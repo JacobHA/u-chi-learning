@@ -17,7 +17,7 @@ cartpole_hparams2 = {
     'beta': 10,
     'buffer_size': 100_000,
     'gradient_steps': 1,
-    'learning_rate': 1e-4,
+    'learning_rate': 1e-3,
     'target_update_interval': 300,
     'tau': 0.64,
     'tau_theta': 0.99,
@@ -180,11 +180,11 @@ lunar_logu2 = {
     'learning_rate': 1.e-3,
     'target_update_interval': 200,
     'tau': 0.85,
-    'tau_theta': 0.90,
+    'tau_theta': 0.70,
     'train_freq': 1,
     'hidden_dim': 128,
     'learning_starts': 10000,
-    'theta_update_interval': 10
+    'theta_update_interval': 1
 }
 
 pong_logu = {
@@ -219,14 +219,14 @@ acrobot_logu2 = {
 
 
 acrobot_logu3 = {
-    'beta': 2.5,
-    'batch_size': 60,
+    'beta': 3.35,
+    'batch_size': 70,
     'buffer_size': 10_000,
     'gradient_steps': 1,
-    'learning_rate': 7.e-3,
-    'target_update_interval': 4,
-    'tau': 0.65,
-    'tau_theta': 0.97,
+    'learning_rate': 1.e-3,
+    'target_update_interval': 40,
+    'tau': 0.4,
+    'tau_theta': 0.9,
     'train_freq': 1,
     'hidden_dim': 64,
     'theta_update_interval': 4,
@@ -263,7 +263,17 @@ cheetah_hparams2 = {
 }
 
 acrobot_dqn = {
-
+    'batch_size': 128,
+    'buffer_size': 50_000,
+    'exploration_final_eps': 0.1,
+    'exploration_fraction': 0.12,
+    'gamma': 0.99,
+    'gradient_steps': -1,
+    'learning_rate': 0.00063,
+    'learning_starts': 0,
+    'hidden_dim': 256,
+    'target_update_interval': 250,
+    'train_freq': 4,
 }
 
 mcar_dqn = {
@@ -294,7 +304,7 @@ cartpoles = {
 }
 
 acrobots = {
-    'logu': acrobot_logu,
+    'logu': acrobot_logu3,
     'ppo': acrobot_ppo,
     'dqn': acrobot_dqn
 }

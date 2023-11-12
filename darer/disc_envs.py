@@ -35,7 +35,7 @@ class ExtendedMountainCarEnv(MountainCarEnv):
 
 
 class ExtendedPendulum(PendulumEnv):
-    def __init__(self, render_mode='human', g=10):
+    def __init__(self, render_mode='None', g=10):
         self.metadata["render_fps"] = 60
         super().__init__(render_mode=render_mode, g=g)
         high = np.array([np.pi, self.max_speed], dtype=np.float32)

@@ -1,19 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
-from tabular.frozen_lake_env import ModifiedFrozenLake, MAPS
 from gymnasium.wrappers import TimeLimit
-
-from tabular.tabular_utils import get_dynamics_and_rewards, solve_unconstrained
-
-
 from darer.MultiLogU import LogULearner
 from darer.hparams import *
-from utils import get_eigvec_values
+from darer.utils import get_eigvec_values
+from tabular.tabular_utils import get_dynamics_and_rewards, solve_unconstrained
+from tabular.frozen_lake_env import ModifiedFrozenLake, MAPS
+
 config = cartpole_hparams2
 config.pop('beta')
-map_name = '4x4'
+map_name = '5x12ridge'
 def exact_solution(beta, env):
 
     dynamics, rewards = get_dynamics_and_rewards(env.unwrapped)
@@ -27,7 +24,7 @@ def exact_solution(beta, env):
 
     print(f"l_true: {l_true}")
     # save u true:
-    np.save(f'{map_name}u_true.npy', u_true)
+    np.save(f'tabular/tabular_expt/data/{map_name}u_true.npy', u_true)
     return -np.log(l_true) / beta
 
 def FA_solution(beta, env):
@@ -37,7 +34,7 @@ def FA_solution(beta, env):
                         num_nets=2, device='cpu', 
                         beta=beta, render=0, aggregator='max')
     agent.learn(total_timesteps=100_000)
-    get_eigvec_values(agent, save_name=f'{map_name}eigvec')
+    get_eigvec_values(agent, save_name=f'tabular/tabular_expt/data/{map_name}eigvec')
     # convert agent.theta to float
     theta = agent.theta.item()
     return theta
@@ -60,7 +57,7 @@ def main():
     betas = np.logspace(1, 1, 4)
     betas = [14,19,24,30,37]
     betas = np.linspace(1, 50, 50)
-    betas = [10]
+    betas = [35]
 
     exact = [exact_solution(beta, env) for beta in betas]
     print(exact)
@@ -68,19 +65,19 @@ def main():
 
     # save the data:
     data = pd.DataFrame({'beta': betas, 'exact': exact, 'FA': FA})
-    data.to_csv(f'{map_name}tabular_vs_FA50.csv', index=False)
+    data.to_csv(f'tabular/tabular_expt/data/{map_name}tabular_vs_FA50.csv', index=False)
 # [0.9999155228491464, 0.9987485370048285, 0.9891983268590409, 0.9777515697268231, 0.9681814068991201, 0.9603645308274785
     plt.figure()
     plt.plot(betas, exact, 'ko-', label='Exact')
     plt.plot(betas, FA, 'bo', label='FA')
     plt.legend()
-    plt.savefig(f'{map_name}tabular_vs_FA.png')
+    plt.savefig(f'tabular/tabular_expt/results/{map_name}tabular_vs_FA.png')
 
 def plot():
     # Plot the data in all CSV files
     # look for all files beginning with "map_name"tabular_vs_FA...:
     import glob
-    files = glob.glob(f'{map_name}tabular_vs_FA*.csv')
+    files = glob.glob(f'tabular/tabular_expt/data/{map_name}tabular_vs_FA*.csv')
     # concat the csvs in a single df:
     data = pd.concat([pd.read_csv(f) for f in files])
     # Sort by beta
@@ -98,11 +95,11 @@ def plot():
     plt.ylabel(r'$\theta$')
     plt.title(f'Free energy vs. inverse temperature on {map_name}')
     plt.legend()
-    plt.savefig(f'{map_name}tabular_vs_FA.png')
+    plt.savefig(f'tabular/tabular_expt/results/{map_name}tabular_vs_FA.png')
 
     # Plot the eigenvectors:
-    true_eigvec = np.load(f'{map_name}u_true.npy')
-    fa_logeigvec = np.load(f'{map_name}eigvec.npy')
+    true_eigvec = np.load(f'tabular/tabular_expt/data/{map_name}u_true.npy')
+    fa_logeigvec = np.load(f'tabular/tabular_expt/data/{map_name}eigvec.npy')
     fa_u = np.exp(fa_logeigvec.flatten())
     true_u = true_eigvec.flatten()
     # normalize them to have the same norm:
@@ -115,7 +112,7 @@ def plot():
     plt.ylabel('Eigenvector')
     plt.title(f'Eigenvectors on {map_name}')
     plt.legend()
-    plt.savefig(f'{map_name}eigvec.png')
+    plt.savefig(f'tabular/tabular_expt/results/{map_name}eigvec.png')
 
 
 if __name__ == '__main__':

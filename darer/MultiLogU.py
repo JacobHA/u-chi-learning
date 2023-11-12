@@ -149,19 +149,21 @@ class LogULearner:
             with torch.no_grad():
                 # ref_logu_next = torch.stack([logu(self.ref_next_state)
                 #             for logu in self.online_logus], dim=0)
-                # ref_curr_logu = torch.stack([logu(self.ref_state)[:,self.ref_action]#[:,self.ref_action]
+                # ref_curr_logu = torch.stack([logu(self.ref_state)[:,self.ref_action]
                 #             for logu in self.online_logus], dim=0)
                 
                 ref_logu_next = torch.stack([logu(next_states)
                             for logu in self.online_logus], dim=0)
                 ref_curr_logu = torch.stack([logu(states).gather(1,actions)
-                            for logu in self.online_logus], dim=0)                # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
+                            for logu in self.online_logus], dim=0)                
+                # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
 
                 log_ref_chi = torch.logsumexp(ref_logu_next,dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # log_ref_chi = log_ref_chi.unsqueeze(-1)
                 ref_curr_logu = ref_curr_logu.squeeze(-1)
                 
                 new_thetas[grad_step, :] = torch.mean(-(rewards.squeeze(-1) + (log_ref_chi - ref_curr_logu) / self.beta),dim=1)
+                # new_thetas[grad_step, :] = torch.mean(-(self.ref_reward + (log_ref_chi - ref_curr_logu) / self.beta), dim=1)
 
                 target_next_logus = [target_logu(next_states)
                                         for target_logu in self.target_logus]
@@ -313,7 +315,7 @@ class LogULearner:
 
     def evaluate(self, n_episodes=5):
         # run the current policy and return the average reward
-        initial_time = time.time()
+        initial_time = time.process_time_ns()
         avg_reward = 0.
         # log the action frequencies:
         action_freqs = torch.zeros(self.nA)
@@ -340,7 +342,7 @@ class LogULearner:
         action_freqs /= n_episodes
         for i, freq in enumerate(action_freqs):
             self.logger.record(f'eval/action_freq_{i}', freq.item())
-        final_time = time.time()
+        final_time = time.process_time_ns()
         eval_time = (final_time - initial_time) / 1e9
         eval_fps = n_steps / eval_time
         self.logger.record('eval/time', eval_time)
@@ -354,7 +356,7 @@ class LogULearner:
 def main():
     from disc_envs import get_environment
 
-    env_id = 'CartPole-v1'
+    # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     env_id = 'Acrobot-v1'
@@ -363,15 +365,15 @@ def main():
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    # env_id = get_environment('Pendulum', nbins=3, max_episode_steps=200, reward_offset=0)
+    # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
 
     from hparams import acrobot_logu3 as config
-    agent = LogULearner(env_id, **config, device='cpu', log_interval=100,
+    agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='exponential', algo_name='dt-max', beta_end=5)
+                        scheduler_str='none', algo_name='std', beta_end=5)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000, beta_schedule='linear')
+    agent.learn(total_timesteps=10_000, beta_schedule='none')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

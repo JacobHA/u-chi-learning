@@ -272,6 +272,19 @@ class OnlineNets():
         action = np.random.choice(actions)
         # perhaps re-weight this based on pessimism?
         return action
+        # with torch.no_grad():
+        #     logus = [net(state) for net in self.nets]
+        #     logu = torch.stack(logus, dim=-1)
+        #     logu = logu.squeeze(1)
+        #     logu = torch.mean(logu, dim=-1)#[0]
+        #     baseline = (torch.max(logu) + torch.min(logu))/2
+        #     logu = logu - baseline
+        #     logu = torch.clamp(logu, min=-20, max=20)
+        #     dist = torch.exp(logu)
+        #     dist = dist / torch.sum(dist)
+        #     c = Categorical(dist)#, validate_args=True)
+        #     return c.sample()#.item()
+
 
     def parameters(self):
         return [net.parameters() for net in self]

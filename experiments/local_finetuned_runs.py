@@ -1,5 +1,4 @@
 import argparse
-from darer.MultiLogU import LogULearner
 from CustomDQN import CustomDQN
 from CustomPPO import CustomPPO
 # from LogU import LogULearner
@@ -8,8 +7,8 @@ from hparams import *
 import time
 
 # env = 'CartPole-v1'
-env = 'LunarLander-v2'
-# env = 'Acrobot-v1'
+# env = 'LunarLander-v2'
+env = 'Acrobot-v1'
 # env = 'MountainCar-v0'
 
 str_to_algo = {
@@ -36,15 +35,14 @@ def runner(algo):
     config = configs[algo]
     algo = str_to_algo[algo]
 
-    model = algo(env, **config, log_dir='ft/lunar',
-                 device='cpu', log_interval=250, aggregator='max')
-                #, num_nets=2, aggregator='max')
-    model.learn(total_timesteps=500_000)
+    model = algo(env, **config, log_dir=f'experiments/ft/{env}',
+                 device='cpu', log_interval=250)#, aggregator='max')
+    model.learn(total_timesteps=100_000)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--count', type=int, default=1)
+    parser.add_argument('-c', '--count', type=int, default=5)
     parser.add_argument('-a', '--algo', type=str, default='logu')
     args = parser.parse_args()
 
