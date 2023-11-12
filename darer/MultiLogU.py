@@ -156,22 +156,11 @@ class LogULearner:
                             for logu in self.online_logus], dim=0)
                 ref_curr_logu = torch.stack([logu(states).gather(1,actions)
                             for logu in self.online_logus], dim=0)                # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
-                # ref_chi = torch.stack([torch.exp(ref_logu_val).sum(dim=-1) / self.nA
-                                    #    for ref_logu_val in ref_logus], dim=-1)
-                # Instead do logsumexp:
-                # if isinstance(self.env.observation_space, gym.spaces.Discrete):
-                #     dim=-1
-                # # elif is_image_space(self.env.observation_space):
-                # #     dim=-1
-                # else:
-                #     dim=-1#0
-                dim=-1
-                log_ref_chi = torch.logsumexp(ref_logu_next,dim=dim) - torch.log(torch.Tensor([self.nA])).to(self.device)
+
+                log_ref_chi = torch.logsumexp(ref_logu_next,dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # log_ref_chi = log_ref_chi.unsqueeze(-1)
                 ref_curr_logu = ref_curr_logu.squeeze(-1)
-                # rewards = rewards.squeeze(-1)
-                # new_thetas[grad_step, :] = self.ref_reward - log_ref_chi
-                # new_thetas[grad_step, :] = -(self.ref_reward + (log_ref_chi - ref_curr_logu) / self.beta).T
+                
                 new_thetas[grad_step, :] = torch.mean(-(rewards.squeeze(-1) + (log_ref_chi - ref_curr_logu) / self.beta),dim=1)
 
                 target_next_logus = [target_logu(next_states)
@@ -183,21 +172,7 @@ class LogULearner:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 next_logu, _ = self.aggregator_fn(next_logus, dim=1)#, keepdims=True)
-                # next_logu = torch.mean(next_logus, dim=1)
-
-                # or the other order:
-                # target_next_logu, _ = self.aggregator_fn(target_next_logus, dim=1)
-                # next_logu = torch.logsumexp(target_next_logu, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-
-
-                # batch_theta = -rewards -(next_logu.unsqueeze(1) - curr_logu)/self.beta
-                # batch_theta = -rewards -(next_logus - curr_logu)/self.beta
-
-                # new_thetas[grad_step,:] = torch.mean(batch_theta, dim=0)
-
-                # next_logu, _ = self.aggregator_fn(target_next_logu, dim=1)
-                
-                # When an episode terminates, next_logu should be theta or zero?:
+ 
                 next_logu = next_logu.reshape(-1,1)
                 assert next_logu.shape == dones.shape
                 next_logu = next_logu * (1-dones)# + self.theta * dones
@@ -252,7 +227,7 @@ class LogULearner:
         elif beta_schedule == 'linear':
             self.betas = torch.linspace(self.beta, self.beta_end, total_timesteps).to(self.device)
         else:
-            self.betas = torch.tensor([self.beta] * total_timesteps)
+            self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
 
         while self.env_steps < total_timesteps:
             state, _ = self.env.reset()
@@ -275,10 +250,6 @@ class LogULearner:
                     action)
                 done = terminated or truncated
                 self.rollout_reward += reward
-                if self.env_steps == 0:
-                    self.ref_action = action
-                    self.ref_reward = reward
-                    self.ref_next_state = next_state
 
                 train_this_step = (self.train_freq == -1 and terminated) or \
                     (self.train_freq != -1 and self.env_steps % self.train_freq == 0)
@@ -340,16 +311,16 @@ class LogULearner:
             self.logger.dump(step=self.env_steps)
             self.t0 = time.thread_time_ns()
 
-
     def evaluate(self, n_episodes=5):
         # run the current policy and return the average reward
+        initial_time = time.time()
         avg_reward = 0.
         # log the action frequencies:
         action_freqs = torch.zeros(self.nA)
+        n_steps = 0
         for ep in range(n_episodes):
             state, _ = self.eval_env.reset()
             done = False
-            n_steps = 0
             while not done:
                 action = self.online_logus.greedy_action(state)
                 # action = self.online_logus.choose_action(state)
@@ -369,6 +340,14 @@ class LogULearner:
         action_freqs /= n_episodes
         for i, freq in enumerate(action_freqs):
             self.logger.record(f'eval/action_freq_{i}', freq.item())
+        final_time = time.time()
+        eval_time = (final_time - initial_time) / 1e9
+        eval_fps = n_steps / eval_time
+        self.logger.record('eval/time', eval_time)
+        self.logger.record('eval/fps', eval_fps)
+        self.eval_time = eval_time
+        self.eval_fps = eval_fps
+        self.avg_eval_rwd = avg_reward
         return avg_reward
 
 
@@ -378,21 +357,23 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
-    env_id = 'LunarLander-v2'
+    env_id = 'Acrobot-v1'
+    # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
     # env_id = get_environment('Pendulum', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    from hparams import lunar_logu2 as config
-    agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
+    from hparams import acrobot_logu3 as config
+    agent = LogULearner(env_id, **config, device='cpu', log_interval=100,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='none', algo_name='dt-max', beta_end=14)
-
-    agent.learn(total_timesteps=150_000, beta_schedule='linear')
-
+                        scheduler_str='exponential', algo_name='dt-max', beta_end=5)
+    # Measure the time it takes to learn:
+    t0 = time.thread_time_ns()
+    agent.learn(total_timesteps=10_000, beta_schedule='linear')
+    t1 = time.thread_time_ns()
+    print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
 if __name__ == '__main__':
     for _ in range(1):
