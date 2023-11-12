@@ -176,29 +176,29 @@ lunar_logu2 = {
     'beta': 0.02,
     'batch_size': 385,
     'buffer_size': 100_000,
-    'gradient_steps': 10,
+    'gradient_steps': 1,
     'learning_rate': 1.e-3,
     'target_update_interval': 200,
     'tau': 0.85,
     'tau_theta': 0.90,
-    'train_freq': 100,
-    'hidden_dim': 32,
-    'learning_starts': 5000,
-    'theta_update_interval': 100
+    'train_freq': 1,
+    'hidden_dim': 128,
+    'learning_starts': 10000,
+    'theta_update_interval': 10
 }
 
 pong_logu = {
-    'beta': 1.2,
+    'beta': 0.2,
     'batch_size': 64,
-    'buffer_size': 100_000,
-    'gradient_steps': 20,
-    'learning_rate': 1.e-4,
-    'target_update_interval': 100,
-    'tau': 0.995,
+    'buffer_size': 30_000,
+    'gradient_steps': 1,
+    'learning_rate': 1.e-3,
+    'target_update_interval': 10000,
+    'tau': 0.01,
     'tau_theta': 0.98,
-    'train_freq': 50,
+    'train_freq': 4,
     'learning_starts': 15_000,
-    'theta_update_interval': 1000,
+    'theta_update_interval': 100,
 }
 
 
@@ -220,7 +220,7 @@ acrobot_logu2 = {
 
 acrobot_logu3 = {
     'beta': 2.5,
-    'batch_size': 20,
+    'batch_size': 60,
     'buffer_size': 10_000,
     'gradient_steps': 1,
     'learning_rate': 7.e-3,
@@ -234,17 +234,17 @@ acrobot_logu3 = {
 }
 
 cheetah_hparams = {
-    'batch_size': 600,
-    'beta': 2,
+    'batch_size': 20,
+    'beta': 9.7,
     'buffer_size': 100_000,
-    'gradient_steps': 1,
-    'learning_rate': 5e-4,
-    'target_update_interval': 2,
-    'tau': 0.995,
-    'tau_theta': 0.9,
-    'train_freq': 1,
+    'gradient_steps': 50,
+    'learning_rate': 1e-3,
+    'target_update_interval': 200,
+    'tau': 0.4,
+    'tau_theta': 0.8,
+    'train_freq': 100,
     'hidden_dim': 128,
-    'learning_starts': 1000
+    'learning_starts': 15000
 }
 
 
