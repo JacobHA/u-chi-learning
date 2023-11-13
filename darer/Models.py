@@ -20,7 +20,7 @@ class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(LogUNet, self).__init__()
         self.env = env
-        self.nA = env.action_space.n
+        self.nA = env.action_space.nvec[0] if isinstance(env.action_space, gym.spaces.MultiDiscrete) else env.action_space.n
         self.is_image_space = is_image_space(env.observation_space)
         self.is_tabular = is_tabular(env)
         self.device = device

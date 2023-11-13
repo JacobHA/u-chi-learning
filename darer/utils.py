@@ -40,11 +40,11 @@ def logger_at_folder(log_dir=None, algo_name=None):
 
     return logger
 
-def env_id_to_envs(env_id, render):
+def env_id_to_envs(env_id, render, num_envs):
     if isinstance(env_id, str):
-        env = gym.make(env_id)
+        env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=num_envs)
         # make another instance for evaluation purposes only:
-        eval_env = gym.make(env_id, render_mode='human' if render else None)
+        eval_env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=num_envs)
     elif isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:

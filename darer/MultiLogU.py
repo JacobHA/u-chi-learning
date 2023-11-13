@@ -4,6 +4,7 @@ import torch
 from torch.nn import functional as F
 import time
 from stable_baselines3.common.buffers import ReplayBuffer
+# from stable_baselines3.common.envs import SubprocVecEnv
 import wandb
 import sys
 sys.path.append("tabular")
@@ -57,10 +58,13 @@ class LogULearner:
                  use_wandb=False,
                  aggregator='max',
                  scheduler_str='none',    
-                 beta_end=None,             
+                 beta_end=None,
+                 num_envs=8,
                  ) -> None:
         
-        self.env, self.eval_env = env_id_to_envs(env_id, render)
+        self.env, self.eval_env = env_id_to_envs(env_id, render, num_envs=num_envs)
+        self.num_envs = num_envs
+        # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
         self.beta = beta
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
@@ -93,7 +97,6 @@ class LogULearner:
         self.fps = None
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
-        
 
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
                                           observation_space=self.env.observation_space,
@@ -101,7 +104,7 @@ class LogULearner:
                                           n_envs=1,
                                           handle_timeout_termination=True,
                                           device=device)
-        self.nA = self.env.action_space.n
+        self.nA = self.env.action_space.nvec[0] if isinstance(self.env.action_space, gym.spaces.MultiDiscrete) else self.env.action_space.n
         self.ref_action = None
         self.ref_state = None
         self.ref_reward = None
@@ -151,17 +154,17 @@ class LogULearner:
                 #             for logu in self.online_logus], dim=0)
                 # ref_curr_logu = torch.stack([logu(self.ref_state)[:,self.ref_action]
                 #             for logu in self.online_logus], dim=0)
-                
+
                 ref_logu_next = torch.stack([logu(next_states)
                             for logu in self.online_logus], dim=0)
                 ref_curr_logu = torch.stack([logu(states).gather(1,actions)
-                            for logu in self.online_logus], dim=0)                
+                            for logu in self.online_logus], dim=0)
                 # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
 
                 log_ref_chi = torch.logsumexp(ref_logu_next,dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # log_ref_chi = log_ref_chi.unsqueeze(-1)
                 ref_curr_logu = ref_curr_logu.squeeze(-1)
-                
+
                 new_thetas[grad_step, :] = torch.mean(-(rewards.squeeze(-1) + (log_ref_chi - ref_curr_logu) / self.beta),dim=1)
                 # new_thetas[grad_step, :] = torch.mean(-(self.ref_reward + (log_ref_chi - ref_curr_logu) / self.beta), dim=1)
 
@@ -174,7 +177,7 @@ class LogULearner:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 next_logu, _ = self.aggregator_fn(next_logus, dim=1)#, keepdims=True)
- 
+
                 next_logu = next_logu.reshape(-1,1)
                 assert next_logu.shape == dones.shape
                 next_logu = next_logu * (1-dones)# + self.theta * dones
@@ -233,12 +236,12 @@ class LogULearner:
 
         while self.env_steps < total_timesteps:
             state, _ = self.env.reset()
-            if self.env_steps == 0:
-                self.ref_state = state
+            # if self.env_steps == 0:
+            #     self.ref_state = state
             episode_reward = 0
-            done = False
+            done = np.zeros(self.num_envs, dtype=bool)
             self.num_episodes += 1
-            self.rollout_reward = 0
+            self.rollout_reward = np.zeros(self.num_envs)
             while not done and self.env_steps < total_timesteps:
                 # take a random action:
                 if self.env_steps < self.learning_starts:
@@ -250,7 +253,10 @@ class LogULearner:
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
                     action)
-                done = terminated or truncated
+                _done = np.bitwise_or(terminated, truncated)
+                # calculate the number of finished episodes
+                self.num_episodes += np.sum(np.bitwise_xor(done, _done))
+                done = np.bitwise_or(_done, done)
                 self.rollout_reward += reward
 
                 train_this_step = (self.train_freq == -1 and terminated) or \
