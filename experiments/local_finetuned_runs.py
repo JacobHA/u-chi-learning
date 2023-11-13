@@ -7,8 +7,8 @@ from hparams import *
 import time
 
 # env = 'CartPole-v1'
-# env = 'LunarLander-v2'
-env = 'Acrobot-v1'
+env = 'LunarLander-v2'
+# env = 'Acrobot-v1'
 # env = 'MountainCar-v0'
 
 str_to_algo = {
@@ -36,8 +36,8 @@ def runner(algo):
     algo = str_to_algo[algo]
 
     model = algo(env, **config, log_dir=f'experiments/ft/{env}',
-                 device='cpu', log_interval=250)#, aggregator='max')
-    model.learn(total_timesteps=100_000)
+                 device='cuda', log_interval=1000)#, aggregator='max')
+    model.learn(total_timesteps=200_000)
 
 
 if __name__ == '__main__':
