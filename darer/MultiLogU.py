@@ -61,7 +61,7 @@ class LogULearner:
                  aggregator='max',
                  scheduler_str='none',
                  beta_end=None,
-                 n_envs=8,
+                 n_envs=2,
                  ) -> None:
         
         self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs)
@@ -287,7 +287,9 @@ class LogULearner:
 
             if any(done):
                 self.logger.record("rollout/reward", self.rollout_reward[done==True])
-
+                # reset the terminated environments
+            if all(done):
+                self.env.reset()
 
     def _log_stats(self):
         if self.env_steps % self.log_interval == 0:
