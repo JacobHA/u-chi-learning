@@ -129,17 +129,18 @@ cartpole_dqn = {
 }
 
 pong_logu = {
-    'beta': 0.2,
-    'batch_size': 64,
-    'buffer_size': 30_000,
+    'beta': 4.5,
+    'batch_size': 256,
+    'buffer_size': 100_000,
     'gradient_steps': 1,
-    'learning_rate': 1.e-3,
-    'target_update_interval': 10000,
-    'tau': 0.01,
-    'tau_theta': 0.98,
+    'learning_rate': 2.e-4,
+    'target_update_interval': 200,
+    'tau': 0.5,
+    'tau_theta': 0.95,
     'train_freq': 4,
     'learning_starts': 15_000,
-    'theta_update_interval': 100,
+    'theta_update_interval': 60,
+    'hidden_dim': 128
 }
 
 acrobot_logu = {
@@ -148,7 +149,7 @@ acrobot_logu = {
     'buffer_size': 10_000,
     'gradient_steps': 1,
     'learning_rate': 1.e-3,
-    'target_update_interval': 40,
+    'target_update_interval': 4000,
     'tau': 0.4,
     'tau_theta': 0.9,
     'train_freq': 1,
