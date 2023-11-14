@@ -230,6 +230,19 @@ class TargetNets():
         """
         return [net.parameters() for net in self.nets]
 
+    def forward(self, x):
+        """
+        Forward pass through all target networks.
+
+        Args:
+            x (tensor): The input tensor.
+
+        Returns:
+            list: A list of outputs from each target network.
+        """
+        results = torch.Tensor(torch.stack([net(x) for net in self.nets],dim=0))
+        return results.mean(dim=0)
+
 
 class OnlineNets():
     """
@@ -253,7 +266,7 @@ class OnlineNets():
     def __iter__(self):
         return iter(self.nets)
     
-    def greedy_action(self, state):
+    def greedy_action(self, state, prior):
         with torch.no_grad():
             # logu = torch.stack([net(state) for net in self.nets], dim=-1)
             # logu = logu.squeeze(1)
@@ -261,14 +274,14 @@ class OnlineNets():
             
             # greedy_action = logu.argmax()
             # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-            greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
+            greedy_actions = [net.choose_action(state, greedy=True, prior=prior) for net in self.nets]
             greedy_action = np.random.choice(greedy_actions)
         return greedy_action
         # return greedy_action.item()
 
-    def choose_action(self, state):
+    def choose_action(self, state, prior=None):
         # Get a sample from each net, then sample uniformly over them:
-        actions = [net.choose_action(state) for net in self.nets]
+        actions = [net.choose_action(state, prior=prior) for net in self.nets]
         action = np.random.choice(actions)
         # perhaps re-weight this based on pessimism?
         return action
