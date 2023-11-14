@@ -61,7 +61,7 @@ class LogULearner:
                  aggregator='max',
                  scheduler_str='none',
                  beta_end=None,
-                 n_envs=2,
+                 n_envs=5,
                  ) -> None:
         
         self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs)
@@ -243,10 +243,6 @@ class LogULearner:
         state, _ = self.env.reset()
         episode_reward = np.zeros(self.n_envs)
         while self.env_steps < total_timesteps:
-            # if self.env_steps == 0:
-            #     self.ref_state = state
-            # episode_reward = 0
-            # self.num_episodes += 1
             self.rollout_reward = np.zeros(self.n_envs)
             # take a random action:
             if self.env_steps < self.learning_starts:
@@ -286,8 +282,10 @@ class LogULearner:
             self._log_stats()
 
             if any(done):
-                self.logger.record("rollout/reward", self.rollout_reward[done==True])
-                # reset the terminated environments
+                self.logger.record("rollout/reward", np.mean(episode_reward[done==True]))
+                # reset the terminated environments:
+                episode_reward[done==True] = 0
+
             if all(done):
                 self.env.reset()
 
@@ -344,11 +342,13 @@ class LogULearner:
                 # action = self.online_logus.choose_action(state)
                 n_steps += 1
                 next_state, reward, terminated, truncated, info = self.eval_env.step(action)
+
                 avg_reward += reward
                 state = next_state
                 _done = terminated or truncated if not self.is_vector_env else np.bitwise_or(terminated, truncated)
                 done = np.bitwise_or(done, _done)
 
+        avg_reward = sum(avg_reward) / self.n_envs
         avg_reward /= n_episodes
         # log the action frequencies:
         action_freqs /= n_episodes
@@ -382,7 +382,8 @@ def main():
     from hparams import acrobot_logu3 as config
     agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='none', algo_name='std', beta_end=5)
+                        scheduler_str='none', algo_name='std', beta_end=5,
+                        n_envs=3)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=10_000, beta_schedule='none')
