@@ -158,7 +158,7 @@ class LogULearner:
                             for logu in self.online_logus], dim=0)                
                 # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
 
-                log_ref_chi = torch.logsumexp(ref_logu_next,dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+                log_ref_chi = torch.logsumexp(ref_logu_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # log_ref_chi = log_ref_chi.unsqueeze(-1)
                 ref_curr_logu = ref_curr_logu.squeeze(-1)
                 
@@ -223,18 +223,10 @@ class LogULearner:
     def learn(self, total_timesteps, beta_schedule=None):
         # Start a timer to log fps:
         self.t0 = time.thread_time_ns()
-        # setup beta scheduling
-        if beta_schedule == 'exp':
-            self.betas = torch.exp(torch.linspace(np.log(self.beta), np.log(self.beta_end), total_timesteps)).to(self.device)
-        elif beta_schedule == 'linear':
-            self.betas = torch.linspace(self.beta, self.beta_end, total_timesteps).to(self.device)
-        else:
-            self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
-
+        self.betas = self._beta_scheduler(beta_schedule, total_timesteps)
         while self.env_steps < total_timesteps:
             state, _ = self.env.reset()
-            if self.env_steps == 0:
-                self.ref_state = state
+
             episode_reward = 0
             done = False
             self.num_episodes += 1
@@ -352,7 +344,18 @@ class LogULearner:
         self.avg_eval_rwd = avg_reward
         return avg_reward
 
-
+    def _beta_scheduler(self, beta_schedule, total_timesteps):
+        # setup beta scheduling
+        if beta_schedule == 'exp':
+            self.betas = torch.exp(torch.linspace(np.log(self.beta), np.log(self.beta_end), total_timesteps)).to(self.device)
+        elif beta_schedule == 'linear':
+            self.betas = torch.linspace(self.beta, self.beta_end, total_timesteps).to(self.device)
+        elif beta_schedule == 'none':
+            self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
+        else:
+            raise NotImplementedError(f"Unknown beta schedule: {beta_schedule}")
+        return self.betas
+    
 def main():
     from disc_envs import get_environment
 
