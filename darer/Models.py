@@ -126,7 +126,8 @@ class LogUNet(nn.Module):
 
             if greedy:
                 # not worth exponentiating since it is monotonic
-                a = (logu * prior).argmax(dim=-1)
+                logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
+                a = (logu + logprior).argmax(dim=-1)
                 if not self.using_vector_env:
                     return a.item()
                 else:

@@ -1,3 +1,6 @@
+import copy
+import threading
+
 import gymnasium as gym
 import numpy as np
 import torch
@@ -6,6 +9,7 @@ import time
 # temporarily fix the stable-baselines3 bug:
 # from stable_baselines3.common.buffers import ReplayBuffer
 from sb3buffers import ReplayBuffer
+from sb3buffertensors import ReplayBufferTensors
 # from stable_baselines3.common.envs import SubprocVecEnv
 import wandb
 import sys
@@ -74,7 +78,8 @@ class LogULearner:
                  aggregator='max',
                  scheduler_str='none',
                  beta_end=None,
-                 n_envs=2,
+                 n_envs=8,
+                 tensor_buff=True,
                  ) -> None:
         
         self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs)
@@ -114,13 +119,14 @@ class LogULearner:
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
 
-        self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
-                                          observation_space=self.env.observation_space,
-                                          action_space=self.env.action_space,
-                                          n_envs=n_envs,
-                                          handle_timeout_termination=True,
-                                          device=device)
-
+        RPB = ReplayBufferTensors if tensor_buff else ReplayBuffer
+        self.replay_buffer = RPB(buffer_size=buffer_size,
+                                 observation_space=self.env.observation_space,
+                                 action_space=self.env.action_space,
+                                 n_envs=n_envs,
+                                 handle_timeout_termination=True,
+                                 device=device)
+        
         self.nA = self.env.action_space.nvec[0] if isinstance(self.env.action_space, gym.spaces.MultiDiscrete) else self.env.action_space.n
         self.theta = torch.Tensor([0]).to(self.device)
         self.eval_auc = 0
@@ -238,11 +244,9 @@ class LogULearner:
         self.betas = self._beta_scheduler(beta_schedule, total_timesteps)
         state, _ = self.env.reset()
         episode_reward = np.zeros(self.n_envs)
+        # Start a timer to log fps:
+        t0 = time.thread_time_ns()
         while self.env_steps < total_timesteps:
-            # if self.env_steps == 0:
-            #     self.ref_state = state
-            # episode_reward = 0
-            # self.num_episodes += 1
             self.rollout_reward = np.zeros(self.n_envs)
             # take a random action:
             if self.env_steps < self.learning_starts:
@@ -279,46 +283,74 @@ class LogULearner:
             # todo: fix stable-baselines bug in adding multiple parallel sarsa
             self.replay_buffer.add(*sarsa, [infos])
             state = next_state
-            self._log_stats()
-
             if any(done):
                 self.logger.record("rollout/reward", self.rollout_reward[done==True])
                 # reset the terminated environments
             if all(done):
                 self.env.reset()
+            if self.env_steps % self.log_interval == 0:
+                # end timer:
+                t_final = time.thread_time_ns()
+                log_thread = threading.Thread(target=self._log_stats, args=(t0, t_final,self.env_steps))
+                log_thread.start()
+                # self._log_stats(t0, t_final, self.env_steps)
+                t0 = time.thread_time_ns()
 
-    def _log_stats(self):
-        if self.env_steps % self.log_interval == 0:
-            # end timer:
-            t_final = time.thread_time_ns()
-            # fps averaged over log_interval steps:
-            self.fps = self.log_interval / ((t_final - self.initial_time) / 1e9)
+    def _log_stats(self, t0, t_final, env_steps):
+        # fps averaged over log_interval steps:
+        self.fps = self.log_interval / ((t_final - t0) / 1e9)
 
-            if self.env_steps >= 0:
-                self.avg_eval_rwd = self.evaluate()
-                self.eval_auc += self.avg_eval_rwd
-            if self.save_checkpoints:
-                raise NotImplementedError
-                torch.save(self.online_logu.state_dict(),
-                           'sql-policy.para')
-            # Get the current learning rate from the optimizer:
-            self.lr = self.optimizers.get_lr()
-            log_class_vars(self, LOG_PARAMS)
+        if env_steps >= 0:
+            self.avg_eval_rwd = self.evaluate()
+            self.eval_auc += self.avg_eval_rwd
+        if self.save_checkpoints:
+            raise NotImplementedError
+            torch.save(self.online_logu.state_dict(),
+                       'sql-policy.para')
+        for log_key, attribute in LOG_PARAMS.items():
+            self.logger.record(log_key, self.__dict__[attribute])
+        log_class_vars(self, LOG_PARAMS)
+        # Get the current learning rate from the optimizer:
+        lr = self.optimizers.get_lr()
+        self.logger.record('train/lr', lr)
 
+        if self.is_tabular:
+            # Record the error in the eigenvector:
+            fa_eigvec = get_eigvec_values(self).flatten()
+            # normalize:
+            fa_eigvec /= np.linalg.norm(fa_eigvec)
+            err = np.abs(self.true_eigvec - fa_eigvec).mean()
+            self.logger.record('train/eigvec_err', err.item())
+            
+    def _log_stats(self, t0, t_final, env_steps):
+        # end timer:
+        t_final = time.thread_time_ns()
+        # fps averaged over log_interval steps:
+        self.fps = self.log_interval / ((t_final - t0) / 1e9)
 
-            if self.is_tabular:
-                # Record the error in the eigenvector:
-                fa_eigvec = get_eigvec_values(self).flatten()
-                # normalize:
-                fa_eigvec /= np.linalg.norm(fa_eigvec)
-                err = np.abs(self.true_eigvec - fa_eigvec).mean()
-                self.logger.record('train/eigvec_err', err.item())
+        if self.env_steps >= 0:
+            self.avg_eval_rwd = self.evaluate()
+            self.eval_auc += self.avg_eval_rwd
+        if self.save_checkpoints:
+            raise NotImplementedError
+            torch.save(self.online_logu.state_dict(),
+                       'sql-policy.para')
+        # Get the current learning rate from the optimizer:
+        self.lr = self.optimizers.get_lr()
+        log_class_vars(self, LOG_PARAMS)
 
-            if self.use_wandb:
-                wandb.log({'env_steps': self.env_steps,
-                           'eval/avg_reward': self.avg_eval_rwd})
-            self.logger.dump(step=self.env_steps)
-            self.initial_time = time.thread_time_ns()
+        if self.is_tabular:
+            # Record the error in the eigenvector:
+            fa_eigvec = get_eigvec_values(self).flatten()
+            # normalize:
+            fa_eigvec /= np.linalg.norm(fa_eigvec)
+            err = np.abs(self.true_eigvec - fa_eigvec).mean()
+            self.logger.record('train/eigvec_err', err.item())
+
+        if self.use_wandb:
+            wandb.log({'env_steps': env_steps,
+                       'eval/avg_reward': self.avg_eval_rwd})
+        self.logger.dump(step=env_steps)
 
     def evaluate(self, n_episodes=5):
         # run the current policy and return the average reward
@@ -395,5 +427,6 @@ def main():
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
 if __name__ == '__main__':
-    for _ in range(1):
-        main()
+    # import cProfile
+    # cProfile.run('main()', sort='cumtime')
+    main()
