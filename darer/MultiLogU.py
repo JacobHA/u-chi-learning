@@ -310,7 +310,7 @@ class LogULearner:
             # end timer:
             t_final = time.thread_time_ns()
             # fps averaged over log_interval steps:
-            self.fps = self.log_interval / ((t_final - self.t0) / 1e9)
+            self.fps = self.log_interval / ((t_final - self.t0 + 1e-6) / 1e9)
 
             if self.env_steps >= 0:
                 self.avg_eval_rwd = self.evaluate()
@@ -375,12 +375,12 @@ class LogULearner:
 def main():
     from disc_envs import get_environment
 
-    env_id = 'CartPole-v1'
+    # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
-    env_id = 'LunarLander-v2'
-    # env_id = 'ALE/Pong-v5'
+    # env_id = 'LunarLander-v2'
+    env_id = 'ALE/Pong-v5'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
