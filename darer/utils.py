@@ -6,6 +6,8 @@ import time
 
 import torch
 import sys
+
+import wandb
 sys.path.append("tabular")
 from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 
@@ -61,7 +63,7 @@ def env_id_to_envs(env_id, render):
 
     return env, eval_env
 
-def log_class_vars(self, params):
+def log_class_vars(self, params, use_wandb=False):
     logger = self.logger
     for key, value in params.items():
         value = self.__dict__[value]
@@ -69,6 +71,8 @@ def log_class_vars(self, params):
         if isinstance(value, torch.Tensor):
             value = value.item()
         logger.record(key, value)
+        if use_wandb:
+            wandb.log({key: value})
 
 def get_eigvec_values(fa, save_name=None):
     env = fa.env
