@@ -383,7 +383,7 @@ def main():
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
     env_id = 'LunarLander-v2'
-    # env_id = 'ALE/Pong-v5'
+    env_id = 'ALE/Pong-v5'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'

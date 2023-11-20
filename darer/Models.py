@@ -24,6 +24,9 @@ class LogUNet(nn.Module):
         if self.using_vector_env:
             self.observation_space = self.env.single_observation_space
             self.action_space = self.env.single_action_space
+        else:
+            self.observation_space = self.env.observation_space
+            self.action_space = self.env.action_space
         self.nA = self.action_space.n
         self.is_image_space = is_image_space(self.observation_space)
         self.is_tabular = is_tabular(env)
