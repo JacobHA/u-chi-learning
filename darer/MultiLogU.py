@@ -295,9 +295,9 @@ class LogULearner:
             if self.env_steps % self.log_interval == 0:
                 # end timer:
                 t_final = time.thread_time_ns()
-                log_thread = threading.Thread(target=self._log_stats, args=(t0, t_final,self.env_steps))
-                log_thread.start()
-                # self._log_stats(t0, t_final, self.env_steps)
+                # log_thread = threading.Thread(target=self._log_stats, args=(t0, t_final,self.env_steps))
+                # log_thread.start()
+                self._log_stats(t0, t_final, self.env_steps)
                 t0 = time.thread_time_ns()
 
     def _log_stats(self, t0, t_final, env_steps):
@@ -382,8 +382,9 @@ def main():
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
-    env_id = 'LunarLander-v2'
+    # env_id = 'LunarLander-v2'
     env_id = 'ALE/Pong-v5'
+    # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
@@ -393,10 +394,10 @@ def main():
     agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
                         scheduler_str='none', algo_name='std', beta_end=5,
-                        n_envs=3)
+                        n_envs=1)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000, beta_schedule='none')
+    agent.learn(total_timesteps=10_000, beta_schedule='linear')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

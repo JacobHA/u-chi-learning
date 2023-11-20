@@ -2,6 +2,7 @@ import os
 import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.logger import configure
+from gymnasium.wrappers.atari_preprocessing import AtariPreprocessing
 import time
 
 import torch
@@ -42,9 +43,14 @@ def logger_at_folder(log_dir=None, algo_name=None):
 
 def env_id_to_envs(env_id, render, n_envs):
     if isinstance(env_id, str):
-        env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs)
+        env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs,
+                           frameskip=5, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)])
+
         # make another instance for evaluation purposes only:
-        eval_env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs)
+        eval_env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs,
+                                frameskip=5, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)])
+        # eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)
+
     elif isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
