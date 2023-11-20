@@ -277,7 +277,7 @@ class LogULearner:
             # end timer:
             t_final = time.thread_time_ns()
             # fps averaged over log_interval steps:
-            self.fps = self.log_interval / ((t_final - self.initial_time) / 1e9)
+            self.fps = self.log_interval / ((t_final - self.initial_time + 1e-16) / 1e9)
 
             if self.env_steps >= 0:
                 self.avg_eval_rwd = self.evaluate()
@@ -288,7 +288,7 @@ class LogULearner:
                            'sql-policy.para')
             # Get the current learning rate from the optimizer:
             self.lr = self.optimizers.get_lr()
-            log_class_vars(self, LOG_PARAMS)
+            log_class_vars(self, LOG_PARAMS, use_wandb=True)
 
 
             if self.is_tabular:
@@ -307,7 +307,7 @@ class LogULearner:
 
     def evaluate(self, n_episodes=5):
         # run the current policy and return the average reward
-        initial_time = time.process_time_ns()
+        self.initial_time = time.process_time_ns()
         avg_reward = 0.
         # log the action frequencies:
         action_freqs = torch.zeros(self.nA)
@@ -335,7 +335,7 @@ class LogULearner:
         for i, freq in enumerate(action_freqs):
             self.logger.record(f'eval/action_freq_{i}', freq.item())
         final_time = time.process_time_ns()
-        eval_time = (final_time - initial_time) / 1e9
+        eval_time = (final_time - self.initial_time + 1e-12) / 1e9
         eval_fps = n_steps / eval_time
         self.logger.record('eval/time', eval_time)
         self.logger.record('eval/fps', eval_fps)

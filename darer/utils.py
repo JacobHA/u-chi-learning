@@ -7,6 +7,8 @@ import wandb
 
 import torch
 import sys
+
+import wandb
 sys.path.append("tabular")
 from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 
