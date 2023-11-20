@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
-from stable_baselines3.common.preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
+from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
 import numpy as np
 from stable_baselines3.common.utils import zip_strict
 from gymnasium import spaces
@@ -21,21 +21,24 @@ class LogUNet(nn.Module):
         super(LogUNet, self).__init__()
         self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
         self.env = env
-        self.nA = env.action_space.nvec[0] if self.using_vector_env else env.action_space.n
-        self.is_image_space = is_image_space(env.observation_space)
+        if self.using_vector_env:
+            self.observation_space = self.env.single_observation_space
+            self.action_space = self.env.single_action_space
+        self.nA = self.action_space.n
+        self.is_image_space = is_image_space(self.observation_space)
         self.is_tabular = is_tabular(env)
         self.device = device
         # Start with an empty model:
         model = nn.Sequential()
-        if isinstance(env.observation_space, spaces.Discrete):
-            self.nS = env.observation_space.nvec[1:] if self.using_vector_env else env.observation_space.n
+        if isinstance(self.observation_space, spaces.Discrete):
+            self.nS = self.observation_space.n
             input_dim = self.nS
-        elif isinstance(env.observation_space, spaces.Box):
+        elif isinstance(self.observation_space, spaces.Box):
             # check if image:
-            if is_image_space(env.observation_space):
-                self.nS = get_flattened_obs_dim(env.observation_space)
+            if self.is_image_space:
+                self.nS = get_flattened_obs_dim(self.observation_space)
                 # Use a CNN:
-                n_channels = env.observation_space.shape[2]
+                n_channels = self.observation_space.shape[2]
                 model.extend(nn.Sequential(
                     nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.float32),
                     activation(),
@@ -47,17 +50,17 @@ class LogUNet(nn.Module):
                 ))
                 model.to(self.device)
                 # calculate resulting shape for FC layers:
-                rand_inp = env.observation_space.sample()
+                rand_inp = self.observation_space.sample()
                 x = torch.tensor(rand_inp, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
                 x = x.detach()
-                x = preprocess_obs(x, self.env.observation_space)
+                x = preprocess_obs(x, self.observation_space)
                 x = x.permute([2,0,1]).unsqueeze(0)
                 flat_size = model(x).shape[1]
                 print(f"Using a CNN with {flat_size}-dim. outputs.")
                 # flat part
                 input_dim = flat_size
             else:
-                self.nS = env.observation_space.shape[1:] if self.using_vector_env else env.observation_space.shape
+                self.nS = self.observation_space.shape
                 input_dim = self.nS[0]
 
         model.extend(nn.Sequential(

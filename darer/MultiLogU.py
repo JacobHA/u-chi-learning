@@ -348,6 +348,9 @@ class LogULearner:
                 action = action.item() if not self.is_vector_env else action
                 # action = self.online_logus.choose_action(state)
                 n_steps += 1
+                # ensure there is no pending call to reset:
+
+
                 next_state, reward, terminated, truncated, info = self.eval_env.step(action)
 
                 avg_reward += reward
@@ -378,15 +381,15 @@ def main():
     # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    # env_id = 'Acrobot-v1'
+    env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    from hparams import acrobot_logu3 as config
+    from hparams import pong_logu as config
     agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
                         scheduler_str='none', algo_name='std', beta_end=5,
