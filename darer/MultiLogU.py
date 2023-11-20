@@ -18,6 +18,7 @@ sys.path.append("darer")
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 
+
 HPARAM_ATTRS = {
     'beta', 'learning_rate', 'batch_size', 'buffer_size', 
     'target_update_interval', 'tau', 'theta_update_interval', 
@@ -378,8 +379,8 @@ def main():
     # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    # env_id = 'Acrobot-v1'
+    env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
@@ -390,14 +391,15 @@ def main():
     agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
                         scheduler_str='none', algo_name='std', beta_end=5,
-                        n_envs=3)
+                        n_envs=5)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=10_000, beta_schedule='none')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
+
 if __name__ == '__main__':
-    # import cProfile
-    # cProfile.run('main()', sort='cumtime')
-    main()
+    import cProfile
+    cProfile.run('main()', sort='cumtime')
+    # main()

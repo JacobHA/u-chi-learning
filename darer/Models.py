@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
-from stable_baselines3.common.preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
+from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
 import numpy as np
 from stable_baselines3.common.utils import zip_strict
 from gymnasium import spaces
@@ -19,8 +19,9 @@ from utils import is_tabular
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(LogUNet, self).__init__()
-        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
         self.env = env
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
+        self.observation_space = env.single_observation_space if isinstance(env.action_space, gym.spaces.MultiDiscrete) else env.observation_space
         self.nA = env.action_space.nvec[0] if self.using_vector_env else env.action_space.n
         self.is_image_space = is_image_space(env.observation_space)
         self.is_tabular = is_tabular(env)
@@ -47,7 +48,7 @@ class LogUNet(nn.Module):
                 ))
                 model.to(self.device)
                 # calculate resulting shape for FC layers:
-                rand_inp = env.observation_space.sample()
+                rand_inp = self.observation_space.sample()
                 x = torch.tensor(rand_inp, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
                 x = x.detach()
                 x = preprocess_obs(x, self.env.observation_space)

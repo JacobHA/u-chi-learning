@@ -31,6 +31,7 @@ def is_image_space(
     observation_space: spaces.Space,
     check_channels: bool = False,
     normalized_image: bool = False,
+    is_vector_env: bool = False,
 ) -> bool:
     """
     Check if a observation space has the shape, limits and dtype
@@ -49,7 +50,8 @@ def is_image_space(
     :return:
     """
     check_dtype = check_bounds = not normalized_image
-    if isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3:
+    observation_space_shape = observation_space.shape[1:] if is_vector_env else observation_space.shape
+    if isinstance(observation_space, spaces.Box) and (len(observation_space_shape) == 3) :
         # Check the type
         if check_dtype and observation_space.dtype != np.uint8:
             return False
