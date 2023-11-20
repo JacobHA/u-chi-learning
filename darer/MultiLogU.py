@@ -65,7 +65,7 @@ class LogULearner:
                  aggregator='max',
                  scheduler_str='none',
                  beta_end=None,
-                 n_envs=8,
+                 n_envs=5,
                  tensor_buff=True,
                  ) -> None:
         
@@ -286,8 +286,10 @@ class LogULearner:
             self.replay_buffer.add(*sarsa, [infos])
             state = next_state
             if any(done):
-                self.logger.record("rollout/reward", self.rollout_reward[done==True])
-                # reset the terminated environments
+                self.logger.record("rollout/reward", np.mean(episode_reward[done==True]))
+                # reset the terminated environments:
+                episode_reward[done==True] = 0
+
             if all(done):
                 self.env.reset()
             if self.env_steps % self.log_interval == 0:
@@ -347,11 +349,13 @@ class LogULearner:
                 # action = self.online_logus.choose_action(state)
                 n_steps += 1
                 next_state, reward, terminated, truncated, info = self.eval_env.step(action)
+
                 avg_reward += reward
                 state = next_state
                 _done = terminated or truncated if not self.is_vector_env else np.bitwise_or(terminated, truncated)
                 done = np.bitwise_or(done, _done)
 
+        avg_reward = sum(avg_reward) / self.n_envs
         avg_reward /= n_episodes
         # log the action frequencies:
         action_freqs /= n_episodes
@@ -385,7 +389,8 @@ def main():
     from hparams import acrobot_logu3 as config
     agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='none', algo_name='std', beta_end=5)
+                        scheduler_str='none', algo_name='std', beta_end=5,
+                        n_envs=3)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=10_000, beta_schedule='none')
