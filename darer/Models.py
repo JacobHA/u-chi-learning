@@ -124,10 +124,10 @@ class LogUNet(nn.Module):
         with torch.no_grad():
             # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
             logu = self.forward(state)
-
+            logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
             if greedy:
                 # not worth exponentiating since it is monotonic
-                a = (logu * prior).argmax(dim=-1)
+                a = (logu + logprior).argmax(dim=-1)
                 return a.item()
 
             # First subtract a baseline:

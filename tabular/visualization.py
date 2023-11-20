@@ -242,6 +242,7 @@ def save_err_plot(err, name=''):
     plt.figure()
     plt.title("Policy Error")
     plt.plot(err)
+    os.makedirs('figures', exist_ok=True)
     plt.savefig(f'figures/policy_error_{name}.png')
     plt.close()
 

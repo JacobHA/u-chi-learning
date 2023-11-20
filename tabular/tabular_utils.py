@@ -516,3 +516,142 @@ class DiscreteEnv(gymnasium.Env):
         self.s = s
         self.lastaction = a
         return (int(s), r, d, False, {"prob": p})
+
+
+
+def get_dynamics_and_rewards(env):
+
+    ncol = env.nS * env.nA
+    nrow = env.nS
+
+    shape = (nrow, ncol)
+
+    row_lst, col_lst, prb_lst, rew_lst = [], [], [], []
+
+    assert isinstance(env.P, dict)
+    for s_i, s_i_dict in env.P.items():
+        for a_i, outcomes in s_i_dict.items():
+            for prb, s_j, r_j, _ in outcomes:
+                col = s_i * env.nA + a_i
+
+                row_lst.append(s_j)
+                col_lst.append(col)
+                prb_lst.append(prb)
+                rew_lst.append(r_j * prb)
+
+    dynamics = csr_matrix((prb_lst, (row_lst, col_lst)), shape=shape)
+    colsums = dynamics.sum(axis=0)
+    assert (colsums.round(12) == 1.).all(
+    ), f"{colsums.min()=}, {colsums.max()=}"
+
+    rewards = csr_matrix((rew_lst, (row_lst, col_lst)),
+                         shape=shape).sum(axis=0)
+
+    return dynamics, rewards
+
+
+def softq_solver(env, prior_policy=None, steps=100_000, beta=1, gamma=1, tolerance=1e-2, savename=None, verbose=False, rewards=None, resolve=False, Q0=None):
+
+    # First we check if the solution is already saved somewhere, if so, we load it
+    if savename is not None and not resolve:
+        try:
+            with open(savename, 'rb') as f:
+                return pickle.load(f)
+        except FileNotFoundError:
+            pass
+
+    if rewards is None:
+        dynamics, rewards = get_dynamics_and_rewards(env)
+    else:
+        dynamics, _ = get_dynamics_and_rewards(env)
+
+    errors_list = []
+    qs = []
+
+    rewards = dynamics.multiply(rewards).sum(axis=0)
+    prior_policy = np.ones((env.nS, env.nA)) / \
+        env.nA if prior_policy is None else prior_policy
+    mdp_generator = get_mdp_generator(env, dynamics, prior_policy)
+
+    if Q0 is None:
+        Qi = np.zeros((1, env.nS * env.nA))
+        Qi = np.random.rand(1, env.nS * env.nA) * rewards.max() / \
+            (1-gamma)  # the approximate scale of Q
+    else:
+        Qi = Q0
+        Qi = Qi.reshape((1, env.nS * env.nA))
+
+    for i in range(1, steps+1):
+        baseline = Qi.mean()
+        Qj = np.log(mdp_generator.T.dot(np.exp(beta * (Qi.T - baseline))).T) / beta
+        Qj += baseline
+        Qi_k = rewards.A + gamma * Qj
+        if verbose:
+            
+            qs.append(Qi_k.mean())
+
+        err = np.abs(Qi_k - Qi).max() # L_infty norm
+        # err = np.abs(Qi_k - Qi).sum() # L_1 norm
+        Qi = Qi_k
+
+        if verbose:
+            errors_list.append(err)
+
+        if err <= tolerance:
+            if verbose:
+                print(f"Converged to {tolerance=} after {i=} iterations.")
+            break
+
+    if i == steps:
+        print(f'Reached max steps. Err:{err}')
+    else:
+        print(f"Done in {i} steps")
+
+    baseline = Qi.mean()
+    Vi = np.log(
+        np.multiply(prior_policy, np.exp(
+            beta * (Qi.reshape((env.nS, env.nA))- baseline))).sum(axis=1)
+    ) / beta
+    Vi += baseline
+
+    policy = np.multiply(prior_policy, np.exp(
+        beta * (Qi.reshape((env.nS, env.nA)) - Vi.reshape(-1,1))))
+    pi = policy
+
+    Qi = np.array(Qi).reshape((env.nS, env.nA))
+
+    Vi = np.array(Vi).reshape((env.nS, 1))
+
+    if savename is not None:
+        # TODO: allow for arbitrary directory to be made...
+        foldername, filename = savename.split('/')
+        exists = os.path.exists(foldername)
+        if not exists:
+            # Create a new directory because it does not exist
+            os.makedirs(foldername)
+
+        with open(savename, 'wb+') as f:
+            pickle.dump((Qi, Vi, pi), f)
+
+    if verbose:
+        return Qi, Vi, pi, qs, errors_list
+    else:
+        return Qi, Vi, pi
+
+
+def get_mdp_generator(env, transition_dynamics, policy):
+    td_coo = transition_dynamics.tocoo()
+
+    rows, cols, data = [], [], []
+    for s_j, col, prob in zip(td_coo.row, td_coo.col, td_coo.data):
+        for a_j in range(env.nA):
+            row = s_j * env.nA + a_j
+            rows.append(row)
+            cols.append(col)
+            data.append(prob * policy[s_j, a_j])
+
+    nrow = ncol = env.nS * env.nA
+    shape = (nrow, ncol)
+    mdp_generator = csr_matrix((data, (rows, cols)), shape=shape)
+
+    return mdp_generator
