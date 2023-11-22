@@ -70,9 +70,10 @@ class LogULearner:
                  beta_end=None,
                  n_envs=5,
                  tensor_buff=True,
+                 frameskip=1,
+                 grayscale_obs=False,
                  ) -> None:
-
-        self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs)
+        self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs, frameskip=frameskip, grayscale_obs=grayscale_obs)
         self.n_envs = n_envs
         self.is_vector_env = n_envs > 1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
@@ -194,7 +195,9 @@ class LogULearner:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(
                     self.device)
-                next_logu, _ = self.aggregator_fn(next_logus, dim=1)  # , keepdims=True)
+                next_logu = self.aggregator_fn(next_logus, dim=1)
+                # handle both mean and min/max aggregators
+                next_logu = next_logu if self.aggregator_fn is torch.mean else next_logu[0]
 
                 next_logu = next_logu.reshape(-1, 1)
                 assert next_logu.shape == dones.shape
@@ -233,7 +236,8 @@ class LogULearner:
         # Log both theta values:
         for idx, new_theta in enumerate(new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
-        new_theta = self.aggregator_fn(new_thetas.mean(dim=0), dim=0)[0]
+        new_theta = self.aggregator_fn(new_thetas.mean(dim=0), dim=0)
+        new_theta = new_theta if self.aggregator_fn is torch.mean else new_theta[0]
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
@@ -381,17 +385,19 @@ class LogULearner:
         return avg_reward
 
 
-def main(env_id=None):
+def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=None, scheduler_str=None, aggregator=None, **kwargs):
     from disc_envs import get_environment
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
-    from hparams import pong_logu as config
-    agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
-                        log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='none', algo_name='std', beta_end=5,
-                        n_envs=1)
+    if not kwargs:
+        print("Using default hparams")
+        from hparams import pong_logu as kwargs
+    agent = LogULearner(env_id, **kwargs, device='cuda', log_interval=1000,
+                        log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
+                        scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
+                        n_envs=n_envs)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000, beta_schedule='linear')
+    agent.learn(total_timesteps=total_timesteps, beta_schedule='linear')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1 - t0) / 1e9} seconds")
 
@@ -405,8 +411,9 @@ if __name__ == '__main__':
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     env_id = 'ALE/Pong-v5'
+    # env_id = 'ALE/AirRaid-v5'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id)
+    main(env_id, total_timesteps=10_000, log_dir='pend', beta_end=5, aggregator='min', scheduler_str='none', n_envs=1)

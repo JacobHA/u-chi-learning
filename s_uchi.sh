@@ -19,5 +19,5 @@ export WANDB_MODE=offline
 wandb offline
 
 # Start the evaluations
-EXPNAME=${1:-"atari-v0"}
-python atari_sweep.py --local-wandb True --proj u-chi-learning --exp-name $EXPNAME
+EXPNAME=${1:-"atari-mini"}
+python experiments/atari_sweep.py --local-wandb True --proj u-chi-learning --exp-name $EXPNAME

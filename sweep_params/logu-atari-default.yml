@@ -1,0 +1,32 @@
+method: random
+parameters:
+  env_id:
+    values: [ 'ALE/Pong-v5' ]
+  scheduler_str:
+    values: [ 'none' ]
+  aggregator:
+    values: [ 'max' ]
+  beta_end:
+    values: [ 5 ]
+  beta:
+    values: [ 0.8 ]
+  batch_size:
+    values: [ 64 ]
+  buffer_size:
+    values: [ 10_000 ]
+  gradient_steps:
+    values: [ 1 ]
+  learning_rate:
+    values: [ 3.e-4 ]
+  target_update_interval:
+    values: [ 10000 ]
+  tau:
+    values: [ 0.01 ]
+  tau_theta:
+    values: [ 0.98 ]
+  train_freq:
+    values: [ 4 ]
+  learning_starts:
+    values: [ 15_000 ]
+  theta_update_interval:
+    values: [ 100 ]
