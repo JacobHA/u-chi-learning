@@ -20,4 +20,5 @@ wandb offline
 
 # Start the evaluations
 EXPNAME=${1:-"atari-mini"}
-python experiments/atari_sweep.py --local-wandb True --proj u-chi-learning --exp-name $EXPNAME
+DEVICE=${2:-"cuda"}
+python experiments/atari_sweep.py --local-wandb True --proj u-chi-learning --exp-name $EXPNAME --device $DEVICE
