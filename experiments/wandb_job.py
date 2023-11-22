@@ -1,9 +1,9 @@
-from new_logac import LogUActor
-from MultiLogU import LogULearner
 import wandb
 import argparse
 import sys
 sys.path.append("darer")
+from MultiLogU import LogULearner
+
 
 # env_id = 'CartPole-v1'
 # env_id = 'MountainCar-v0'
@@ -24,7 +24,7 @@ def runner(config=None, run=None, device='cpu'):
     # config['train_freq'] = 1
     # config['learning_starts'] = 1_000
     # config.pop('actor_learning_rate')
-    beta_schedule = config.pop('beta_scheduler')
+    beta_schedule = config.pop('beta_schedule')
     beta_end = config.pop('final_beta_multiplier') * config['beta']
     runs_per_hparam = 3
     auc = 0

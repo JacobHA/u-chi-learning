@@ -19,15 +19,16 @@ from utils import is_tabular
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(LogUNet, self).__init__()
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
         self.env = env
-        self.nA = env.action_space.n
+        self.nA = env.action_space.nvec[0] if self.using_vector_env else env.action_space.n
         self.is_image_space = is_image_space(env.observation_space)
         self.is_tabular = is_tabular(env)
         self.device = device
         # Start with an empty model:
         model = nn.Sequential()
         if isinstance(env.observation_space, spaces.Discrete):
-            self.nS = env.observation_space.n
+            self.nS = env.observation_space.nvec[1:] if self.using_vector_env else env.observation_space.n
             input_dim = self.nS
         elif isinstance(env.observation_space, spaces.Box):
             # check if image:
@@ -56,7 +57,7 @@ class LogUNet(nn.Module):
                 # flat part
                 input_dim = flat_size
             else:
-                self.nS = env.observation_space.shape
+                self.nS = env.observation_space.shape[1:] if self.using_vector_env else env.observation_space.shape
                 input_dim = self.nS[0]
 
         model.extend(nn.Sequential(
@@ -112,9 +113,7 @@ class LogUNet(nn.Module):
                 else:
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
-                    
 
-            
         x = self.model(x)
         return x
         
@@ -127,8 +126,12 @@ class LogUNet(nn.Module):
 
             if greedy:
                 # not worth exponentiating since it is monotonic
-                a = (logu * prior).argmax(dim=-1)
-                return a.item()
+                logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
+                a = (logu + logprior).argmax(dim=-1)
+                if not self.using_vector_env:
+                    return a.item()
+                else:
+                    return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
 
             # First subtract a baseline:
             logu = logu - (torch.max(logu) + torch.min(logu))/2
@@ -140,7 +143,10 @@ class LogUNet(nn.Module):
             # c = Categorical(logits=logu*prior)
             a = c.sample()
 
-        return a.item()
+        if not self.using_vector_env:
+            return a.item()
+        else:
+            return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
 
 class EmptyScheduler(LRScheduler):
     def __init__(self, *args, **kwargs):
@@ -238,7 +244,7 @@ class OnlineNets():
     Args:
         list_of_nets (list): A list of online networks.
     """
-    def __init__(self, list_of_nets, aggregator='min'):
+    def __init__(self, list_of_nets, aggregator='min', is_vector_env=False):
         self.nets = list_of_nets
         if aggregator == 'min':
             self.aggregator = torch.min
@@ -246,6 +252,7 @@ class OnlineNets():
             self.aggregator = torch.mean
         elif aggregator == 'max':
             self.aggregator = torch.max
+        self.is_vector_env = is_vector_env
 
     def __len__(self):
         return len(self.nets)
@@ -261,15 +268,25 @@ class OnlineNets():
             
             # greedy_action = logu.argmax()
             # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-            greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
-            greedy_action = np.random.choice(greedy_actions)
+            if not self.is_vector_env:
+                greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
+                greedy_action = np.random.choice(greedy_actions)
+            else:
+                actions = np.array([net.choose_action(state, greedy=True) for net in self.nets])
+                rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
+                greedy_action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
         return greedy_action
         # return greedy_action.item()
 
     def choose_action(self, state):
         # Get a sample from each net, then sample uniformly over them:
         actions = [net.choose_action(state) for net in self.nets]
-        action = np.random.choice(actions)
+        if not self.is_vector_env:
+            action = np.random.choice(actions)
+        else:
+            actions = np.array(actions)
+            rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
+            action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
         # perhaps re-weight this based on pessimism?
         return action
         # with torch.no_grad():
