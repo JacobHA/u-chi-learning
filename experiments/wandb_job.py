@@ -29,11 +29,18 @@ def runner(config=None, run=None, device='cpu'):
     runs_per_hparam = 3
     auc = 0
     wandb.log({'env_id': env_id})
+    if env_id in ['LunarLander-v2', 'ALE/Pong-v5']:
+        log_interval = 500
+        total_timesteps = 250_000
+    else:
+        log_interval = 50
+        total_timesteps = 25_000
 
     for _ in range(runs_per_hparam):
-        model = LogULearner(env_id, **config, log_interval=50, use_wandb=True,
+        model = LogULearner(env_id, **config, log_interval=log_interval, use_wandb=True,
                             device=device, render=0, beta_end=beta_end)
-        model.learn(total_timesteps=25_000, beta_schedule=beta_schedule)
+        model.learn(total_timesteps=total_timesteps,
+                    beta_schedule=beta_schedule)
         auc += model.eval_auc
     auc /= runs_per_hparam
     wandb.log({'avg_eval_auc': auc})
@@ -54,7 +61,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--count", type=int, default=100)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='LogU-Cartpole')
-    parser.add_argument("-s", "--sweep_id", type=str, default='xcmjwq1t')
+    parser.add_argument("-s", "--sweep_id", type=str, default='2am6u8so')
     parser.add_argument("-env", "--env_id", type=str, default='ALE/Pong-v5')
     args = parser.parse_args()
     entity = args.entity
