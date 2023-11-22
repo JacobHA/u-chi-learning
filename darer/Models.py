@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
-from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
 import numpy as np
 from stable_baselines3.common.utils import zip_strict
 from gymnasium import spaces
@@ -13,6 +12,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
+from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, \
+                get_obs_shape
 from utils import is_tabular
 
 
@@ -27,8 +28,11 @@ class LogUNet(nn.Module):
         else:
             self.observation_space = self.env.observation_space
             self.action_space = self.env.action_space
+            from stable_baselines3.common.preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
+            # a hack to make atari wrapped envs work:
         self.nA = self.action_space.n
-        self.is_image_space = is_image_space(self.observation_space)
+        # do the check on an env before wrapping it
+        self.is_image_space = is_image_space(self.env.env.observation_space)
         self.is_tabular = is_tabular(env)
         self.device = device
         # Start with an empty model:

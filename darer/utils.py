@@ -2,6 +2,7 @@ import os
 import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.logger import configure
+from gymnasium.wrappers.atari_preprocessing import AtariPreprocessing
 import time
 
 import torch
@@ -40,11 +41,48 @@ def logger_at_folder(log_dir=None, algo_name=None):
 
     return logger
 
-def env_id_to_envs(env_id, render, n_envs):
+
+# class AtariAdapter(gym.Wrapper):
+#     """
+#     Wrapper for atari-preprocessed environments to make them consistent with unprocessed environments.
+#     Observation space has to include a channel dimension.
+#     """
+#     def __init__(self, env):
+#         super().__init__(env)
+#         self.env = env
+#         obs_space_kwargs = env.observation_space.__dict__
+#         obs_space_kwargs['shape'] = (*obs_space_kwargs['_shape'], 1)
+#         for key in ['bounded_below', 'bounded_above', '_shape', 'low_repr', 'high_repr', '_np_random']:
+#             obs_space_kwargs.pop(key)
+#         obs_space_kwargs["low"] = obs_space_kwargs["low"][...,np.newaxis]
+#         obs_space_kwargs["high"] = obs_space_kwargs["high"][...,np.newaxis]
+#         self.observation_space = gym.spaces.Box(**obs_space_kwargs)
+#         self.action_space = env.action_space
+#
+#     def step(self, action):
+#         obs, rew, term, trunk, info = self.env.step(action)
+#         obs = obs[..., np.newaxis]
+#         return obs, rew, term, trunk, info
+
+
+def env_id_to_envs(env_id, render, n_envs, frameskip=5):
     if isinstance(env_id, str):
-        env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs)
-        # make another instance for evaluation purposes only:
-        eval_env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs)
+        # Don't vectorize if there is only one env
+        if n_envs==1:
+            env = gym.make(env_id, render_mode='human' if render else None, frameskip=1)
+            env = AtariPreprocessing(env, screen_size=84, grayscale_obs=True, grayscale_newaxis=True, scale_obs=True, noop_max=30)
+            # env = AtariAdapter(env)
+            # make another instance for evaluation purposes only:
+            eval_env = gym.make(env_id, render_mode='human' if render else None, frameskip=1)
+            eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=True, grayscale_newaxis=True, scale_obs=True, noop_max=30)
+            # eval_env = AtariAdapter(eval_env)
+        else:
+            env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs,
+                            frameskip=frameskip, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=frameskip, noop_max=30)])
+
+            eval_env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs,
+                                    frameskip=frameskip, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=frameskip, noop_max=30)])
+
     elif isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
