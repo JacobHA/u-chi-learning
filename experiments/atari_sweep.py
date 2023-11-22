@@ -19,6 +19,7 @@ exp_to_config = {
     "atari-mini": "logu-atari-mini-sweep.yml",
 }
 int_hparams = {'batch_size', 'buffer_size', 'gradient_steps', 'target_update_interval', 'theta_update_interval', }
+device = None
 
 def sample_wandb_hyperparams(params):
     sampled = {}
@@ -64,7 +65,7 @@ def wandb_train(local_cfg=None):
         wandb_kwargs['config'] = local_cfg
     with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
         config = wandb.config.as_dict()
-        main(total_timesteps=1_000, n_envs=1, **config['parameters'])
+        main(total_timesteps=1_000_000, n_envs=1, device=device, **config['parameters'])
 
 
 if __name__ == "__main__":
@@ -74,9 +75,11 @@ if __name__ == "__main__":
     args.add_argument("--proj", type=str, default="u-chi-learning-test")
     args.add_argument("--local-wandb", type=bool, default=True)
     args.add_argument("--exp-name", type=str, default="atari-mini")
+    args.add_argument("--device", type=str, default='cuda')
     args = args.parse_args()
     project = args.proj
     experiment_name = args.exp_name
+    device = args.device
     # load the default config
     with open("sweep_params/logu-atari-default.yml", "r") as f:
         default_config = yaml.load(f, yaml.SafeLoader)

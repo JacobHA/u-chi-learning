@@ -314,7 +314,6 @@ class LogULearner:
     def _log_stats(self, t0, t_final, env_steps):
         # fps averaged over log_interval steps:
         self.fps = self.log_interval / ((t_final - t0) / 1e9)
-
         if env_steps >= 0:
             self.avg_eval_rwd = self.evaluate()
             self.eval_auc += self.avg_eval_rwd
@@ -386,13 +385,13 @@ class LogULearner:
         return avg_reward
 
 
-def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=None, scheduler_str=None, aggregator=None, beta_schedule=None, **kwargs):
+def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=None, scheduler_str=None, aggregator=None, beta_schedule=None, device=None, **kwargs):
     from disc_envs import get_environment
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
-    agent = LogULearner(env_id, **kwargs, device='cuda', log_interval=1000,
+    agent = LogULearner(env_id, **kwargs, device=device, log_interval=1000,
                         log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
                         n_envs=n_envs)
@@ -417,4 +416,4 @@ if __name__ == '__main__':
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=10_000, log_dir='pend', beta_end=5, aggregator='min', scheduler_str='none', n_envs=1, beta_schedule='linear')
+    main(env_id, total_timesteps=10_000, log_dir='pend', beta_end=5, aggregator='min', scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda')
