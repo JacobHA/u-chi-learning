@@ -8,7 +8,7 @@ import argparse
 import sys
 sys.path.append('darer')
 
-from darer.MultiLogU import main
+from MultiLogU import main
 
 
 exp_to_config = {
