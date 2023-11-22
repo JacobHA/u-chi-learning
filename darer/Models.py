@@ -12,9 +12,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
-from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, \
-                get_obs_shape
+from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
 from utils import is_tabular
+
+def is_image_space_simple(observation_space, is_vector_env=False):
+    if is_vector_env:
+        return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 4
+    return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3
 
 
 class LogUNet(nn.Module):
@@ -25,14 +29,15 @@ class LogUNet(nn.Module):
         if self.using_vector_env:
             self.observation_space = self.env.single_observation_space
             self.action_space = self.env.single_action_space
+            from sb3preprocessing import is_image_space
         else:
             self.observation_space = self.env.observation_space
             self.action_space = self.env.action_space
-            from stable_baselines3.common.preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
+            from stable_baselines3.common.preprocessing import is_image_space# preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
             # a hack to make atari wrapped envs work:
         self.nA = self.action_space.n
         # do the check on an env before wrapping it
-        self.is_image_space = is_image_space(self.env.env.observation_space)
+        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
         self.is_tabular = is_tabular(env)
         self.device = device
         # Start with an empty model:
