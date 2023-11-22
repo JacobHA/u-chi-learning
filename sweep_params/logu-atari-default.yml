@@ -30,3 +30,5 @@ parameters:
     values: [ 15_000 ]
   theta_update_interval:
     values: [ 100 ]
+  beta_schedule:
+    values: [ 'linear' ]

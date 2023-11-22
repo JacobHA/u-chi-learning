@@ -69,7 +69,7 @@ class LogULearner:
                  scheduler_str='none',
                  beta_end=None,
                  n_envs=5,
-                 tensor_buff=True,
+                 tensor_buff=False,
                  frameskip=1,
                  grayscale_obs=False,
                  ) -> None:
@@ -115,8 +115,9 @@ class LogULearner:
                                  observation_space=self.env.observation_space,
                                  action_space=self.env.action_space,
                                  n_envs=n_envs,
-                                 handle_timeout_termination=True,
-                                 device=device)
+                                 handle_timeout_termination=False,
+                                 device=device,
+                                 optimize_memory_usage=True)
         self.nA = self.env.action_space.nvec[0] if isinstance(self.env.action_space,
                                                               gym.spaces.MultiDiscrete) else self.env.action_space.n
         self.ref_action = None
@@ -385,7 +386,7 @@ class LogULearner:
         return avg_reward
 
 
-def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=None, scheduler_str=None, aggregator=None, **kwargs):
+def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=None, scheduler_str=None, aggregator=None, beta_schedule=None, **kwargs):
     from disc_envs import get_environment
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
     if not kwargs:
@@ -397,7 +398,7 @@ def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=
                         n_envs=n_envs)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=total_timesteps, beta_schedule='linear')
+    agent.learn(total_timesteps=total_timesteps, beta_schedule=beta_schedule)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1 - t0) / 1e9} seconds")
 
@@ -416,4 +417,4 @@ if __name__ == '__main__':
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=10_000, log_dir='pend', beta_end=5, aggregator='min', scheduler_str='none', n_envs=1)
+    main(env_id, total_timesteps=10_000, log_dir='pend', beta_end=5, aggregator='min', scheduler_str='none', n_envs=1, beta_schedule='linear')

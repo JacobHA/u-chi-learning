@@ -1,3 +1,4 @@
+import copy
 import random
 
 import numpy as np
@@ -17,7 +18,7 @@ exp_to_config = {
     # three of the atari environments
     "atari-mini": "logu-atari-mini-sweep.yml",
 }
-int_hparams = {'batch_size', 'target_update_interval', 'theta_update_interval', }
+int_hparams = {'batch_size', 'buffer_size', 'gradient_steps', 'target_update_interval', 'theta_update_interval', }
 
 def sample_wandb_hyperparams(params):
     sampled = {}
@@ -63,14 +64,14 @@ def wandb_train(local_cfg=None):
         wandb_kwargs['config'] = local_cfg
     with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
         config = wandb.config.as_dict()
-        main(total_timesteps=100_000, n_envs=1, **config['parameters'])
+        main(total_timesteps=1_000, n_envs=1, **config['parameters'])
 
 
 if __name__ == "__main__":
     args = argparse.ArgumentParser()
     args.add_argument("--sweep", type=str, default=None)
-    args.add_argument("--n_runs", type=int, default=1)
-    args.add_argument("--proj", type=str, default="u-chi-learning")
+    args.add_argument("--n_runs", type=int, default=100)
+    args.add_argument("--proj", type=str, default="u-chi-learning-test")
     args.add_argument("--local-wandb", type=bool, default=True)
     args.add_argument("--exp-name", type=str, default="atari-mini")
     args = args.parse_args()
@@ -90,7 +91,9 @@ if __name__ == "__main__":
         print(f"created new sweep {sweep_id}")
         wandb.agent(sweep_id, project=args.proj, count=args.n_runs, function=wandb_train)
     elif args.local_wandb:
-        wandb_train(local_cfg=sweepcfg)
+        for i in range(args.n_runs):
+            print(f"running local sweep {i}")
+            wandb_train(local_cfg=copy.deepcopy(sweepcfg))
     else:
         print(f"continuing sweep {args.sweep}")
         wandb.agent(args.sweep, project=args.proj, count=args.n_runs, function=wandb_train)
