@@ -7,6 +7,7 @@ from MultiLogU import LogULearner
 # env_id = 'CartPole-v1'
 # env_id = 'MountainCar-v0'
 env_id = 'LunarLander-v2'
+env_id = 'Pong-v4'
 # env_id = 'HalfCheetah-v4'
 # env_id = 'Acrobot-v1'
 # env_id = 'Pendulum-v1'
@@ -47,13 +48,14 @@ def wandb_agent():
 
 if __name__ == "__main__":
     # set up wandb variables (TODO: these should be set up as globals per user):
+
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--device", type=str, default='cpu')
+    parser.add_argument("-d", "--device", type=str, default='cuda')
     parser.add_argument("-c", "--count", type=int, default=100)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='LogU-Cartpole')
-    parser.add_argument("-s", "--sweep_id", type=str, default='xcmjwq1t')
+    parser.add_argument("-s", "--sweep_id", type=str, default='rbtzmhyx')
     parser.add_argument("-env", "--env_id", type=str, default='ALE/Pong-v5')
     args = parser.parse_args()
     entity = args.entity
