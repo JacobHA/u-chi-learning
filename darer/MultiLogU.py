@@ -20,10 +20,20 @@ from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular
 
 
 HPARAM_ATTRS = {
-    'beta', 'learning_rate', 'batch_size', 'buffer_size', 
-    'target_update_interval', 'tau', 'theta_update_interval', 
-    'hidden_dim', 'num_nets', 'tau_theta', 'gradient_steps',
-    'train_freq', 'max_grad_norm', 'learning_starts'
+    'beta': 'beta',
+    'learning_rate': 'learning_rate',
+    'batch_size': 'batch_size',
+    'buffer_size': 'buffer_size',
+    'target_update_interval': 'target_update_interval',
+    'tau': 'tau',
+    'theta_update_interval': 'theta_update_interval',
+    'hidden_dim': 'hidden_dim',
+    'num_nets': 'num_nets',
+    'tau_theta': 'tau_theta',
+    'gradient_steps': 'gradient_steps',
+    'train_freq': 'train_freq',
+    'max_grad_norm': 'max_grad_norm',
+    'learning_starts': 'learning_starts',
 }
 
 LOG_PARAMS = {
@@ -34,11 +44,14 @@ LOG_PARAMS = {
     'time/fps': 'fps',
     'time/num. updates': '_n_updates',
     'rollout/beta': 'beta',
+    'train/lr': 'lr',
 }
 
-str_to_aggregator = {'min': torch.min, 'max': torch.max, 'mean': torch.mean}
-class LogULearner:
+str_to_aggregator = {'min': torch.min, 
+                     'max': torch.max, 
+                     'mean': lambda x, dim: (torch.mean(x, dim=dim), None)}
 
+class LogULearner:
     def __init__(self,
                  env_id,
                  beta,
@@ -114,10 +127,8 @@ class LogULearner:
                                  n_envs=n_envs,
                                  handle_timeout_termination=True,
                                  device=device)
+        
         self.nA = self.env.action_space.nvec[0] if isinstance(self.env.action_space, gym.spaces.MultiDiscrete) else self.env.action_space.n
-        self.ref_action = None
-        self.ref_state = None
-        self.ref_reward = None
         self.theta = torch.Tensor([0]).to(self.device)
         self.eval_auc = 0
         self.num_episodes = 0
@@ -125,8 +136,7 @@ class LogULearner:
         # Set up the logger:
         self.logger = logger_at_folder(log_dir, algo_name=f'{env_id}-{algo_name}')
         # Log the hparams:
-        for key in HPARAM_ATTRS:
-            self.logger.record(f"hparams/{key}", self.__dict__[key])
+        log_class_vars(self, HPARAM_ATTRS)
         self.logger.dump()
 
         self._n_updates = 0
@@ -150,7 +160,6 @@ class LogULearner:
                 for logu in self.online_logus]
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
-
     def train(self):
         # average self.theta over multiple gradient steps
         new_thetas = torch.zeros(self.gradient_steps, self.num_nets).to(self.device)
@@ -163,51 +172,38 @@ class LogULearner:
                                    for online_logu in self.online_logus], dim=1)
             
             with torch.no_grad():
-                # ref_logu_next = torch.stack([logu(self.ref_next_state)
-                #             for logu in self.online_logus], dim=0)
-                # ref_curr_logu = torch.stack([logu(self.ref_state)[:,self.ref_action]
-                #             for logu in self.online_logus], dim=0)
-
-                ref_logu_next = torch.stack([logu(next_states)
-                            for logu in self.online_logus], dim=0)
-                ref_curr_logu = torch.stack([logu(states).gather(1,actions.long())
-                            for logu in self.online_logus], dim=0)
+                online_logu_next = torch.stack([logu(next_states)
+                                    for logu in self.online_logus], dim=0)
+                online_curr_logu = torch.stack([logu(states).gather(1, actions)
+                                    for logu in self.online_logus], dim=0)
+                
                 # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
+                # TODO: should this go outside no grad? Also, is it worth defining a log_prior value?
+                online_log_chi = torch.logsumexp(online_logu_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+                online_curr_logu = online_curr_logu.squeeze(-1)
+                
+                new_thetas[grad_step, :] = -torch.mean(rewards.squeeze(-1) + (online_log_chi - online_curr_logu) / self.beta, dim=1)
 
-                log_ref_chi = torch.logsumexp(ref_logu_next,dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                # log_ref_chi = log_ref_chi.unsqueeze(-1)
-                ref_curr_logu = ref_curr_logu.squeeze(-1)
-
-                new_thetas[grad_step, :] = torch.mean(-(rewards.squeeze(-1) + (log_ref_chi - ref_curr_logu) / self.beta),dim=1)
-                # new_thetas[grad_step, :] = torch.mean(-(self.ref_reward + (log_ref_chi - ref_curr_logu) / self.beta), dim=1)
 
                 target_next_logus = [target_logu(next_states)
                                         for target_logu in self.target_logus]
-
-                self.logger.record("train/target_min_logu", target_next_logus[0].min().item())
-                self.logger.record("train/target_max_logu", target_next_logus[0].max().item())
+                
                 # logsumexp over actions:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                next_logu, _ = self.aggregator_fn(next_logus, dim=1)#, keepdims=True)
+                next_logu, _ = self.aggregator_fn(next_logus, dim=1)
+ 
+                next_logu = next_logu.reshape(-1, 1)
 
-                next_logu = next_logu.reshape(-1,1)
                 assert next_logu.shape == dones.shape
-                next_logu = next_logu * (1-dones)# + self.theta * dones
+                next_logu = next_logu * (1-dones) # + self.theta * dones
 
                 # "Backup" eigenvector equation:
                 expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
                 expected_curr_logu = expected_curr_logu.squeeze(1)
 
-
-            self.logger.record("train/theta", self.theta.item())
-            self.logger.record("train/avg logu", curr_logu.mean().item())
-            self.logger.record("train/min logu", curr_logu.min().item())
-            self.logger.record("train/max logu", curr_logu.max().item())
-
             # Calculate the logu ("critic") loss:
-            loss = 0.5*sum(self.loss_fn(logu, expected_curr_logu)
-                           for logu in curr_logu.T)
+            loss = 0.5*sum(self.loss_fn(logu, expected_curr_logu) for logu in curr_logu.T)
 
             self.logger.record("train/loss", loss.item())
             self.optimizers.zero_grad()
@@ -217,15 +213,9 @@ class LogULearner:
             # Clip gradient norm
             loss.backward()
             self.online_logus.clip_grad_norm(self.max_grad_norm)
-
-            # Log the max gradient:
-            total_norm = torch.max(torch.stack(
-                        [px.grad.detach().abs().max() 
-                         for p in self.online_logus.parameters() for px in p]
-                        ))
-            self.logger.record("train/max_grad", total_norm.item())
             self.optimizers.step()
-        # new_thetas = torch.clamp(new_thetas, 1, -1)
+        #TODO: Clamp based on reward range
+        # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
         # Log both theta values:
         for idx, new_theta in enumerate(new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
@@ -236,15 +226,23 @@ class LogULearner:
         if self._n_updates % self.theta_update_interval == 0:
             self.theta = self.tau_theta * self.theta + (1 - self.tau_theta) * new_theta
 
-    def learn(self, total_timesteps, beta_schedule=None):
-        # setup beta scheduling
-        if beta_schedule == 'exp':
-            self.betas = torch.exp(torch.linspace(np.log(self.beta), np.log(self.beta_end), total_timesteps)).to(self.device)
-        elif beta_schedule == 'linear':
-            self.betas = torch.linspace(self.beta, self.beta_end, total_timesteps).to(self.device)
-        else:
-            self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
+        # Log info from this training cycle:
+        self.logger.record("train/theta", self.theta.item())
+        self.logger.record("train/avg logu", curr_logu.mean().item())
+        self.logger.record("train/min logu", curr_logu.min().item())
+        self.logger.record("train/max logu", curr_logu.max().item())
+        # Log the max gradient:
+        total_norm = torch.max(torch.stack(
+                    [px.grad.detach().abs().max() 
+                        for p in self.online_logus.parameters() for px in p]
+                    ))
+        self.logger.record("train/max_grad", total_norm.item())
 
+
+    def learn(self, total_timesteps, beta_schedule=None):
+        # Start a timer to log fps:
+        self.initial_time = time.thread_time_ns()
+        self.betas = self._beta_scheduler(beta_schedule, total_timesteps)
         state, _ = self.env.reset()
         episode_reward = np.zeros(self.n_envs)
         # Start a timer to log fps:
@@ -326,6 +324,31 @@ class LogULearner:
             fa_eigvec /= np.linalg.norm(fa_eigvec)
             err = np.abs(self.true_eigvec - fa_eigvec).mean()
             self.logger.record('train/eigvec_err', err.item())
+            
+    def _log_stats(self, t0, t_final, env_steps):
+        # end timer:
+        t_final = time.thread_time_ns()
+        # fps averaged over log_interval steps:
+        self.fps = self.log_interval / ((t_final - t0) / 1e9)
+
+        if self.env_steps >= 0:
+            self.avg_eval_rwd = self.evaluate()
+            self.eval_auc += self.avg_eval_rwd
+        if self.save_checkpoints:
+            raise NotImplementedError
+            torch.save(self.online_logu.state_dict(),
+                       'sql-policy.para')
+        # Get the current learning rate from the optimizer:
+        self.lr = self.optimizers.get_lr()
+        log_class_vars(self, LOG_PARAMS)
+
+        if self.is_tabular:
+            # Record the error in the eigenvector:
+            fa_eigvec = get_eigvec_values(self).flatten()
+            # normalize:
+            fa_eigvec /= np.linalg.norm(fa_eigvec)
+            err = np.abs(self.true_eigvec - fa_eigvec).mean()
+            self.logger.record('train/eigvec_err', err.item())
 
         if self.use_wandb:
             wandb.log({'env_steps': env_steps,
@@ -372,7 +395,18 @@ class LogULearner:
         self.avg_eval_rwd = avg_reward
         return avg_reward
 
-
+    def _beta_scheduler(self, beta_schedule, total_timesteps):
+        # setup beta scheduling
+        if beta_schedule == 'exp':
+            self.betas = torch.exp(torch.linspace(np.log(self.beta), np.log(self.beta_end), total_timesteps)).to(self.device)
+        elif beta_schedule == 'linear':
+            self.betas = torch.linspace(self.beta, self.beta_end, total_timesteps).to(self.device)
+        elif beta_schedule == 'none':
+            self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
+        else:
+            raise NotImplementedError(f"Unknown beta schedule: {beta_schedule}")
+        return self.betas
+    
 def main():
     from disc_envs import get_environment
 
@@ -387,8 +421,8 @@ def main():
     # env_id = 'Drug-v0'
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    from hparams import acrobot_logu3 as config
-    agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
+    from hparams import acrobot_logu as config
+    agent = LogULearner(env_id, **config, device='cpu', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
                         scheduler_str='none', algo_name='std', beta_end=5,
                         n_envs=5)

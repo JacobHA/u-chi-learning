@@ -1,20 +1,20 @@
 #!/bin/bash
 #SBATCH --job-name=u-chi
-#SBATCH --time=23:00:00
-#SBATCH --mem-per-cpu=3gb
-#SBATCH --cpus-per-task=2
+#SBATCH --time=3-23:00:00
+#SBATCH --mem-per-cpu=2gb
+#SBATCH --cpus-per-task=1
 
 # Set filenames for stdout and stderr.  %j can be used for the jobid.
 # see "filename patterns" section of the sbatch man page for
 # additional options
 #SBATCH --error=outfiles/%j.err
 #SBATCH --output=outfiles/%j.out
-##SBATCH --partition=AMD6276
+#SBATCH --partition=AMD6276
 # use the gpu:
 ##SBATCH --gres=gpu:1
 ##SBATCH --partition=DGXA100
 ##SBATCH --export=NONE
-#SBATCH --array=1-50
+#SBATCH --array=1-10
 echo "using scavenger"
 
 # Prepare conda:
@@ -28,7 +28,8 @@ export MUJOCO_GL="glfw"
 echo "Start Run"
 echo `date`
 # python uchi_agent_NN.py
-python experiments/wandb_job.py
+# python experiments/wandb_job.py -d cuda -env ALE/Pong-v5
+python experiments/wandb_job.py -d cpu -env Acrobot-v1
 # python darer/MultiLogU.py
 # python local_finetuned_runs.py -a logu
 
