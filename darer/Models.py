@@ -28,8 +28,8 @@ class LogUNet(nn.Module):
             self.observation_space = self.env.observation_space
             self.action_space = self.env.action_space
         self.nA = self.action_space.n
-        self.is_image_space = is_image_space(self.observation_space)
-        self.is_tabular = is_tabular(env)
+        self.is_image_space = False #is_image_space(self.observation_space)
+        self.is_tabular = is_tabular(self.observation_space, self.action_space)
         self.device = device
         # Start with an empty model:
         model = nn.Sequential()
@@ -41,7 +41,7 @@ class LogUNet(nn.Module):
             if self.is_image_space:
                 self.nS = get_flattened_obs_dim(self.observation_space)
                 # Use a CNN:
-                n_channels = self.observation_space.shape[2]
+                n_channels = 1#self.observation_space.shape[2]
                 model.extend(nn.Sequential(
                     nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.float32),
                     activation(),
@@ -57,7 +57,12 @@ class LogUNet(nn.Module):
                 x = torch.tensor(rand_inp, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
                 x = x.detach()
                 x = preprocess_obs(x, self.observation_space)
-                x = x.permute([2,0,1]).unsqueeze(0)
+                if n_channels == 1:
+                    x = x.unsqueeze(0)
+                    x = x.permute([0,1,2]).unsqueeze(0)
+
+                else:
+                    x = x.permute([2,0,1]).unsqueeze(0)
                 flat_size = model(x).shape[1]
                 print(f"Using a CNN with {flat_size}-dim. outputs.")
                 # flat part

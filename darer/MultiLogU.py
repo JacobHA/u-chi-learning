@@ -73,8 +73,15 @@ class LogULearner:
         self.n_envs = n_envs
         self.is_vector_env = n_envs>1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
+        if self.is_vector_env:
+            observation_space = self.env.single_observation_space
+            action_space = self.env.single_action_space
+        else:
+            observation_space = self.env.observation_space
+            action_space = self.env.action_space
+
         self.beta = beta
-        self.is_tabular = is_tabular(self.env)
+        self.is_tabular = is_tabular(observation_space, action_space)
         if self.is_tabular:
             # calculate the eigvec:
             self.true_eigvec = get_true_eigvec(self).A.flatten()
@@ -157,6 +164,7 @@ class LogULearner:
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(self.batch_size)
             states, actions, next_states, dones, rewards = batch
+            # actions = actions.unsqueeze(-1)
             # Calculate the current logu values (feedforward):
             curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
                                    for online_logu in self.online_logus], dim=1)
@@ -285,11 +293,13 @@ class LogULearner:
             # todo: fix stable-baselines bug in adding multiple parallel sarsa
             self.replay_buffer.add(*sarsa, [infos])
             state = next_state
+            # if any([done]):
             if any(done):
                 self.logger.record("rollout/reward", np.mean(episode_reward[done==True]))
                 # reset the terminated environments:
                 episode_reward[done==True] = 0
 
+            # if all([done]):
             if all(done):
                 self.env.reset()
             if self.env_steps % self.log_interval == 0:
@@ -352,11 +362,12 @@ class LogULearner:
 
 
                 next_state, reward, terminated, truncated, info = self.eval_env.step(action)
-
-                avg_reward += reward
+            
                 state = next_state
                 _done = terminated or truncated if not self.is_vector_env else np.bitwise_or(terminated, truncated)
                 done = np.bitwise_or(done, _done)
+                avg_reward += reward[1- np.bitwise_or(terminated, truncated)]
+
 
         avg_reward = sum(avg_reward) / self.n_envs
         avg_reward /= n_episodes
@@ -381,23 +392,23 @@ def main():
     # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
+    env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    env_id = 'ALE/Pong-v5'
+    # env_id = 'ALE/Pong-v5'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
-    # env_id = 'MountainCar-v0'
+    env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    from hparams import pong_logu as config
+    from hparams import lunar_logu as config
     agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
                         scheduler_str='none', algo_name='std', beta_end=5,
-                        n_envs=1)
+                        n_envs=3)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000, beta_schedule='linear')
+    agent.learn(total_timesteps=100_000, beta_schedule='linear')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

@@ -42,14 +42,22 @@ def logger_at_folder(log_dir=None, algo_name=None):
     return logger
 
 def env_id_to_envs(env_id, render, n_envs):
-    if isinstance(env_id, str):
-        env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs,
-                           frameskip=5, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)])
 
-        # make another instance for evaluation purposes only:
-        eval_env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs,
-                                frameskip=5, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)])
-        # eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)
+    if isinstance(env_id, str):
+        if n_envs == 1:
+            env = gym.make(env_id)
+            env = AtariPreprocessing(env, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)
+            eval_env = gym.make(env_id, render_mode='human' if render else None)
+            eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)
+
+        else:
+            env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs)
+                            # frameskip=5, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)])
+
+            # make another instance for evaluation purposes only:
+            eval_env = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=n_envs)
+                                    # frameskip=5, wrappers=[lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)])
+            # eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)
 
     elif isinstance(env_id, gym.Env):
         env = env_id
@@ -100,5 +108,5 @@ def get_true_eigvec(fa):
     l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
     return u_true
 
-def is_tabular(env):
-    return isinstance(env.observation_space, gym.spaces.Discrete) and isinstance(env.action_space, gym.spaces.Discrete)
+def is_tabular(action_space, observation_space):
+    return isinstance(observation_space, gym.spaces.Discrete) and isinstance(action_space, gym.spaces.Discrete)
