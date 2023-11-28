@@ -9,7 +9,7 @@ import wandb
 import sys
 sys.path.append('darer')
 from Models import OnlineNets, Optimizers, TargetNets, LogUsa, GaussianPolicy
-from utils import log_class_vars, logger_at_folder
+from utils import env_id_to_envs, log_class_vars, logger_at_folder
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
 from stable_baselines3.sac.policies import Actor
@@ -22,7 +22,9 @@ HPARAM_ATTRS = ['beta', 'learning_rate', 'batch_size', 'buffer_size',
                 'actor_learning_rate', 'hidden_dim', 'num_nets', 'tau_theta',
                 'learning_starts', 'gradient_steps', 'train_freq', 'max_grad_norm']
 
-str_to_aggregator = {'min': torch.min, 'max': torch.max, 'mean': torch.mean}
+str_to_aggregator = {'min': torch.min, 
+                     'max': torch.max, 
+                     'mean': lambda x, dim: (torch.mean(x, dim=dim), None)}
 
 LOG_PARAMS = {
     'time/env. steps': 'env_steps',
@@ -61,14 +63,11 @@ class LogUActor:
                  save_checkpoints=False,
                  use_wandb=False,
                  ) -> None:
-        self.env_id = env_id
-        self.env = gym.make(env_id)
-        self.n_samples = 1
-        # self.vec_env = gym.make_vec(self.env_id, num_envs=self.n_samples)
+        self.env, self.eval_env = env_id_to_envs(env_id, render)
 
-        # make another instance for evaluation purposes only:
-        self.eval_env = gym.make(env_id,
-                                 render_mode='human' if render else None)
+        self.env_str = self.env.unwrapped.spec.id if hasattr(self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
+
+        self.n_samples = 1
 
         self.nA = get_action_dim(self.env.action_space)
         self.nS = get_flattened_obs_dim(self.env.observation_space)
