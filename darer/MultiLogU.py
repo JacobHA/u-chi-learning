@@ -288,7 +288,7 @@ class LogULearner:
                            'sql-policy.para')
             # Get the current learning rate from the optimizer:
             self.lr = self.optimizers.get_lr()
-            log_class_vars(self, LOG_PARAMS, use_wandb=True)
+            log_class_vars(self, LOG_PARAMS, use_wandb=self.use_wandb)
 
 
             if self.is_tabular:
@@ -368,7 +368,7 @@ def main():
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
+    # env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 
     from hparams import acrobot_logu as config
     agent = LogULearner(env_id, **config, device='cpu', log_interval=1000,
