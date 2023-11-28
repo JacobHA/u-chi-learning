@@ -18,22 +18,25 @@ def runner(config=None, run=None, device='cpu'):
     # Convert the necessary kwargs to ints:
     for int_kwarg in ['batch_size', 'target_update_interval', 'theta_update_interval', 'gradient_steps',
                       'train_freq', 'learning_starts', 'buffer_size']:
-        config[int_kwarg] = int(config[int_kwarg])
+        try:
+            config[int_kwarg] = int(config[int_kwarg])
+        except KeyError:
+            pass # use default value
     # config['buffer_size'] = 10_000
     # config['gradient_steps'] = 1
     # config['train_freq'] = 1
     # config['learning_starts'] = 1_000
     # config.pop('actor_learning_rate')
-    beta_schedule = config.pop('beta_schedule')
+    beta_schedule = config.pop('beta_scheduler')
     beta_end = config.pop('final_beta_multiplier') * config['beta']
-    runs_per_hparam = 3
+    runs_per_hparam = 1
     auc = 0
     wandb.log({'env_id': env_id})
 
     for _ in range(runs_per_hparam):
         model = LogULearner(env_id, **config, log_interval=500, use_wandb=True,
                             device=device, render=0, beta_end=beta_end)
-        model.learn(total_timesteps=250_000, beta_schedule=beta_schedule)
+        model.learn(total_timesteps=50_000, beta_schedule=beta_schedule)
         auc += model.eval_auc
     auc /= runs_per_hparam
     wandb.log({'avg_eval_auc': auc})
@@ -55,13 +58,16 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--count", type=int, default=100)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='LogU-Cartpole')
-    parser.add_argument("-s", "--sweep_id", type=str, default='rbtzmhyx')
+    parser.add_argument("-s", "--sweep_id", type=str, default='2am6u8so')
     parser.add_argument("-env", "--env_id", type=str, default='ALE/Pong-v5')
     args = parser.parse_args()
     entity = args.entity
     project = args.project
     sweep_id = args.sweep_id
-    env_id = args.env_id
+    # env_id = args.env_id
+    from disc_envs import get_environment
+    env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
+
 
     full_sweep_id = f"{entity}/{project}/{sweep_id}"
 
