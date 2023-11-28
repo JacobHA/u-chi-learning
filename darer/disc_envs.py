@@ -40,6 +40,7 @@ class ExtendedPendulum(PendulumEnv):
         super().__init__(render_mode=render_mode, g=g)
         high = np.array([np.pi, self.max_speed], dtype=np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
+        self.id = 'Pendulum'
 
     # have to deal with non-standard observation manipulation
     def _get_obs(self):
@@ -84,7 +85,9 @@ class DiscretizeAction(ActionWrapper):
         high = env.action_space.high
         self.action_mapping = np.linspace(low, high, nbins)
         self.action_space = spaces.Discrete(nbins ** self.ndim_actions)
-        self.id = 'Discretized'
+        # set the spec id as discrete env
+        # TODO: register and use gym.make so spec.id is universal
+        self.id = f'Discrete{self.id}-nbins={nbins}'
     
     def action(self, action):
         

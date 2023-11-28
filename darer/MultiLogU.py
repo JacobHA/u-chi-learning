@@ -74,6 +74,7 @@ class LogULearner:
                  ) -> None:
         
         self.env, self.eval_env = env_id_to_envs(env_id, render)
+        self.env_str = self.env.unwrapped.spec.id if hasattr(self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
         self.beta = beta
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
@@ -358,25 +359,25 @@ class LogULearner:
     
 def main():
     from disc_envs import get_environment
+    env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 
     # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    env_id = 'Acrobot-v1'
+    # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    # env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 
     from hparams import acrobot_logu as config
-    agent = LogULearner(env_id, **config, device='cpu', log_interval=1000,
+    agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
                         scheduler_str='none', algo_name='std', beta_end=5)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000, beta_schedule='none')
+    agent.learn(total_timesteps=100_000, beta_schedule='linear')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

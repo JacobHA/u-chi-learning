@@ -31,11 +31,12 @@ def runner(config=None, run=None, device='cpu'):
     beta_end = config.pop('final_beta_multiplier') * config['beta']
     runs_per_hparam = 1
     auc = 0
-    wandb.log({'env_id': env_id})
 
     for _ in range(runs_per_hparam):
         model = LogULearner(env_id, **config, log_interval=500, use_wandb=True,
                             device=device, render=0, beta_end=beta_end)
+        wandb.log({'env_id': model.env_str})
+
         model.learn(total_timesteps=50_000, beta_schedule=beta_schedule)
         auc += model.eval_auc
     auc /= runs_per_hparam
