@@ -30,4 +30,4 @@ export MUJOCO_GL="glfw"
 
 # Start the evaluations
 EXPNAME=${1:-"atari-mini"}
-python experiments/atari_sweep.py --local-wandb True --proj u-chi-learning --exp-name $EXPNAME
+python experiments/atari_sweep.py --local-wandb True --device cuda #--proj u-chi-learning --exp-name $EXPNAME
