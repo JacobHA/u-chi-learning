@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=u-chi
 #SBATCH --time=3-23:00:00
-#SBATCH --mem-per-cpu=12gb
-#SBATCH --cpus-per-task=3
+#SBATCH --mem-per-cpu=24gb
+#SBATCH --cpus-per-task=12
 
 # Set filenames for stdout and stderr.  %j can be used for the jobid.
 # see "filename patterns" section of the sbatch man page for
@@ -14,7 +14,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --partition=DGXA100
 #SBATCH --export=NONE
-##SBATCH --array=1-3
+#SBATCH --array=1-10
 echo "using scavenger"
 
 # Prepare conda:
@@ -29,5 +29,5 @@ export MUJOCO_GL="glfw"
 # wandb offline
 
 # Start the evaluations
-EXPNAME=${1:-"atari-mini"}
-python experiments/atari_sweep.py --local-wandb True --device cuda #--proj u-chi-learning --exp-name $EXPNAME
+EXPNAME=${1:-"atari-pong"}
+python experiments/atari_sweep.py --local-wandb False --device cpu --proj u-chi-learning --exp-name $EXPNAME

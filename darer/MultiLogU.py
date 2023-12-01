@@ -1,3 +1,5 @@
+from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
+from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 import copy
 import threading
 
@@ -16,8 +18,6 @@ import sys
 
 sys.path.append("tabular")
 sys.path.append("darer")
-from Models import LogUNet, OnlineNets, Optimizers, TargetNets
-from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 
 HPARAM_ATTRS = {
     'beta', 'learning_rate', 'batch_size', 'buffer_size',
@@ -74,7 +74,8 @@ class LogULearner:
                  grayscale_obs=False,
                  framestack_k=None,
                  ) -> None:
-        self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
+        self.env, self.eval_env = env_id_to_envs(
+            env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
         self.n_envs = n_envs
         self.is_vector_env = n_envs > 1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
@@ -129,7 +130,8 @@ class LogULearner:
         self.num_episodes = 0
 
         # Set up the logger:
-        self.logger = logger_at_folder(log_dir, algo_name=f'{env_id}-{algo_name}')
+        self.logger = logger_at_folder(
+            log_dir, algo_name=f'{env_id}-{algo_name}')
         # Log the hparams:
         for key in HPARAM_ATTRS:
             self.logger.record(f"hparams/{key}", self.__dict__[key])
@@ -150,7 +152,8 @@ class LogULearner:
 
         self.target_logus = TargetNets([LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
                                         for _ in range(self.num_nets)])
-        self.target_logus.load_state_dicts([logu.state_dict() for logu in self.online_logus])
+        self.target_logus.load_state_dicts(
+            [logu.state_dict() for logu in self.online_logus])
         # Make (all) LogUs learnable:
         opts = [torch.optim.Adam(logu.parameters(), lr=self.learning_rate)
                 for logu in self.online_logus]
@@ -158,7 +161,8 @@ class LogULearner:
 
     def train(self):
         # average self.theta over multiple gradient steps
-        new_thetas = torch.zeros(self.gradient_steps, self.num_nets).to(self.device)
+        new_thetas = torch.zeros(
+            self.gradient_steps, self.num_nets).to(self.device)
         for grad_step in range(self.gradient_steps):
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(self.batch_size)
@@ -191,8 +195,10 @@ class LogULearner:
                 target_next_logus = [target_logu(next_states)
                                      for target_logu in self.target_logus]
 
-                self.logger.record("train/target_min_logu", target_next_logus[0].min().item())
-                self.logger.record("train/target_max_logu", target_next_logus[0].max().item())
+                self.logger.record("train/target_min_logu",
+                                   target_next_logus[0].min().item())
+                self.logger.record("train/target_max_logu",
+                                   target_next_logus[0].max().item())
                 # logsumexp over actions:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(
@@ -206,7 +212,8 @@ class LogULearner:
                 next_logu = next_logu * (1 - dones)  # + self.theta * dones
 
                 # "Backup" eigenvector equation:
-                expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
+                expected_curr_logu = self.beta * \
+                    (rewards + self.theta) + next_logu
                 expected_curr_logu = expected_curr_logu.squeeze(1)
 
             self.logger.record("train/theta", self.theta.item())
@@ -244,7 +251,8 @@ class LogULearner:
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
         if self._n_updates % self.theta_update_interval == 0:
-            self.theta = self.tau_theta * self.theta + (1 - self.tau_theta) * new_theta
+            self.theta = self.tau_theta * self.theta + \
+                (1 - self.tau_theta) * new_theta
 
     def learn(self, total_timesteps, beta_schedule=None):
         # setup beta scheduling
@@ -252,9 +260,11 @@ class LogULearner:
             self.betas = torch.exp(torch.linspace(np.log(self.beta), np.log(self.beta_end), total_timesteps)).to(
                 self.device)
         elif beta_schedule == 'linear':
-            self.betas = torch.linspace(self.beta, self.beta_end, total_timesteps).to(self.device)
+            self.betas = torch.linspace(
+                self.beta, self.beta_end, total_timesteps).to(self.device)
         else:
-            self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
+            self.betas = torch.tensor(
+                [self.beta] * total_timesteps).to(self.device)
 
         state, _ = self.env.reset()
         episode_reward = np.zeros(self.n_envs)
@@ -277,7 +287,8 @@ class LogULearner:
             self.rollout_reward += reward
 
             train_this_step = (self.train_freq == -1 and terminated) or \
-                              (self.train_freq != -1 and self.env_steps % self.train_freq == 0)
+                              (self.train_freq != -1 and self.env_steps %
+                               self.train_freq == 0)
 
             if train_this_step:
                 if self.env_steps > self.batch_size:
@@ -298,7 +309,8 @@ class LogULearner:
             self.replay_buffer.add(*sarsa, [infos])
             state = next_state
             if any(done) if self.is_vector_env else done:
-                self.logger.record("rollout/reward", np.mean(episode_reward[done == True]))
+                self.logger.record(
+                    "rollout/reward", np.mean(episode_reward[done == True]))
                 # reset the terminated environments:
                 episode_reward[done == True] = 0
 
@@ -361,11 +373,13 @@ class LogULearner:
                 n_steps += 1
                 # ensure there is no pending call to reset:
 
-                next_state, reward, terminated, truncated, info = self.eval_env.step(action)
+                next_state, reward, terminated, truncated, info = self.eval_env.step(
+                    action)
 
                 avg_reward += reward
                 state = next_state
-                _done = terminated or truncated if not self.is_vector_env else np.bitwise_or(terminated, truncated)
+                _done = terminated or truncated if not self.is_vector_env else np.bitwise_or(
+                    terminated, truncated)
                 done = np.bitwise_or(done, _done)
 
         # close the video recorder if it is open:
@@ -388,17 +402,29 @@ class LogULearner:
         return avg_reward
 
 
-def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=None, scheduler_str=None, aggregator=None, beta_schedule=None, device=None, **kwargs):
+def main(env_id=None,
+         total_timesteps=None,
+         n_envs=None,
+         log_dir=None,
+         beta_end=None,
+         scheduler_str=None,
+         aggregator=None,
+         beta_schedule=None,
+         final_beta_multiplier=None,
+         device=None,
+         **kwargs):
     from disc_envs import get_environment
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
+    beta_end = final_beta_multiplier * kwargs['beta']
     agent = LogULearner(env_id, **kwargs, device=device, log_interval=2000,
                         log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
                         n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
-                        hidden_dim=512)
+                        )
+    # hidden_dim=hidden_dim)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=total_timesteps, beta_schedule=beta_schedule)
@@ -420,4 +446,5 @@ if __name__ == '__main__':
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=1_000_000, log_dir='pend', beta_end=25, aggregator='min', scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda')
+    main(env_id, total_timesteps=1_000_000, log_dir='pend', beta_end=25, aggregator='min',
+         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda')
