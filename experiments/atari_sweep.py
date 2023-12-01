@@ -1,3 +1,5 @@
+import sys
+sys.path.append('darer')
 from MultiLogU import main
 import copy
 import random
@@ -7,8 +9,6 @@ import yaml
 
 import wandb
 import argparse
-import sys
-sys.path.append('darer')
 
 
 exp_to_config = {
