@@ -383,15 +383,15 @@ def main():
     # env_id = 'LunarLanderContinuous-v2'
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
-    env_id = 'Pendulum-v1'
+    # env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
-    # env_id = 'Ant-v4'
+    env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     agent = LogUActor(env_id, **config, device='cuda',
                       num_nets=2, log_dir='pend', 
-                      actor_learning_rate=1e-4, 
+                      actor_learning_rate=1e-3, 
                       render=1, max_grad_norm=10, log_interval=1000)
     agent.learn(total_timesteps=500_000, beta_schedule='linear')
 
