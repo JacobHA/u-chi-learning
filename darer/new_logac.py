@@ -14,6 +14,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
 from stable_baselines3.sac.policies import Actor
 
+torch.backends.cudnn.benchmark = True
 # raise warning level for debugger:
 import warnings
 warnings.filterwarnings("error")
@@ -102,9 +103,7 @@ class LogUActor:
                                           n_envs=1,
                                           handle_timeout_termination=True,
                                           device=device)
-        self.ref_action = None
-        self.ref_state = None
-        self.ref_reward = None
+        
         self.theta = torch.Tensor([0]).to(self.device)
         self.avg_eval_rwd = 0
         self.eval_auc = 0
@@ -154,10 +153,11 @@ class LogUActor:
         self.optimizers = Optimizers(opts)
 
     def train(self,):
-        # self.actor.set_training_mode(True)
+        self.actor.set_training_mode(True)
         # average self.theta over multiple gradient steps
         new_thetas = torch.zeros(
             self.gradient_steps, self.num_nets).to(self.device)
+        
         for grad_step in range(self.gradient_steps):
             replay = self.replay_buffer.sample(self.batch_size)
             states, actions, next_states, dones, rewards = replay
@@ -167,9 +167,13 @@ class LogUActor:
             curr_logu = torch.stack([online_logu(states, actions)
                                    for online_logu in self.online_logus], dim=-1).squeeze(1)
             with torch.no_grad():
+                # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
+                                                #   _ in range(self.batch_size)])).to(self.device)
+                # sampled_action, log_prob = self.actor.action_log_prob(observations)
+                sampled_action = actions#self.actor.action_log_prob(next_states)[0]#.squeeze(1)
                 # use same number of samples as the batch size for convenience:
-                sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
-                                               _ in range(self.batch_size)])).to(self.device)
+                # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
+                #                                _ in range(self.batch_size)])).to(self.device)
                 # use single sample for now:
                 # sampled_action = torch.Tensor(np.array([self.env.action_space.sample()])).to(self.device)
                 # repeat the sampled action for each state in batch:
@@ -180,7 +184,7 @@ class LogUActor:
                             for logu in self.online_logus], dim=0)
                 ref_curr_logu = torch.stack([logu(states, actions)
                             for logu in self.online_logus], dim=0)  
-                dim=-1
+
                 log_next_chi = ref_logu_next# - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # log_next_chi = log_next_chi.unsqueeze(-1)
                 # new_thetas[grad_step, :] = self.ref_reward - log_ref_chi
@@ -218,8 +222,8 @@ class LogUActor:
             # ratio = torch.clamp(ratio, 1-eps, 1+eps)
             # actor_loss = torch.log(ratio)
                 
-            actor_loss = (curr_log_prob - self.aggregator_fn(actor_curr_logu)).mean()
-
+            actor_loss = F.smooth_l1_loss(curr_log_prob, self.aggregator_fn(actor_curr_logu,dim=-1)[0].squeeze())
+                # curr_log_prob - self.aggregator_fn(actor_curr_logu)).mse()
             self.logger.record("train/log_prob", curr_log_prob.mean().item())
             self.logger.record("train/loss", loss.item())
             self.logger.record("train/actor_loss", actor_loss.item())
@@ -355,7 +359,7 @@ class LogUActor:
             state, _ = self.eval_env.reset()
             done = False
             while not done:
-                # self.actor.set_training_mode(False)
+                self.actor.set_training_mode(False)
                 with torch.no_grad():
                     # noisyaction, logprob, action = self.actor.sample(state)  # , deterministic=True)
                     action,_ = self.actor.predict(state)  # , deterministic=True)
@@ -384,12 +388,11 @@ def main():
     # env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
-    from hparams import cheetah_hparams as config
-    agent = LogUActor(env_id, **config, device='cpu',
-                      num_nets=2, log_dir='pend', theta_update_interval=150,
-                      actor_learning_rate=1e-4, aggregator='min',
-                      render=1, max_grad_norm=10, log_interval=1000,
-                      beta_end=10)
+    from hparams import pendulum_logu as config
+    agent = LogUActor(env_id, **config, device='cuda',
+                      num_nets=2, log_dir='pend', 
+                      actor_learning_rate=1e-4, 
+                      render=1, max_grad_norm=10, log_interval=1000)
     agent.learn(total_timesteps=500_000, beta_schedule='linear')
 
 

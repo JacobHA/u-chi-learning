@@ -11,6 +11,9 @@ sys.path.append("darer")
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 
+torch.backends.cudnn.benchmark = True
+
+
 HPARAM_ATTRS = {
     'beta': 'beta',
     'learning_rate': 'learning_rate',
@@ -374,10 +377,10 @@ def main():
     from hparams import acrobot_logu as config
     agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='none', algo_name='std', beta_end=5)
+                        scheduler_str='none', algo_name='std', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=100_000, beta_schedule='linear')
+    agent.learn(total_timesteps=50_000, beta_schedule='linear')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
