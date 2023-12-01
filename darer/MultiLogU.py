@@ -72,8 +72,9 @@ class LogULearner:
                  tensor_buff=False,
                  frameskip=1,
                  grayscale_obs=False,
+                 framestack_k=None,
                  ) -> None:
-        self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs, frameskip=frameskip, grayscale_obs=grayscale_obs)
+        self.env, self.eval_env = env_id_to_envs(env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
         self.n_envs = n_envs
         self.is_vector_env = n_envs > 1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
@@ -367,6 +368,8 @@ class LogULearner:
                 _done = terminated or truncated if not self.is_vector_env else np.bitwise_or(terminated, truncated)
                 done = np.bitwise_or(done, _done)
 
+        # close the video recorder if it is open:
+        self.eval_env.close()
         if self.n_envs > 1:
             avg_reward = sum(avg_reward) / self.n_envs
         avg_reward /= n_episodes
@@ -391,10 +394,11 @@ def main(env_id=None, total_timesteps=None, n_envs=None, log_dir=None, beta_end=
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
-    agent = LogULearner(env_id, **kwargs, device=device, log_interval=1000,
+    agent = LogULearner(env_id, **kwargs, device=device, log_interval=2000,
                         log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
-                        n_envs=n_envs)
+                        n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
+                        hidden_dim=512)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=total_timesteps, beta_schedule=beta_schedule)
@@ -416,4 +420,4 @@ if __name__ == '__main__':
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=10_000, log_dir='pend', beta_end=5, aggregator='min', scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda')
+    main(env_id, total_timesteps=1_000_000, log_dir='pend', beta_end=25, aggregator='min', scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda')
