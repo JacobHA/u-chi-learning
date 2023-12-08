@@ -3,11 +3,9 @@ metric:
   name: eval/auc
 parameters:
   env_id:
-    values: [ "ALE/Pong-v5" ]
+    values: [ "PongNoFrameskip-v4" ]
   scheduler_str:
     values: [ "step", "linear", "exponential", "none" ]
-  beta_schedule:
-    values: [ "linear", "exponential", "none" ]
   aggregator:
     values: [ "mean", "max", "min" ]
   batch_size:
@@ -18,8 +16,6 @@ parameters:
     distribution: uniform
     max: 10
     min: 0.1
-  beta_schedule:
-    values: ['linear', 'none']
   final_beta_multiplier:
     distribution: uniform
     max: 10

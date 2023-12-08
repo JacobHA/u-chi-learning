@@ -2,7 +2,7 @@
 #SBATCH --job-name=logu-%A_%a
 #SBATCH --output=logu-%A_%a.out
 #SBATCH --error=logu-%A_%a.err
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=gpu

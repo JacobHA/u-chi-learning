@@ -3,7 +3,7 @@ metric:
   name: eval/auc
 parameters:
   env_id:
-    values: [ "ALE/Adventure-v5", "ALE/AirRaid-v5", "ALE/Alien-v5" ]
+    values: [ "ALE/Adventure-v4", "ALE/AirRaid-v4", "ALE/Alien-v4" ]
   scheduler_str:
     values: [ "step", "linear", "exponential", "none" ]
   beta_schedule:
@@ -42,3 +42,7 @@ parameters:
     distribution: log_uniform_values
     max: 1
     min: 0.1
+  final_beta_multiplier:
+    distribution: uniform
+    max: 10
+    min: 1
