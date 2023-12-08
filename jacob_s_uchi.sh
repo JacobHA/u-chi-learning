@@ -30,4 +30,4 @@ export MUJOCO_GL="glfw"
 
 # Start the evaluations
 EXPNAME=${1:-"atari-pong"}
-python experiments/atari_sweep.py --local-wandb False --device cpu --proj u-chi-learning --exp-name $EXPNAME
+python experiments/atari_sweep.py --local-wandb False --device cuda --proj u-chi-learning --exp-name $EXPNAME
