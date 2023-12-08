@@ -411,7 +411,7 @@ def main(env_id,
          scheduler_str,
          aggregator,
          beta_schedule,
-         final_beta_multiplyer,
+         final_beta_multiplier,
          device,
          **kwargs):
     from disc_envs import get_environment
@@ -419,10 +419,13 @@ def main(env_id,
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
-    beta_end = final_beta_multiplyer * kwargs['beta']
+    beta_end = final_beta_multiplier * kwargs['beta']
     assert beta_end > kwargs['beta']
+    # I'm not sure why, but there's an extra beta_end coming in from somewhere, 
+    # so I'm just popping it out of kwargs to be safe
+    kwargs.pop('beta_end')
     agent = LogULearner(env_id, **kwargs, device=device, log_interval=4000,
-                        log_dir=log_dir, num_nets=2, render=1, aggregator=aggregator,
+                        log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
                         n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
                         use_wandb=False
@@ -451,4 +454,4 @@ if __name__ == '__main__':
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
     main(env_id, total_timesteps=10_000_000, log_dir='pend', aggregator='max',
-         scheduler_str='none', n_envs=1, beta_schedule='none', device='cuda', final_beta_multiplyer=10)
+         scheduler_str='none', n_envs=1, beta_schedule='none', device='cuda', final_beta_multiplier=10)
