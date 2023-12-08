@@ -80,15 +80,15 @@ def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grays
         # Don't vectorize if there is only one env
         if n_envs==1:
             env = gym.make(env_id, frameskip=1)
-            if framestack_k:
-                env = FrameStack(env, framestack_k) 
             env = AtariPreprocessing(env, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, noop_max=30, frame_skip=frameskip)
+            if framestack_k:
+                env = FrameStack(env, framestack_k)
             # env = AtariAdapter(env)
             # make another instance for evaluation purposes only:
             eval_env = gym.make(env_id, render_mode='human' if render else None, frameskip=1)
+            eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, noop_max=30, frame_skip=frameskip)
             if framestack_k:
                 eval_env = FrameStack(eval_env, framestack_k)
-            eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, noop_max=30, frame_skip=frameskip)
             # eval_env = AtariAdapter(eval_env)
             # if render:
             #     eval_env = RecordVideo(eval_env, video_folder='videos')

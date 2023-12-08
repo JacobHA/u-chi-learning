@@ -450,5 +450,5 @@ if __name__ == '__main__':
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=10_000_000, log_dir='pend', beta_end=25, aggregator='max',
-         scheduler_str='none', n_envs=1, beta_schedule='none', device='cuda')
+    main(env_id, total_timesteps=10_000_000, log_dir='pend', aggregator='max',
+         scheduler_str='none', n_envs=1, beta_schedule='none', device='cuda', final_beta_multiplier=10)
