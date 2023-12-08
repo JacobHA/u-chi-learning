@@ -179,6 +179,8 @@ class LogULearner:
 
                 ref_logu_next = torch.stack([logu(next_states)
                                              for logu in self.online_logus], dim=0)
+
+                # TODO: replace with curr_logu already calculated above:
                 ref_curr_logu = torch.stack([logu(states).gather(1, actions.long())
                                              for logu in self.online_logus], dim=0)
                 # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
@@ -354,7 +356,7 @@ class LogULearner:
                        'eval/avg_reward': self.avg_eval_rwd})
         self.logger.dump(step=env_steps)
 
-    def evaluate(self, n_episodes=5):
+    def evaluate(self, n_episodes=1):
         # run the current policy and return the average reward
         initial_time = time.process_time_ns()
         avg_reward = 0.
@@ -402,28 +404,29 @@ class LogULearner:
         return avg_reward
 
 
-def main(env_id=None,
-         total_timesteps=None,
-         n_envs=None,
-         log_dir=None,
-         scheduler_str=None,
-         aggregator=None,
-         beta_schedule=None,
-         final_beta_multiplyer=None,
-         device=None,
+def main(env_id,
+         total_timesteps,
+         n_envs,
+         log_dir,
+         scheduler_str,
+         aggregator,
+         beta_schedule,
+         final_beta_multiplier,
+         device,
          **kwargs):
     from disc_envs import get_environment
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
-    beta_end = final_beta_multiplyer * kwargs['beta']
+    beta_end = final_beta_multiplier * kwargs['beta']
+    # kwargs['beta'] = 0.01
     assert beta_end > kwargs['beta']
     agent = LogULearner(env_id, **kwargs, device=device, log_interval=2000,
                         log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
                         n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
-                        use_wandb=True
+                        use_wandb=False
                         )
     # hidden_dim=hidden_dim)
     # Measure the time it takes to learn:
@@ -441,11 +444,11 @@ if __name__ == '__main__':
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    env_id = 'ALE/Pong-v4'
+    # env_id = 'ALE/Boxing-v5'
     # env_id = 'ALE/AirRaid-v5'
-    # env_id = 'PongNoFrameskip-v4'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=10_000, log_dir='pend', aggregator='min',
-         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda', final_beta_multiplyer=10)
+    main(env_id, total_timesteps=10_000_000, log_dir='pend', beta_end=25, aggregator='max',
+         scheduler_str='none', n_envs=1, beta_schedule='none', device='cuda')
