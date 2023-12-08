@@ -406,11 +406,10 @@ def main(env_id=None,
          total_timesteps=None,
          n_envs=None,
          log_dir=None,
-         beta_end=None,
          scheduler_str=None,
          aggregator=None,
          beta_schedule=None,
-         final_beta_multiplier=None,
+         final_beta_multiplyer=None,
          device=None,
          **kwargs):
     from disc_envs import get_environment
@@ -418,7 +417,8 @@ def main(env_id=None,
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
-    beta_end = final_beta_multiplier * kwargs['beta']
+    beta_end = final_beta_multiplyer * kwargs['beta']
+    assert beta_end > kwargs['beta']
     agent = LogULearner(env_id, **kwargs, device=device, log_interval=2000,
                         log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
@@ -441,11 +441,11 @@ if __name__ == '__main__':
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    env_id = 'ALE/Pong-v5'
+    env_id = 'ALE/Pong-v4'
     # env_id = 'ALE/AirRaid-v5'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=1_000_000, log_dir='pend', beta_end=25, aggregator='min',
-         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda')
+    main(env_id, total_timesteps=10_000, log_dir='pend', aggregator='min',
+         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda', final_beta_multiplyer=10)

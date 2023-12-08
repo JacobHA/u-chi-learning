@@ -100,8 +100,12 @@ if __name__ == "__main__":
                     count=args.n_runs, function=wandb_train)
     elif args.local_wandb:
         for i in range(args.n_runs):
-            print(f"running local sweep {i}")
-            wandb_train(local_cfg=copy.deepcopy(sweepcfg))
+            try:
+                print(f"running local sweep {i}")
+                wandb_train(local_cfg=copy.deepcopy(sweepcfg))
+            except Exception as e:
+                print(f"failed to run local sweep {i}")
+                print(e)
     else:
         print(f"continuing sweep {args.sweep}")
         wandb.agent(args.sweep, project=args.proj,

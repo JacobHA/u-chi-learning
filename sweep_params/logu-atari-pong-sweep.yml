@@ -18,8 +18,6 @@ parameters:
     distribution: uniform
     max: 10
     min: 0.1
-  beta_schedule:
-    values: ['linear', 'none']
   final_beta_multiplier:
     distribution: uniform
     max: 10
