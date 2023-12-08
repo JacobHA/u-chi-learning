@@ -429,6 +429,8 @@ def main(env_id=None,
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=total_timesteps, beta_schedule=beta_schedule)
+    # log the final auc:
+    wandb.log({'eval/auc': agent.eval_auc})
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1 - t0) / 1e9} seconds")
 
