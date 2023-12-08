@@ -4,7 +4,7 @@ cartpole_hparams0 = {
     'buffer_size': 150000,
     'gradient_steps': 20,
     'learning_rate': 5.5e-3,
-    'target_update_interval': 70,
+    'target_update_interval': 5000,
     'tau': 0.85,
     'tau_theta': 0.85,
     'hidden_dim': 64,
@@ -191,7 +191,7 @@ pong_logu = {
     'beta': 0.8,
     'batch_size': 64,
     'buffer_size': 200_000,
-    'gradient_steps': 1,
+    'gradient_steps': 4,
     'learning_rate': 2.5e-4,
     'target_update_interval': 10_000,
     'tau': 1.0,
@@ -199,6 +199,7 @@ pong_logu = {
     'train_freq': 4,
     'learning_starts': 50_000,
     'theta_update_interval': 1000,
+    'hidden_dim': 512
 }
 
 

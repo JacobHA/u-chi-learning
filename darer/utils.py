@@ -7,6 +7,7 @@ import time
 
 import torch
 import sys
+sys.path.append("../tabular")
 sys.path.append("tabular")
 from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 from wrappers import FrameStack
