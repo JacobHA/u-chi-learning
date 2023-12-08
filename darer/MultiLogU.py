@@ -421,8 +421,8 @@ def main(env_id,
         from hparams import pong_logu as kwargs
     beta_end = final_beta_multiplyer * kwargs['beta']
     assert beta_end > kwargs['beta']
-    agent = LogULearner(env_id, **kwargs, device=device, log_interval=3000,
-                        log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
+    agent = LogULearner(env_id, **kwargs, device=device, log_interval=4000,
+                        log_dir=log_dir, num_nets=2, render=1, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
                         n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
                         use_wandb=False
