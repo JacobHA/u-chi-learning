@@ -19,7 +19,7 @@ def is_image_space_simple(observation_space, is_vector_env=False):
     if is_vector_env:
         return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 4
     return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3
-
+NORMALIZE_IMG = False
 
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
@@ -33,7 +33,6 @@ class LogUNet(nn.Module):
         else:
             self.observation_space = self.env.observation_space
             self.action_space = self.env.action_space
-            from stable_baselines3.common.preprocessing import is_image_space# preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
             # a hack to make atari wrapped envs work:
         self.nA = self.action_space.n
         # do the check on an env before wrapping it
@@ -65,7 +64,7 @@ class LogUNet(nn.Module):
                 rand_inp = self.observation_space.sample()
                 x = torch.tensor(rand_inp, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
                 x = x.detach()
-                x = preprocess_obs(x, self.observation_space)
+                x = preprocess_obs(x, self.observation_space, normalize_images=NORMALIZE_IMG)
                 x = x.permute([2,0,1]).unsqueeze(0)
                 flat_size = model(x).shape[1]
                 print(f"Using a CNN with {flat_size}-dim. outputs.")
@@ -105,7 +104,7 @@ class LogUNet(nn.Module):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
         
         # x = x.detach()
-        x = preprocess_obs(x, self.env.observation_space)
+        x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
         assert x.dtype == torch.float32, "Input must be a float tensor."
 
         # Reshape the image:
@@ -349,7 +348,7 @@ class LogUsa(nn.Module):
     def forward(self, obs, action):
         obs = torch.Tensor(obs).to(self.device)
         action = torch.Tensor(action).to(self.device)
-        obs = preprocess_obs(obs, self.env.observation_space)
+        obs = preprocess_obs(obs, self.env.observation_space, normalize_images=NORMALIZE_IMG)
         x = torch.cat([obs, action], dim=-1)
         x = self.fc1(x)
         x = self.relu(x)
@@ -399,7 +398,7 @@ class GaussianPolicy(nn.Module):
 
     def forward(self, obs):
         obs = torch.Tensor(obs).to(self.device)
-        obs = preprocess_obs(obs, self.observation_space)
+        obs = preprocess_obs(obs, self.observation_space, normalize_images=NORMALIZE_IMG)
         x = F.relu(self.linear1(obs))
         x = F.relu(self.linear2(x))
         mean = self.mean_linear(x)

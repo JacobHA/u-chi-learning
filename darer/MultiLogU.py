@@ -1,8 +1,14 @@
 from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
-import copy
-import threading
+import matplotlib.pyplot as plt
 
+def show_frames(frames):
+    # Assuming frames is a numpy array of shape (w, h, 4)
+    for i in range(frames.shape[2]):
+        plt.subplot(2, 2, i+1)
+        plt.imshow(frames[:,:,i])
+        plt.axis('off')
+    plt.show()
 import gymnasium as gym
 import numpy as np
 import torch
@@ -420,10 +426,15 @@ def main(env_id,
         print("Using default hparams")
         from hparams import pong_logu as kwargs
     beta_end = final_beta_multiplier * kwargs['beta']
-    # kwargs['beta'] = 0.01
     assert beta_end > kwargs['beta']
-    agent = LogULearner(env_id, **kwargs, device=device, log_interval=2000,
-                        log_dir=log_dir, num_nets=2, render=0, aggregator=aggregator,
+    # I'm not sure why, but there's an extra beta_end coming in from somewhere,
+    # so I'm just popping it out of kwargs to be safe
+    try:
+        kwargs.pop('beta_end')
+    except KeyError:
+        pass
+    agent = LogULearner(env_id, **kwargs, device=device, log_interval=5000,
+                        log_dir=log_dir, num_nets=2, render=1, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
                         n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
                         use_wandb=False
@@ -449,6 +460,7 @@ if __name__ == '__main__':
     # env_id = 'ALE/Boxing-v5'
     # env_id = 'ALE/AirRaid-v5'
     env_id = 'PongNoFrameskip-v4'
+    # env_id = 'ALE/Pong-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
