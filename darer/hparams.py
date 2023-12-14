@@ -189,17 +189,17 @@ lunar_logu2 = {
 
 pong_logu = {
     'beta': 0.8,
-    'batch_size': 64,
-    'buffer_size': 200_000,
-    'gradient_steps': 4,
-    'learning_rate': 2.5e-4,
-    'target_update_interval': 10_000,
-    'tau': 1.0,
+    'batch_size': 32,
+    'buffer_size': 10_000,
+    'gradient_steps': 1,
+    'learning_rate': 1e-4,
+    'target_update_interval': 1_000,
+    'tau': 1,
     'tau_theta': 0.99,
     'train_freq': 4,
-    'learning_starts': 50_000,
+    'learning_starts': 10_000,
     'theta_update_interval': 1000,
-    'hidden_dim': 512
+    'hidden_dim': 256
 }
 
 
