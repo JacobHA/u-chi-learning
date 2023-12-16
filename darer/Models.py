@@ -179,6 +179,11 @@ class Optimizers():
 class TargetNets():
     def __init__(self, list_of_nets):
         self.nets = list_of_nets
+        self.alpha = nn.Parameter(torch.ones(len(self.nets)))#, device=self.device))
+        # self.register_parameter('alpha', self.alpha)
+        # self.to(device)
+
+
     def __len__(self):
         return len(self.nets)
     def __iter__(self):
@@ -221,6 +226,12 @@ class TargetNets():
                 for new_param, target_param in zip_strict(new_params, target_params):
                     target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
 
+    def learnable_parameters(self):
+        """
+        Get the learnable parameters (alpha)"""
+
+        return [self.alpha]
+
     def parameters(self):
         """
         Get the parameters of all target networks.
@@ -229,23 +240,67 @@ class TargetNets():
             list: A list of network parameters for each target network.
         """
         return [net.parameters() for net in self.nets]
+    
+    def forward(self, obs):
+        x = torch.stack([net(obs) for net in self.nets], dim=-1)
+        # sort x for consistency:
+        x, _ = torch.sort(x, dim=-1)
+        # call on the alpha params, with requires_grad=True:
+        alpha = self.alpha
+        # make the weights convex:
+        weights = torch.softmax(alpha, dim=-1)
+        # dot product with weights:
+        x = torch.matmul(x, weights)
 
+        return x
 
-class OnlineNets():
+class AggNet(nn.Module):
+    def __init__(self, num_nets, hidden_dim=256, device='cuda'):
+        super(AggNet, self).__init__()
+        self.num_nets = num_nets
+        self.hidden_dim = hidden_dim
+        self.device = device
+        # use alpha to get a convex weight between max and min:
+        self.alpha = nn.Parameter(torch.ones(self.num_nets, device=self.device))
+        # add alpha to parameter list:
+        self.register_parameter('alpha', self.alpha)
+        # Make alpha trainable:
+        self.alpha.requires_grad = True
+        self.to(device)
+
+    def forward(self, x):
+        # sort x for consistency:
+        x, _ = torch.sort(x, dim=-1)
+        # call on the alpha params, with requires_grad=True:
+        alpha = self.alpha
+        # make the weights convex:
+        weights = torch.softmax(alpha, dim=-1)
+        # dot product with weights:
+        x = torch.matmul(x, weights)
+
+        return x
+    
+    # def forward(self, x):
+    #     # sort the inputs from min to max along the last dimension:
+    #     x, _ = torch.sort(x, dim=-1)
+        
+    #     # make the weights convex:
+    #     self.alpha.data = torch.softmax(self.alpha, dim=-1)
+    #     # Dot the sorted inputs with the weights:
+    #     x = torch.matmul(x, self.alpha)
+             
+        # return x
+
+class OnlineNets(nn.Module):
     """
     A utility class for managing online networks in reinforcement learning.
 
     Args:
         list_of_nets (list): A list of online networks.
     """
-    def __init__(self, list_of_nets, aggregator='min'):
+    def __init__(self, list_of_nets):
         self.nets = list_of_nets
-        if aggregator == 'min':
-            self.aggregator = torch.min
-        elif aggregator == 'mean':
-            self.aggregator = torch.mean
-        elif aggregator == 'max':
-            self.aggregator = torch.max
+        super().__init__()
 
     def __len__(self):
         return len(self.nets)
@@ -255,12 +310,6 @@ class OnlineNets():
     
     def greedy_action(self, state):
         with torch.no_grad():
-            # logu = torch.stack([net(state) for net in self.nets], dim=-1)
-            # logu = logu.squeeze(1)
-            # logu = self.aggregator(logu, dim=-1)[0]
-            
-            # greedy_action = logu.argmax()
-            # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
             greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
             greedy_action = np.random.choice(greedy_actions)
         return greedy_action
@@ -268,8 +317,10 @@ class OnlineNets():
 
     def choose_action(self, state):
         # Get a sample from each net, then sample uniformly over them:
-        actions = [net.choose_action(state) for net in self.nets]
-        action = np.random.choice(actions)
+        with torch.no_grad():
+
+            actions = [net.choose_action(state) for net in self.nets]
+            action = np.random.choice(actions)
         # perhaps re-weight this based on pessimism?
         return action
         # with torch.no_grad():

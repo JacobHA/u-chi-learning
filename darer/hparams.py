@@ -143,7 +143,7 @@ pong_logu = {
 }
 
 acrobot_logu = {
-    'beta': 0.35,
+    'beta': 0.5,
     'batch_size': 1200,
     'buffer_size': 10_000,
     'gradient_steps': 1,

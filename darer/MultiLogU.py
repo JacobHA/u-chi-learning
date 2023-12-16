@@ -8,7 +8,7 @@ import wandb
 import sys
 sys.path.append("tabular")
 sys.path.append("darer")
-from Models import LogUNet, OnlineNets, Optimizers, TargetNets
+from Models import AggNet, LogUNet, OnlineNets, Optimizers, TargetNets
 from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 
 torch.backends.cudnn.benchmark = True
@@ -105,7 +105,6 @@ class LogULearner:
         self.learning_starts = learning_starts
         self.use_wandb = use_wandb
         self.aggregator = aggregator
-        self.aggregator_fn = str_to_aggregator[aggregator]
         self.avg_eval_rwd = None
         self.fps = None
         self.beta_end = beta_end
@@ -138,15 +137,18 @@ class LogULearner:
 
     def _initialize_networks(self):
         self.online_logus = OnlineNets([LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
-                                                     for _ in range(self.num_nets)],
-                                                     aggregator=self.aggregator)
+                                                     for _ in range(self.num_nets)])
         
         self.target_logus = TargetNets([LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
                                                      for _ in range(self.num_nets)])
         self.target_logus.load_state_dicts([logu.state_dict() for logu in self.online_logus])
+        self.aggregator_net = AggNet(self.num_nets, self.hidden_dim, self.device)
         # Make (all) LogUs learnable:
         opts = [torch.optim.Adam(logu.parameters(), lr=self.learning_rate)
                 for logu in self.online_logus]
+        # add the alpha param from targetnets:
+        opts += [torch.optim.Adam(self.target_logus.learnable_parameters(), lr=self.learning_rate)]
+        # opts.append(torch.optim.Adam(self.aggregator_net.parameters(), lr=self.learning_rate/10))
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def train(self):
@@ -159,7 +161,19 @@ class LogULearner:
             # Calculate the current logu values (feedforward):
             curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
                                    for online_logu in self.online_logus], dim=1)
+            # target_next_logus = [target_logu(next_states)
+                                    # for target_logu in self.target_logus]
+            target_next_logus = self.target_logus.forward(next_states)
             
+            # logsumexp over actions:
+            # target_next_logus = torch.stack(target_next_logus, dim=1)
+
+            next_logu = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+            # next_logu = self.aggregator_net.forward(next_logus)
+
+            next_logu = next_logu.reshape(-1, 1)
+            assert next_logu.shape == dones.shape
+            next_logu = next_logu * (1-dones) # + self.theta * dones
             with torch.no_grad():
                 online_logu_next = torch.stack([logu(next_states)
                                     for logu in self.online_logus], dim=0)
@@ -172,18 +186,6 @@ class LogULearner:
                 online_curr_logu = online_curr_logu.squeeze(-1)
                 
                 new_thetas[grad_step, :] = -torch.mean(rewards.squeeze(-1) + (online_log_chi - online_curr_logu) / self.beta, dim=1)
-
-                target_next_logus = [target_logu(next_states)
-                                        for target_logu in self.target_logus]
-                
-                # logsumexp over actions:
-                target_next_logus = torch.stack(target_next_logus, dim=1)
-                next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                next_logu, _ = self.aggregator_fn(next_logus, dim=1)
- 
-                next_logu = next_logu.reshape(-1, 1)
-                assert next_logu.shape == dones.shape
-                next_logu = next_logu * (1-dones) # + self.theta * dones
 
                 # "Backup" eigenvector equation:
                 expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
@@ -206,7 +208,7 @@ class LogULearner:
         # Log both theta values:
         for idx, new_theta in enumerate(new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
-        new_theta = self.aggregator_fn(new_thetas.mean(dim=0), dim=0)[0]
+        new_theta = self.aggregator_net(new_thetas.mean(dim=0))
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
@@ -367,7 +369,7 @@ def main():
     # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
+    env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
     # env_id = 'FrozenLake-v1'
@@ -375,9 +377,9 @@ def main():
     # env_id = 'Drug-v0'
 
     from hparams import acrobot_logu as config
-    agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
+    agent = LogULearner(env_id, **config, device='cpu', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0, aggregator='max',
-                        scheduler_str='none', algo_name='std', beta_end=2.4)
+                        scheduler_str='none', algo_name='std', beta_end=0.5)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=50_000, beta_schedule='linear')
