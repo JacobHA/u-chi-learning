@@ -179,7 +179,7 @@ class Optimizers():
 class TargetNets():
     def __init__(self, list_of_nets):
         self.nets = list_of_nets
-        self.alpha = nn.Parameter(torch.ones(len(self.nets)))#, device=self.device))
+        # self.alpha = nn.Parameter(torch.ones(len(self.nets)))#, device=self.device))
         # self.register_parameter('alpha', self.alpha)
         # self.to(device)
 
@@ -226,11 +226,11 @@ class TargetNets():
                 for new_param, target_param in zip_strict(new_params, target_params):
                     target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
 
-    def learnable_parameters(self):
-        """
-        Get the learnable parameters (alpha)"""
+    # def learnable_parameters(self):
+    #     """
+    #     Get the learnable parameters (alpha)"""
 
-        return [self.alpha]
+    #     return [self.alpha]
 
     def parameters(self):
         """
@@ -241,18 +241,18 @@ class TargetNets():
         """
         return [net.parameters() for net in self.nets]
     
-    def forward(self, obs):
-        x = torch.stack([net(obs) for net in self.nets], dim=-1)
-        # sort x for consistency:
-        x, _ = torch.sort(x, dim=-1)
-        # call on the alpha params, with requires_grad=True:
-        alpha = self.alpha
-        # make the weights convex:
-        weights = torch.softmax(alpha, dim=-1)
-        # dot product with weights:
-        x = torch.matmul(x, weights)
+    # def forward(self, obs):
+    #     x = torch.stack([net(obs) for net in self.nets], dim=-1)
+    #     # sort x for consistency:
+    #     x, _ = torch.sort(x, dim=-1)
+    #     # call on the alpha params, with requires_grad=True:
+    #     alpha = self.alpha
+    #     # make the weights convex:
+    #     weights = torch.softmax(alpha, dim=-1)
+    #     # dot product with weights:
+    #     x = torch.matmul(x, weights)
 
-        return x
+    #     return x
 
 class AggNet(nn.Module):
     def __init__(self, num_nets, hidden_dim=256, device='cuda'):

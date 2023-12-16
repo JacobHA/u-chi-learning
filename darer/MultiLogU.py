@@ -147,8 +147,8 @@ class LogULearner:
         opts = [torch.optim.Adam(logu.parameters(), lr=self.learning_rate)
                 for logu in self.online_logus]
         # add the alpha param from targetnets:
-        opts += [torch.optim.Adam(self.target_logus.learnable_parameters(), lr=self.learning_rate)]
-        # opts.append(torch.optim.Adam(self.aggregator_net.parameters(), lr=self.learning_rate/10))
+        # opts += [torch.optim.Adam(self.target_logus.learnable_parameters(), lr=self.learning_rate)]
+        opts.append(torch.optim.Adam(self.aggregator_net.parameters(), lr=self.learning_rate/10))
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def train(self):
@@ -161,15 +161,15 @@ class LogULearner:
             # Calculate the current logu values (feedforward):
             curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
                                    for online_logu in self.online_logus], dim=1)
-            # target_next_logus = [target_logu(next_states)
-                                    # for target_logu in self.target_logus]
-            target_next_logus = self.target_logus.forward(next_states)
+            target_next_logus = [target_logu(next_states)
+                                    for target_logu in self.target_logus]
+            # target_next_logus = self.target_logus.forward(next_states)
             
             # logsumexp over actions:
-            # target_next_logus = torch.stack(target_next_logus, dim=1)
+            target_next_logus = torch.stack(target_next_logus, dim=1)
 
-            next_logu = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-            # next_logu = self.aggregator_net.forward(next_logus)
+            next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+            next_logu = self.aggregator_net.forward(next_logus)
 
             next_logu = next_logu.reshape(-1, 1)
             assert next_logu.shape == dones.shape
