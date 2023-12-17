@@ -183,7 +183,7 @@ class LogULearner:
                 target_next_logus = torch.stack(target_next_logus, dim=1)
 
                 next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-            next_logu = self.aggregator_net(next_logus)
+            next_logu = self.aggregator_net.forward(next_logus)
 
             with torch.no_grad():
 
@@ -197,7 +197,7 @@ class LogULearner:
 
             # Calculate the logu ("critic") loss:
             # loss = 0.5*sum(self.loss_fn(logu, expected_curr_logu) for logu in curr_logu.T)
-            loss = 0.5*(self.loss_fn(self.aggregator_net(curr_logu), expected_curr_logu))
+            loss = 0.5*(self.loss_fn(self.aggregator_net.forward(curr_logu), expected_curr_logu))
 
             self.logger.record("train/loss", loss.item())
             self.optimizers.zero_grad()

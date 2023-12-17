@@ -261,37 +261,35 @@ class AggNet(nn.Module):
         self.hidden_dim = hidden_dim
         self.device = device
         # use alpha to get a convex weight between max and min:
-        self.alpha = nn.Parameter(torch.rand(self.num_nets, device=self.device))
+        # self.alpha = nn.Parameter(torch.rand(self.num_nets, device=self.device))
+        self.model = nn.Sequential(
+            # nn.Linear(1, self.num_nets),
+            # nn.Softmax(dim=-1)
+            nn.Linear(self.num_nets, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, 1),
+        )
         # add alpha to parameter list:
-        self.register_parameter('alpha', self.alpha)
+        # self.register_parameter('alpha', self.alpha)
         # Make alpha trainable:
-        self.alpha.requires_grad = True
+        # self.alpha.requires_grad = True
         self.to(device)
 
     def forward(self, x):
         # sort x for consistency:
-        x, _ = torch.sort(x, dim=-1)
-        # call on the alpha params, with requires_grad=True:
-        alpha = self.alpha
-        # make the weights convex:
-        # weights = torch.FloatTensor([0,1])
-        beta = -10
-        weights = torch.softmax(beta*alpha, dim=-1)
-        # dot product with weights:
-        x = torch.matmul(x, weights)
+        # x, _ = torch.sort(x, dim=-1)
+        # # if obs is None:
+        # #     obs = torch.zeros(6, device=self.device)
+        
+        # alpha = self.model(torch.mean(x, dim=-1, keepdim=True))
+        # x = torch.mul(x, alpha).sum(dim=-1)
 
+        x = self.model(x).squeeze(-1)
         return x
     
-    # def forward(self, x):
-    #     # sort the inputs from min to max along the last dimension:
-    #     x, _ = torch.sort(x, dim=-1)
-        
-    #     # make the weights convex:
-    #     self.alpha.data = torch.softmax(self.alpha, dim=-1)
-    #     # Dot the sorted inputs with the weights:
-    #     x = torch.matmul(x, self.alpha)
-             
-        # return x
+
 
 class OnlineNets(nn.Module):
     """
