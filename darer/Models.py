@@ -261,7 +261,7 @@ class AggNet(nn.Module):
         self.hidden_dim = hidden_dim
         self.device = device
         # use alpha to get a convex weight between max and min:
-        self.alpha = nn.Parameter(torch.ones(self.num_nets, device=self.device))
+        self.alpha = nn.Parameter(torch.rand(self.num_nets, device=self.device))
         # add alpha to parameter list:
         self.register_parameter('alpha', self.alpha)
         # Make alpha trainable:
@@ -274,7 +274,9 @@ class AggNet(nn.Module):
         # call on the alpha params, with requires_grad=True:
         alpha = self.alpha
         # make the weights convex:
-        weights = torch.softmax(alpha, dim=-1)
+        # weights = torch.FloatTensor([0,1])
+        beta = -10
+        weights = torch.softmax(beta*alpha, dim=-1)
         # dot product with weights:
         x = torch.matmul(x, weights)
 

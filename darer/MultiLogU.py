@@ -148,7 +148,7 @@ class LogULearner:
                 for logu in self.online_logus]
         # add the alpha param from targetnets:
         # opts += [torch.optim.Adam(self.target_logus.learnable_parameters(), lr=self.learning_rate)]
-        opts.append(torch.optim.Adam(self.aggregator_net.parameters(), lr=self.learning_rate/10))
+        opts.append(torch.optim.Adam(self.aggregator_net.parameters(), lr=self.learning_rate))
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def train(self):
@@ -161,19 +161,7 @@ class LogULearner:
             # Calculate the current logu values (feedforward):
             curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
                                    for online_logu in self.online_logus], dim=1)
-            target_next_logus = [target_logu(next_states)
-                                    for target_logu in self.target_logus]
-            # target_next_logus = self.target_logus.forward(next_states)
-            
-            # logsumexp over actions:
-            target_next_logus = torch.stack(target_next_logus, dim=1)
 
-            next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-            next_logu = self.aggregator_net.forward(next_logus)
-
-            next_logu = next_logu.reshape(-1, 1)
-            assert next_logu.shape == dones.shape
-            next_logu = next_logu * (1-dones) # + self.theta * dones
             with torch.no_grad():
                 online_logu_next = torch.stack([logu(next_states)
                                     for logu in self.online_logus], dim=0)
@@ -187,12 +175,29 @@ class LogULearner:
                 
                 new_thetas[grad_step, :] = -torch.mean(rewards.squeeze(-1) + (online_log_chi - online_curr_logu) / self.beta, dim=1)
 
+                target_next_logus = [target_logu(next_states)
+                                        for target_logu in self.target_logus]
+                # target_next_logus = self.target_logus.forward(next_states)
+                
+                # logsumexp over actions:
+                target_next_logus = torch.stack(target_next_logus, dim=1)
+
+                next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+            next_logu = self.aggregator_net(next_logus)
+
+            with torch.no_grad():
+
+                next_logu = next_logu.reshape(-1, 1)
+                assert next_logu.shape == dones.shape
+                next_logu = next_logu * (1-dones) # + self.theta * dones
+
                 # "Backup" eigenvector equation:
                 expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
                 expected_curr_logu = expected_curr_logu.squeeze(1)
 
             # Calculate the logu ("critic") loss:
-            loss = 0.5*sum(self.loss_fn(logu, expected_curr_logu) for logu in curr_logu.T)
+            # loss = 0.5*sum(self.loss_fn(logu, expected_curr_logu) for logu in curr_logu.T)
+            loss = 0.5*(self.loss_fn(self.aggregator_net(curr_logu), expected_curr_logu))
 
             self.logger.record("train/loss", loss.item())
             self.optimizers.zero_grad()
