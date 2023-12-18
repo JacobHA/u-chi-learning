@@ -421,6 +421,7 @@ def main(env_id,
          aggregator,
          beta_schedule,
          final_beta_multiplier,
+         render,
          device,
          **kwargs):
     from disc_envs import get_environment
@@ -471,4 +472,5 @@ if __name__ == '__main__':
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
     main(env_id, total_timesteps=10_000_000, log_dir='pend', aggregator='max',
-         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda', final_beta_multiplier=10)
+         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda', final_beta_multiplier=10,
+         render=False)
