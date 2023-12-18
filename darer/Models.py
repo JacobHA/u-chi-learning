@@ -318,6 +318,32 @@ class LogUsa(nn.Module):
         x = self.fc3(x)
         return x
 
+class Usa(nn.Module):
+    def __init__(self, env, hidden_dim=256, device='cuda'):
+        super(Usa, self).__init__()
+        self.env = env
+        self.device = device
+        self.nS = get_flattened_obs_dim(self.env.observation_space)
+        self.nA = get_action_dim(self.env.action_space)
+        self.fc1 = nn.Linear(self.nS + self.nA, hidden_dim, device=self.device)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim, device=self.device)
+        self.fc3 = nn.Linear(hidden_dim, 1, device=self.device)
+        self.relu = nn.ReLU()
+
+    def forward(self, obs, action):
+        obs = torch.Tensor(obs).to(self.device)
+        action = torch.Tensor(action).to(self.device)
+        obs = preprocess_obs(obs, self.env.observation_space)
+        x = torch.cat([obs, action], dim=-1)
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = self.relu(x)
+        x = self.fc3(x)
+        return nn.Softplus()(x)
+
+
+
 LOG_SIG_MAX = 5
 LOG_SIG_MIN = -30
 epsilon = 1e-6

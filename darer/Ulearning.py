@@ -76,7 +76,7 @@ class uLearner:
                  beta_end=None,             
                  ) -> None:
         
-        self.env, self.eval_env = rllib_env_id_to_envs(env_id, render)
+        self.env, self.eval_env = env_id_to_envs(env_id, render)
         self.env_str = self.env.unwrapped.spec.id if hasattr(self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
         self.beta = beta
         self.is_tabular = is_tabular(self.env)
@@ -189,7 +189,7 @@ class uLearner:
  
                 next_u = next_u.reshape(-1, 1)
                 assert next_u.shape == dones.shape
-                next_u = next_u * (1-dones) # + self.theta * dones
+                next_u = next_u * (1-dones) 
 
                 # "Backup" eigenvector equation:
                 # for numerical stability, first subtract a baseline:
@@ -332,8 +332,8 @@ class uLearner:
             state, _ = self.eval_env.reset()
             done = False
             while not done:
-                # action = self.online_us.greedy_action(state)
-                action = self.online_us.choose_action(state)
+                action = self.online_us.greedy_action(state)
+                # action = self.online_us.choose_action(state)
                 action_freqs[action] += 1
                 action = action.item()
                 # action = self.online_us.choose_action(state)
@@ -379,16 +379,16 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    env_id = 'Acrobot-v1'
+    # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    env_id = 'PongNoFrameskip-v4'
+    # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import pong_logu as config
-    agent = uLearner(env_id, **config, device='cuda', log_interval=10000,
-                        log_dir='pend', num_nets=2, render=0, aggregator='max',
+    from hparams import cartpole_hparams1 as config
+    agent = uLearner(env_id, **config, device='cpu', log_interval=1000,
+                        log_dir='pend', num_nets=1, render=0, aggregator='min',
                         scheduler_str='none', algo_name='u', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()

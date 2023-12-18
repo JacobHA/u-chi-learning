@@ -158,22 +158,22 @@ acrobot_logu = {
 }
 
 pendulum_logu = {
-    'aggregator': 'max',
-    'batch_size': 1500,#0,
+    'aggregator': 'min',
+    'batch_size': 64,#0,
     'beta': 0.4,
     # 'beta_scheduler': 'none',
     'buffer_size': 100_000,
     # 'final_beta_multiplier': 6,
-    'beta_end': 60*0.4,
-    'gradient_steps': 24,
+    'beta_end': 0.4,
+    'gradient_steps': 1,
     'hidden_dim': 256,
     'learning_rate': 1e-3,
     'learning_starts': 15_000,
     'target_update_interval': 325,
-    'tau': 0.03,
-    'tau_theta': 0.1,
+    'tau': 0.3,
+    'tau_theta': 0.96,
     'theta_update_interval': 500,
-    'train_freq': 17,
+    'train_freq': 1,
 }
 
 cheetah_hparams = {
