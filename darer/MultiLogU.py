@@ -1,4 +1,4 @@
-from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
+from utils import env_id_to_envs, rllib_env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 import matplotlib.pyplot as plt
 
@@ -6,7 +6,7 @@ def show_frames(frames):
     # Assuming frames is a numpy array of shape (w, h, 4)
     for i in range(frames.shape[2]):
         plt.subplot(2, 2, i+1)
-        plt.imshow(frames[:,:,i])
+        plt.imshow(frames[:,:,i], cmap='gray')
         plt.axis('off')
     plt.show()
 import gymnasium as gym
@@ -80,8 +80,10 @@ class LogULearner:
                  grayscale_obs=False,
                  framestack_k=None,
                  ) -> None:
-        self.env, self.eval_env = env_id_to_envs(
-            env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
+        # self.env, self.eval_env = env_id_to_envs(
+        #     env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
+        self.env, self.eval_env = rllib_env_id_to_envs(env_id, render=render)
+        
         self.n_envs = n_envs
         self.is_vector_env = n_envs > 1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
@@ -291,6 +293,7 @@ class LogULearner:
             next_state, reward, terminated, truncated, infos = self.env.step(
                 action)
             done = np.bitwise_or(terminated, truncated)
+            
             self.num_episodes += np.sum(done)
             self.rollout_reward += reward
 
@@ -373,8 +376,8 @@ class LogULearner:
             state, _ = self.eval_env.reset()
             done = np.zeros(self.n_envs, dtype=bool)
             while not all(done):
-                action = self.online_logus.greedy_action(state)
-                # action = self.online_logus.choose_action(state)
+                # action = self.online_logus.greedy_action(state)
+                action = self.online_logus.choose_action(state)
                 action_freqs[action] += 1
                 action = action.item() if not self.is_vector_env else action
                 # action = self.online_logus.choose_action(state)
@@ -422,11 +425,15 @@ def main(env_id,
          **kwargs):
     from disc_envs import get_environment
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
+
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
+    kwargs['beta'] = 0.1
+
     beta_end = final_beta_multiplier * kwargs['beta']
     assert beta_end > kwargs['beta']
+
     # I'm not sure why, but there's an extra beta_end coming in from somewhere,
     # so I'm just popping it out of kwargs to be safe
     try:
@@ -460,9 +467,10 @@ if __name__ == '__main__':
     # env_id = 'ALE/Boxing-v5'
     # env_id = 'ALE/AirRaid-v5'
     env_id = 'PongNoFrameskip-v4'
+    # env_id = 'BoxingNoFrameskip-v4'
     # env_id = 'ALE/Pong-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
     main(env_id, total_timesteps=10_000_000, log_dir='pend', aggregator='max',
-         scheduler_str='none', n_envs=1, beta_schedule='none', device='cuda', final_beta_multiplier=10)
+         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda', final_beta_multiplier=10)
