@@ -1,26 +1,29 @@
+import gymnasium as gym
+import sys
+import wandb
+from sb3buffertensors import ReplayBufferTensors
+from sb3buffers import ReplayBuffer
+import time
+from torch.nn import functional as F
+import torch
+import numpy as np
 from utils import env_id_to_envs, rllib_env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 import matplotlib.pyplot as plt
+
 
 def show_frames(frames):
     # Assuming frames is a numpy array of shape (w, h, 4)
     for i in range(frames.shape[2]):
         plt.subplot(2, 2, i+1)
-        plt.imshow(frames[:,:,i], cmap='gray')
+        plt.imshow(frames[:, :, i], cmap='gray')
         plt.axis('off')
     plt.show()
-import gymnasium as gym
-import numpy as np
-import torch
-from torch.nn import functional as F
-import time
+
+
 # temporarily fix the stable-baselines3 bug:
 # from stable_baselines3.common.buffers import ReplayBuffer
-from sb3buffers import ReplayBuffer
-from sb3buffertensors import ReplayBufferTensors
 # from stable_baselines3.common.envs import SubprocVecEnv
-import wandb
-import sys
 
 sys.path.append("tabular")
 sys.path.append("darer")
@@ -83,7 +86,7 @@ class LogULearner:
         # self.env, self.eval_env = env_id_to_envs(
         #     env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
         self.env, self.eval_env = rllib_env_id_to_envs(env_id, render=render)
-        
+
         self.n_envs = n_envs
         self.is_vector_env = n_envs > 1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
@@ -293,7 +296,6 @@ class LogULearner:
             next_state, reward, terminated, truncated, infos = self.env.step(
                 action)
             done = np.bitwise_or(terminated, truncated)
-            
             self.num_episodes += np.sum(done)
             self.rollout_reward += reward
 
@@ -430,7 +432,7 @@ def main(env_id,
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
-    kwargs['beta'] = 0.1
+    # kwargs['beta'] = 0.1
 
     beta_end = final_beta_multiplier * kwargs['beta']
     assert beta_end > kwargs['beta']
