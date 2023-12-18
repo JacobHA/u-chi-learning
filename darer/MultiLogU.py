@@ -442,7 +442,7 @@ def main(env_id,
     except KeyError:
         pass
     agent = LogULearner(env_id, **kwargs, device=device, log_interval=5000,
-                        log_dir=log_dir, num_nets=2, render=1, aggregator=aggregator,
+                        log_dir=log_dir, num_nets=2, render=render, aggregator=aggregator,
                         scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
                         n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
                         use_wandb=False
