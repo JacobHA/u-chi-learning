@@ -376,8 +376,8 @@ class LogULearner:
             state, _ = self.eval_env.reset()
             done = np.zeros(self.n_envs, dtype=bool)
             while not all(done):
-                # action = self.online_logus.greedy_action(state)
-                action = self.online_logus.choose_action(state)
+                action = self.online_logus.greedy_action(state)
+                # action = self.online_logus.choose_action(state)
                 action_freqs[action] += 1
                 action = action.item() if not self.is_vector_env else action
                 # action = self.online_logus.choose_action(state)
