@@ -43,6 +43,16 @@ def logger_at_folder(log_dir=None, algo_name=None):
 
     return logger
 
+from ray.rllib.env.wrappers.atari_wrappers import wrap_deepmind
+def rllib_env_id_to_envs(env_id, render=False):
+    env = gym.make(env_id)
+    env = wrap_deepmind(env, framestack=True, noframeskip=False)
+
+    eval_env = gym.make(env_id, render_mode='human' if render else None)
+    eval_env = wrap_deepmind(eval_env, framestack=True, noframeskip=False)
+    return env, eval_env
+
+
 def env_id_to_envs(env_id, render):
     if isinstance(env_id, str):
         env = gym.make(env_id)

@@ -8,8 +8,8 @@ from visualization import plot_dist
 from uchi_agent_MB import logu_solver
 from multiprocessing import Pool
 import seaborn as sns
-sns.set_style('dark')
-sns.set_context('paper', font_scale=1.5, rc={'lines.linewidth': 2.5})
+# sns.set_style('dark')
+sns.set_context('paper', font_scale=2., rc={'lines.linewidth': 3.5})
 import matplotlib
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['font.family'] = 'serif'
@@ -23,7 +23,7 @@ def env_setup(map_name='hallway1', n_action=5):
     desc = np.array(MAPS[map_name], dtype='c')
     env_src = ModifiedFrozenLake(
         n_action=n_action, max_reward=0, min_reward=-1,
-        step_penalization=1, desc=desc, never_done=False, cyclic_mode=False,
+        step_penalization=1, desc=desc, never_done=False, cyclic_mode=True,
         goal_attractor=0.,
         # between 0. and 1., a probability of staying at goal state
         # an integer. 0: deterministic dynamics. 1: stochastic dynamics.
@@ -50,7 +50,7 @@ def calculate_timescale(env_src, beta=BETA):
     print('timescale:', beta_timescale)
     return beta_timescale
 
-def run(env_src, gamma, plot_gamma, beta=BETA, max_steps=1000,):
+def run(env_src, gamma, plot_gamma, beta=BETA, max_steps=2000,):
     env = TimeLimit(env_src, max_episode_steps=max_steps)
     n_action = env.action_space.n
     # solve the ent-reg objective with discounting:
@@ -62,12 +62,13 @@ def run(env_src, gamma, plot_gamma, beta=BETA, max_steps=1000,):
     pi = np.exp(beta*q)
     pi /= pi.sum(axis=-1, keepdims=True)
     # run the optimal policy and compute the average reward:
-    n_episode = 500
+    n_episode = 1000
     r_list = []
     # gather statistics on the states visited:
     s_visits = np.zeros(env.observation_space.n)
     for _ in range(n_episode):
         s, _ = env.reset()
+        s_init = s
         done = False
         r = 0
         while not done:
@@ -79,6 +80,8 @@ def run(env_src, gamma, plot_gamma, beta=BETA, max_steps=1000,):
             done = terminated or truncated
         r_list.append(r)
     r_avg = np.mean(r_list)
+    # remove the starting state:
+    s_visits[s_init] -= n_episode
     print(f'gamma={gamma:.3f}, r_avg={r_avg:.3f}, r_std={np.std(r_list):.3f}, solve_time={solve_time}')
     print(s_visits)
     if plot_gamma:
@@ -86,13 +89,14 @@ def run(env_src, gamma, plot_gamma, beta=BETA, max_steps=1000,):
     r_std = np.std(r_list)
     return r_avg, r_std, solve_time
 
-def plot(horizons, returns, timescale, speeds=None, return_stds=None, logu_rwd=None, logu_std=None):
+def plot(horizons, returns, timescale, gs, speeds=None, return_stds=None, logu_rwd=None, logu_std=None):
     gammas = 1 - 1 / horizons
-    returns = np.array(returns)
+    returns = -np.array(returns)
+    logu_rwd = -logu_rwd
     return_stds = np.array(return_stds)
-    plt.figure()
+    plt.figure(figsize=(10,6))
     # plt.xscale('log')
-    plt.plot(gammas, returns, 'k', lw=1.5, label='Exact Soft-Q')
+    plt.plot(gammas, returns, 'k', label='SQL')
     plt.fill_between(gammas, returns - return_stds, returns + return_stds, color='k', alpha=0.35)
     # do a linear smoothing:
     # returns = np.array(returns)
@@ -112,18 +116,21 @@ def plot(horizons, returns, timescale, speeds=None, return_stds=None, logu_rwd=N
     max_gamma = gammas.max()
     all_x = np.linspace(min_gamma, max_gamma, 10)
     plt.fill_between(all_x, logu_rwd - logu_std, logu_rwd + logu_std, color='blue', alpha=0.3)  
-    plt.axhline(logu_rwd, xmin=0.01, xmax=0.99, linestyle='-.', color='b', label='Exact logu')
+    plt.axhline(logu_rwd, xmin=0.01, xmax=0.99, linestyle='-.', color='b', label='LogU')
 
     # plot a vertical line at timescale
     mixing_gamma = 1 - 1 / timescale
-    plt.axvline(mixing_gamma, linestyle='--', color='r', label='Mixing Time', lw=2)
+    plt.axvline(mixing_gamma, linestyle='--', color='r')#, label='Spectral Gap', lw=2)
+    # Add a text label:
+    plt.text(mixing_gamma*1.002, 38, r'Spectral Gap', color='r')#, fontsize=20)
     # plt.xlabel(r'Discounting Timescale, $\left(1-\gamma\right)^{-1}$')
     plt.xlabel(r'Discount Factor, $\gamma$')
-    plt.ylabel('Reward Accumulated \nby Optimal Policy')
+    # plt.ylabel('Reward Accumulated \nby Optimal Policy')
+
+    plt.ylabel('Average Steps to Goal')
     # make the y-axis label, ticks and tick labels match the line color.
-    plt.title('Optimal Reward vs. Discount Factors')
-    plt.legend()#loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
-    plt.xlim(min_gamma*1.03,0.98)
+    plt.title('Discounted vs. Average-Reward Objective\n', fontsize=24)
+    plt.xlim(min_gamma*1.03,0.97)
     # Use horizon scaling:
     if True:
         plt.xscale('function', functions=(forward, inverse))
@@ -135,8 +142,45 @@ def plot(horizons, returns, timescale, speeds=None, return_stds=None, logu_rwd=N
         # transform back to gammas:
         plt.xticks(inverse(ticks), [f'{1-1/t:.2f}' for t in ticks])
 
+    plt.ylim(6,40)
+    # # make a legend manually:
+    # legend_elements = [
+    #     matplotlib.lines.Line2D([0], [0], color='k', lw=1.5, label='Exact Soft-Q'),
+    #     matplotlib.lines.Line2D([0], [0], color='b', lw=1.5, label='Exact LogU'),
+    #     matplotlib.lines.Line2D([0], [0], color='r', lw=2, linestyle='--', label='Spectral Gap'),
+    # ]
+    # plt.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.15, -0.15), fancybox=True, shadow=True, ncol=3)
+    
+    # Put legend on right side of fig, 1col:
+    # plt.legend(loc='upper center', fancybox=True, shadow=True, ncol=3)
+    plt.legend(loc='upper right', fancybox=True, shadow=True, ncol=1)
+    g1,g2=gs
+
+    # add arrows:
+    # point an arrow from bottom of fig to the nearest rewards of g1:
+    end_points = [(g1, np.interp(g1, gammas, returns)), (g2, np.interp(g2, gammas, returns))]
+    init_points = [(0.93, 25), (0.955, 25)]
+    for init_point, end_point in zip(init_points, end_points):
+        plt.annotate("", xy=end_point, xytext=init_point,
+                     arrowprops=dict(arrowstyle="->", color='k', lw=2))
+
+
+    
+
+    # Add inset plots of map_name/gamma_{g1,g2}.png:
+    # put g1 on the left of spectral gap:
+    size=0.32
+    axins1 = plt.axes([0.17, 0.45, size, size])
+    axins1.imshow(plt.imread(f'{map_name}/gamma_{g1}.png'))
+    axins1.axis('off')
+
+    axins2 = plt.axes([0.485, 0.45, size, size])
+    axins2.imshow(plt.imread(f'{map_name}/gamma_{g2}.png'))
+    axins2.axis('off')
+    
+
     plt.tight_layout()
-    plt.savefig(f'{map_name}/time_v_reward.png', dpi=300)
+    plt.savefig(f'{map_name}/time_v_reward.png', dpi=400)
     plt.close()
 
 # Function for gamma transform
@@ -206,20 +250,24 @@ def plot_policies(map_name, gammas, max_steps=1000, beta=BETA):
         # translate horizons to gammas:
         # find the index of the gamma we want:
         print(s_dist)
-        plot_dist(desc, s_dist, main_title=f'gamma={gamma}', filename=f'{map_name}/gamma_{gamma}.png')
+        plot_dist(desc, s_dist, filename=f'{map_name}/gamma_{gamma}.png', dpi=400, symbol_size=500)
 
-def plot_from_data(map_name):
+def plot_from_data(map_name, gs):
     data = np.load(f'{map_name}/data.npy')
     horizons, returns, speeds, return_stds, timescale_tiled = data
     timescale = timescale_tiled[0]
     env_src = env_setup(map_name=map_name)
     logu_rwd, logu_std = logu_solver(env_src, beta=BETA)
     plot(horizons, returns, timescale, speeds=speeds, return_stds=return_stds, 
-         logu_rwd=logu_rwd, logu_std=logu_std)
+         logu_rwd=logu_rwd, logu_std=logu_std, gs=gs)
 
 if __name__ == '__main__':
-    map_name = 'hallway2'
-    # map_name='7x7wall'
-    main(map_name=map_name)
-    plot_policies(map_name=map_name, gammas=None)
-    # plot_from_data(map_name)
+    # map_name = 'hallway2'
+    map_name='7x7wall'
+    # main(map_name=map_name)
+    gs = [0.87, 0.96]
+    for g in gs:
+        run(env_setup(map_name=map_name), gamma=g, plot_gamma=True)
+
+    plot_policies(map_name=map_name, gammas=gs)
+    plot_from_data(map_name, gs=gs)

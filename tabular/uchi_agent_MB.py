@@ -10,7 +10,7 @@ from gymnasium.wrappers import TimeLimit
 from tabular_utils import chi, get_dynamics_and_rewards, printf, solve_unconstrained, solve_unconstrained_v1, get_mdp_transition_matrix
 from visualization import plot_dist, save_err_plot, save_policy_plot, save_thetas, save_u_plot
 
-def logu_solver(env_src=None, map_name=None, beta=10):
+def logu_solver(env_src=None, map_name=None, beta=15):
     # Assuming deterministic dynamics only for now:
     # beta = 10
     max_steps = 1000
@@ -21,7 +21,7 @@ def logu_solver(env_src=None, map_name=None, beta=10):
             n_action = 5
             desc = np.array(MAPS[map_name], dtype='c')
             env_src = ModifiedFrozenLake(
-                n_action=n_action, max_reward=-0, min_reward=-1,
+                n_action=n_action, max_reward=0, min_reward=-1,
                 step_penalization=1, desc=desc, never_done=False, cyclic_mode=False,
                 # between 0. and 1., a probability of staying at goal state
                 # an integer. 0: deterministic dynamics. 1: stochastic dynamics.
@@ -148,6 +148,8 @@ def logu_solver(env_src=None, map_name=None, beta=10):
     r_std = np.std(r_list)
     print('Average reward:', r_avg)
     print('Standard deviation:', r_std)
+    # Plot the optimal policy:
+    plot_dist(desc, optimal_policy, filename='tabular/tabular_expt/MB.png')#, name='MB')
 
     return r_avg, r_std
 

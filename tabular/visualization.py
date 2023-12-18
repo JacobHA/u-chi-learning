@@ -40,7 +40,7 @@ def make_animation(desc, sequence, filename, fps=5, **kvargs):
         os.remove(ith_filepath)
 
 
-def plot_dist(desc, *paths_list, ncols=4, filename=None, titles=None, main_title=None, figsize=None, show_values=False, show_plot=True, symbols_in_color=True, symbol_size=180, dpi=300):
+def plot_dist(desc, *paths_list, ncols=4, filename=None, titles=None, main_title=None, figsize=None, show_values=False, show_plot=True, symbols_in_color=True, symbol_size=300, dpi=300):
     desc = np.asarray(desc, dtype='c')
 
     if len(paths_list) == 0:
@@ -81,10 +81,22 @@ def plot_dist(desc, *paths_list, ncols=4, filename=None, titles=None, main_title
             draw_paths(desc, axi, paths, title, show_values,
                        symbols_in_color, symbol_size)
 
+    # Draw a thin black border around the figure's edge:
+    edge_lw = 2.5
+    for axi in axes:
+        for spine in axi.spines.values():
+            spine.set_visible(True)
+            spine.set_color('k')
+            spine.set_linewidth(edge_lw)
+
+    plt.tight_layout()
+    # crop as tight as possible:
+    # plt.subplots_adjust(top=1.05, bottom=-0.05, left=-0.05, right=1.05, hspace=0.0, wspace=0.)
+    # plt.subplots_adjust(left=-0.25, right=1.25)
     if main_title is not None:
         plt.suptitle(main_title)
     if filename is not None:
-        plt.savefig(filename, dpi=dpi)
+        plt.savefig(filename, dpi=dpi, bbox_inches='tight')
         return plt.gcf()
     elif show_plot:
         plt.show()
@@ -92,7 +104,7 @@ def plot_dist(desc, *paths_list, ncols=4, filename=None, titles=None, main_title
         return plt.gcf()
 
 
-def draw_paths(desc, axi, paths, title=None, show_values=False, symbols_in_color=True, symbol_size=120):
+def draw_paths(desc, axi, paths, title=None, show_values=False, symbols_in_color=True, symbol_size=180):
     if paths is None:
         return
     nrow, ncol = desc.shape
@@ -117,7 +129,7 @@ def draw_paths(desc, axi, paths, title=None, show_values=False, symbols_in_color
     axi.scatter(*np.argwhere(desc.T == b'S').T,
                 color='#00CD00' if symbols_in_color else 'k', s=symbol_size, marker='o')
     axi.scatter(*np.argwhere(desc.T == b'G').T,
-                color='#E6CD00' if symbols_in_color else 'k', s=symbol_size, marker='*')
+                color='#E6CD00' if symbols_in_color else 'k', s=symbol_size*1.5, marker='*')
     axi.scatter(*np.argwhere(desc.T == b'H').T,
                 color='#E60000' if symbols_in_color else 'k', s=symbol_size, marker='X')
     axi.scatter(*np.argwhere(desc.T == b'C').T,
