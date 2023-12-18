@@ -162,3 +162,4 @@ Werkzeug==2.3.6
 wheel==0.38.4
 wrapt==1.15.0
 zipp==3.16.0
+ray[rrlib]==2.8.1
