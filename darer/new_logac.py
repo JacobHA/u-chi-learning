@@ -222,8 +222,8 @@ class LogUActor:
             # ratio = torch.clamp(ratio, 1-eps, 1+eps)
             # actor_loss = torch.log(ratio)
                 
-            actor_loss = F.smooth_l1_loss(curr_log_prob, self.aggregator_fn(actor_curr_logu,dim=-1)[0].squeeze())
-                # curr_log_prob - self.aggregator_fn(actor_curr_logu)).mse()
+            # actor_loss = F.smooth_l1_loss(curr_log_prob, self.aggregator_fn(actor_curr_logu,dim=-1)[0].squeeze())
+            actor_loss = (- self.aggregator_fn(actor_curr_logu)).mean()
             self.logger.record("train/log_prob", curr_log_prob.mean().item())
             self.logger.record("train/loss", loss.item())
             self.logger.record("train/actor_loss", actor_loss.item())
@@ -282,7 +282,8 @@ class LogUActor:
                 else:
                     with torch.no_grad():
                         # noisy_action, logprob, _ = self.actor.sample(state)
-                        noisy_action, _ = self.actor.predict(state)
+                        # noisy_action, _ = self.actor.predict(state)
+                        noisy_action = self.env.action_space.sample()
                         # log the logprob:
                         # self.logger.record("rollout/log_prob", logprob.mean().item())
                         # noisy_action = noisy_action.cpu().numpy()
@@ -352,7 +353,7 @@ class LogUActor:
             raise NotImplementedError("beta_schedule must be one of exp, linear, or none")
         return self.betas
 
-    def evaluate(self, n_episodes=1):
+    def evaluate(self, n_episodes=5):
         # run the current policy and return the average reward
         avg_reward = 0.
         for ep in range(n_episodes):
@@ -362,7 +363,7 @@ class LogUActor:
                 self.actor.set_training_mode(False)
                 with torch.no_grad():
                     # noisyaction, logprob, action = self.actor.sample(state)  # , deterministic=True)
-                    action,_ = self.actor.predict(state)  # , deterministic=True)
+                    action,_ = self.actor.predict(state , deterministic=True)
 
                     # action = action.cpu().numpy()
                 next_state, reward, terminated, truncated, info = self.eval_env.step(
@@ -383,16 +384,16 @@ def main():
     # env_id = 'LunarLanderContinuous-v2'
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
-    # env_id = 'Pendulum-v1'
+    env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
-    env_id = 'Ant-v4'
+    # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     agent = LogUActor(env_id, **config, device='cuda',
                       num_nets=2, log_dir='pend', 
-                      actor_learning_rate=1e-3, 
-                      render=1, max_grad_norm=10, log_interval=1000)
+                      actor_learning_rate=1e-4, 
+                      render=0, max_grad_norm=10, log_interval=1000)
     agent.learn(total_timesteps=500_000, beta_schedule='linear')
 
 
