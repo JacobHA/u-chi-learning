@@ -82,3 +82,10 @@ Model-free ground truth comparisons:
 [eigvec_figure]: figures/left_eigenvector_MF.png
 [scaling_logu]: Acrobot-v1.png 
 [scaling_dqn]: Acrobot-v1-dqn.png
+
+
+
+For updating requirements.txt:
+```
+pip list --format=freeze > requirements.txt
+```
