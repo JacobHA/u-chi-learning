@@ -270,46 +270,46 @@ class LogULearner:
                 sarsa = (state, next_state, action, reward, terminated)
                 self.replay_buffer.add(*sarsa, [infos])
                 state = next_state
-                self._log_stats()
+                if self.env_steps % self.log_interval == 0:
+                    self._log_stats()
 
             if done:
                 self.logger.record("rollout/reward", self.rollout_reward)
 
 
     def _log_stats(self):
-        if self.env_steps % self.log_interval == 0:
-            # end timer:
-            t_final = time.thread_time_ns()
-            # fps averaged over log_interval steps:
-            self.fps = self.log_interval / ((t_final - self.initial_time + 1e-16) / 1e9)
+        # end timer:
+        t_final = time.thread_time_ns()
+        # fps averaged over log_interval steps:
+        self.fps = self.log_interval / ((t_final - self.initial_time + 1e-16) / 1e9)
 
-            if self.env_steps >= 0:
-                self.avg_eval_rwd = self.evaluate()
-                self.eval_auc += self.avg_eval_rwd
-            if self.save_checkpoints:
-                raise NotImplementedError
-                torch.save(self.online_logu.state_dict(),
-                           'sql-policy.para')
-            # Get the current learning rate from the optimizer:
-            self.lr = self.optimizers.get_lr()
-            log_class_vars(self, LOG_PARAMS, use_wandb=self.use_wandb)
+        if self.env_steps >= 0:
+            self.avg_eval_rwd = self.evaluate()
+            self.eval_auc += self.avg_eval_rwd
+        if self.save_checkpoints:
+            raise NotImplementedError
+            torch.save(self.online_logu.state_dict(),
+                        'sql-policy.para')
+        # Get the current learning rate from the optimizer:
+        self.lr = self.optimizers.get_lr()
+        log_class_vars(self, LOG_PARAMS, use_wandb=self.use_wandb)
 
 
-            if self.is_tabular:
-                # Record the error in the eigenvector:
-                fa_eigvec = get_eigvec_values(self).flatten()
-                # normalize:
-                fa_eigvec /= np.linalg.norm(fa_eigvec)
-                err = np.abs(self.true_eigvec - fa_eigvec).mean()
-                self.logger.record('train/eigvec_err', err.item())
+        if self.is_tabular:
+            # Record the error in the eigenvector:
+            fa_eigvec = get_eigvec_values(self).flatten()
+            # normalize:
+            fa_eigvec /= np.linalg.norm(fa_eigvec)
+            err = np.abs(self.true_eigvec - fa_eigvec).mean()
+            self.logger.record('train/eigvec_err', err.item())
 
-            if self.use_wandb:
-                wandb.log({'env_steps': self.env_steps,
-                           'eval/avg_reward': self.avg_eval_rwd})
-            self.logger.dump(step=self.env_steps)
-            self.initial_time = time.thread_time_ns()
+        if self.use_wandb:
+            wandb.log({'env_steps': self.env_steps,
+                        'eval/avg_reward': self.avg_eval_rwd})
+        self.logger.dump(step=self.env_steps)
+        self.initial_time = time.thread_time_ns()
 
-    def evaluate(self, n_episodes=5):
+    def evaluate(self, n_episodes=3):
         # run the current policy and return the average reward
         self.initial_time = time.process_time_ns()
         avg_reward = 0.
@@ -370,17 +370,18 @@ def main():
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import acrobot_logu as config
-    agent = LogULearner(env_id, **config, device='cuda', log_interval=1000,
-                        log_dir='pend', num_nets=2, render=0, aggregator='max',
+    from hparams import pong_logu as config
+    agent = LogULearner(env_id, **config, device='cuda', log_interval=15000,
+                        log_dir='pend', num_nets=1, render=0, aggregator='max',
                         scheduler_str='none', algo_name='std', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=50_000, beta_schedule='linear')
+    agent.learn(total_timesteps=5_000_000, beta_schedule='none')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

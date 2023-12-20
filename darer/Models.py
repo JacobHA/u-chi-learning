@@ -538,7 +538,7 @@ class UNet(nn.Module):
             # First subtract a baseline:
             u = u / (torch.max(u) + torch.min(u))/2
             # clamp to avoid overflow:
-            u = torch.clamp(u, min=-20, max=20)
+            u = torch.clamp(u, min=1e-8, max=200)
             dist = u * prior
             dist = dist / torch.sum(dist)
             c = Categorical(dist)#, validate_args=True)
