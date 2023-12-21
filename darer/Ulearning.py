@@ -167,7 +167,10 @@ class uLearner:
                                     for u in self.online_us], dim=0)
                 online_curr_u = torch.stack([u(states).gather(1, actions)
                                     for u in self.online_us], dim=0)
-                
+                target_u_next = torch.stack([target_u(next_states)
+                                    for target_u in self.target_us], dim=0)
+                target_curr_u = torch.stack([target_u(states).gather(1, actions)
+                                    for target_u in self.target_us], dim=0)
                 # since pi0 is same for all, just do exp(ref_u) and sum over actions:
                 # TODO: should this go outside no grad? Also, is it worth defining a log_prior value?
                 # online_log_chi = torch.logsumexp(online_u_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
@@ -380,19 +383,19 @@ def main():
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_hparams1 as config
-    agent = uLearner(env_id, **config, device='cpu', log_interval=1000,
-                        log_dir='pend', num_nets=1, render=0, aggregator='min',
+    from hparams import lunar_logu as config
+    agent = uLearner(env_id, **config, device='cuda', log_interval=1500,
+                        log_dir='pend', num_nets=2, render=0, aggregator='max',
                         scheduler_str='none', algo_name='u', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=25000_000, beta_schedule='none')
+    agent.learn(total_timesteps=150_000, beta_schedule='none')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

@@ -12,7 +12,7 @@ LogU learning implementation in gym (mazes and cartpole)
 - [x] Monitor FPS
 - [x] Monitor min/max of logu to watch for divergence
 - [x] Add learning rate decay thru scheduler
-- [x] Add "train_freq" rather than episodic trainin:
+- [x] Add "train_freq" rather than episodic training
 - [ ] Possibly use SB3 style: :param train_freq: Update the model every ``train_freq`` steps. Alternatively pass a tuple of frequency and unit
         like ``(5, "step")`` or ``(2, "episode")``.
 - [x] Add gradient clipping
@@ -36,12 +36,14 @@ LogU learning implementation in gym (mazes and cartpole)
 - [x] smooth out theta learning
 
 # Future TODOs:
-- [ ] Generate dependencies
-- [x] Write tests
+- [x] Generate requirements
+- [ ] Write more tests
 - [ ] Make more off-policy / offline?
 - [ ] V learning with cloning
 - [x] UV learning
 - [ ] Rawlik scheme
+- [ ] Test UV learning with steady state from tabular
+- [ ] Effective temperature from Rawlik
 
 # Notes:
 
@@ -89,3 +91,6 @@ For updating requirements.txt:
 ```
 pip list --format=freeze > requirements.txt
 ```
+
+the contents of requirements.txt are a bit sensitive for the git actions testing...
+(e.g. have to remove some conda stuff)

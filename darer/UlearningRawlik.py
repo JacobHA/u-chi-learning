@@ -310,7 +310,7 @@ class uLearner:
                     # Do a Polyak update of parameters:
                     self.target_us.polyak(self.online_us, self.tau)
                 if self.use_rawlik:
-                    if self.env_steps % 2_000 == 0:
+                    if self.env_steps % 10_000 == 0:
                         self.target_prior.polyak(self.online_prior, 0.5)
 
                 self.beta = self.betas[self.env_steps - 1]
@@ -425,20 +425,20 @@ def main():
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import pendulum_logu as config
-    agent = uLearner(env_id, **config, device='cpu', log_interval=1000,
+    from hparams import lunar_logu as config
+    agent = uLearner(env_id, **config, device='cuda', log_interval=1000,
                         log_dir='pend', num_nets=2, render=0,# aggregator='max',
                         scheduler_str='none', algo_name='u',# beta_end=2.4,
                         use_rawlik=1)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=150_000, beta_schedule='none')
+    agent.learn(total_timesteps=350_000, beta_schedule='none')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
