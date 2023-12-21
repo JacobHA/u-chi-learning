@@ -1,14 +1,18 @@
-from utils import env_id_to_envs, rllib_env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
+from utils import env_id_to_envs, rllib_env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, \
+    logger_at_folder
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 import matplotlib.pyplot as plt
+
 
 def show_frames(frames):
     # Assuming frames is a numpy array of shape (w, h, 4)
     for i in range(frames.shape[2]):
-        plt.subplot(2, 2, i+1)
-        plt.imshow(frames[:,:,i], cmap='gray')
+        plt.subplot(2, 2, i + 1)
+        plt.imshow(frames[:, :, i], cmap='gray')
         plt.axis('off')
     plt.show()
+
+
 import gymnasium as gym
 import numpy as np
 import torch
@@ -45,7 +49,7 @@ LOG_PARAMS = {
 str_to_aggregator = {'min': torch.min, 'max': torch.max, 'mean': torch.mean}
 
 
-class LogULearner:
+class DQNLearner:
 
     def __init__(self,
                  env_id,
@@ -83,7 +87,7 @@ class LogULearner:
         # self.env, self.eval_env = env_id_to_envs(
         #     env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
         self.env, self.eval_env = rllib_env_id_to_envs(env_id, render=render)
-        
+
         self.n_envs = n_envs
         self.is_vector_env = n_envs > 1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
@@ -180,11 +184,6 @@ class LogULearner:
                                    for online_logu in self.online_logus], dim=1)
 
             with torch.no_grad():
-                # ref_logu_next = torch.stack([logu(self.ref_next_state)
-                #             for logu in self.online_logus], dim=0)
-                # ref_curr_logu = torch.stack([logu(self.ref_state)[:,self.ref_action]
-                #             for logu in self.online_logus], dim=0)
-
                 ref_logu_next = torch.stack([logu(next_states)
                                              for logu in self.online_logus], dim=0)
 
@@ -223,7 +222,7 @@ class LogULearner:
 
                 # "Backup" eigenvector equation:
                 expected_curr_logu = self.beta * \
-                    (rewards + self.theta) + next_logu
+                                     (rewards + self.theta) + next_logu
                 expected_curr_logu = expected_curr_logu.squeeze(1)
 
             self.logger.record("train/theta", self.theta.item())
@@ -262,7 +261,7 @@ class LogULearner:
         # every train_freq steps:
         if self._n_updates % self.theta_update_interval == 0:
             self.theta = self.tau_theta * self.theta + \
-                (1 - self.tau_theta) * new_theta
+                         (1 - self.tau_theta) * new_theta
 
     def learn(self, total_timesteps, beta_schedule=None):
         # setup beta scheduling
@@ -293,7 +292,7 @@ class LogULearner:
             next_state, reward, terminated, truncated, infos = self.env.step(
                 action)
             done = np.bitwise_or(terminated, truncated)
-            
+
             self.num_episodes += np.sum(done)
             self.rollout_reward += reward
 
@@ -441,12 +440,12 @@ def main(env_id,
         kwargs.pop('beta_end')
     except KeyError:
         pass
-    agent = LogULearner(env_id, **kwargs, device=device, log_interval=5000,
-                        log_dir=log_dir, num_nets=2, render=render, aggregator=aggregator,
-                        scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
-                        n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
-                        use_wandb=False
-                        )
+    agent = DQNLearner(env_id, **kwargs, device=device, log_interval=5000,
+                       log_dir=log_dir, num_nets=2, render=render, aggregator=aggregator,
+                       scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
+                       n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
+                       use_wandb=False
+                       )
     # hidden_dim=hidden_dim)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()

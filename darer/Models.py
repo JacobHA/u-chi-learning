@@ -51,11 +51,9 @@ class LogUNet(nn.Module):
                 # Use a CNN:
                 n_channels = self.observation_space.shape[2]
                 model.extend(nn.Sequential(
-                    nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.float32),
+                    nn.Conv2d(n_channels, 16, kernel_size=8, stride=4, dtype=torch.float32),
                     activation(),
-                    nn.Conv2d(32, 64, kernel_size=4, stride=2, dtype=torch.float32),
-                    activation(),
-                    nn.Conv2d(64, 64, kernel_size=3, stride=1, dtype=torch.float32),
+                    nn.Conv2d(16, 32, kernel_size=4, stride=2, dtype=torch.float32),
                     activation(),
                     nn.Flatten(start_dim=1),
                 ))
@@ -70,7 +68,6 @@ class LogUNet(nn.Module):
                 print(f"Using a CNN with {flat_size}-dim. outputs.")
                 # flat part
                 input_dim = flat_size
-
 
                 model.extend(nn.Sequential(
                     nn.Linear(input_dim, hidden_dim, dtype=torch.float32),

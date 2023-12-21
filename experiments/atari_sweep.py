@@ -69,7 +69,7 @@ def wandb_train(local_cfg=None):
     with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
         config = wandb.config.as_dict()
         main(total_timesteps=1_000_000, n_envs=1, log_dir='local-pong',
-             device=device, **config['parameters'])
+             device=device, render=False, **config['parameters'])
 
 
 if __name__ == "__main__":
