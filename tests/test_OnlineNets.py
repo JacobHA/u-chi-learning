@@ -2,6 +2,9 @@ import torch
 import numpy as np
 import pytest
 import gymnasium as gym
+import sys
+sys.path.append('darer')
+
 from Models import OnlineNets, LogUNet
 
 num_actions = 5
