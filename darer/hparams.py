@@ -53,7 +53,7 @@ mcar_hparams = {
 }
 
 lunar_logu = {
-    'beta': 10/20,
+    'beta': 10/40,
     'batch_size': 650,
     'buffer_size': 100_000,
     'gradient_steps': 1,

@@ -310,8 +310,8 @@ class uLearner:
                     # Do a Polyak update of parameters:
                     self.target_us.polyak(self.online_us, self.tau)
                 if self.use_rawlik:
-                    if self.env_steps % 10_000 == 0:
-                        self.target_prior.polyak(self.online_prior, 0.5)
+                    if self.env_steps % 5_000 == 0:
+                        self.target_prior.polyak(self.online_prior, 0.15)
 
                 self.beta = self.betas[self.env_steps - 1]
 
