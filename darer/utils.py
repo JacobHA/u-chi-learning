@@ -44,7 +44,7 @@ def logger_at_folder(log_dir=None, algo_name=None):
     return logger
 
 from ray.rllib.env.wrappers.atari_wrappers import wrap_deepmind
-def rllib_env_id_to_envs(env_id, render=False):
+def rllib_wrappers(env_id, render=False):
     env = gym.make(env_id)
     env = wrap_deepmind(env, framestack=True, noframeskip=False)
 
@@ -53,7 +53,9 @@ def rllib_env_id_to_envs(env_id, render=False):
     return env, eval_env
 
 
-def env_id_to_envs(env_id, render):
+def env_id_to_envs(env_id, render, is_atari=False):
+    if is_atari:
+        return rllib_wrappers(env_id, render)
     if isinstance(env_id, str):
         env = gym.make(env_id)
         # make another instance for evaluation purposes only:
@@ -74,8 +76,8 @@ def env_id_to_envs(env_id, render):
 
     return env, eval_env
 
-def log_class_vars(self, params, use_wandb=False):
-    logger = self.logger
+def log_class_vars(self, logger, params, use_wandb=False):
+    # logger = self.logger
     for key, value in params.items():
         value = self.__dict__[value]
         # first check if value is a tensor:
@@ -96,6 +98,8 @@ def get_eigvec_values(fa, save_name=None):
     if save_name is not None:
         np.save(f'{save_name}.npy', eigvec)
 
+    # normalize:
+    eigvec /= np.linalg.norm(eigvec)
     return eigvec
 
 def get_true_eigvec(fa):
@@ -107,6 +111,9 @@ def get_true_eigvec(fa):
     solution = solve_unconstrained(
         fa.beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
     l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
+    # normalize:
+    u_true /= np.linalg.norm(u_true)
+
     return u_true
 
 def is_tabular(env):

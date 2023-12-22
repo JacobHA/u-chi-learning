@@ -41,15 +41,15 @@ cartpole_hparams2 = {
 mcar_hparams = {
     'beta': 0.078,
     'batch_size': 950,
-    'buffer_size': 50000,
+    'buffer_size': 150000,
     'gradient_steps': 25,
-    'learning_rate': 5e-4,
-    'target_update_interval': 270,
+    'learning_rate': 3e-4,
+    'target_update_interval': 2700,
     'tau': 0.28,
     'tau_theta': 0.95,
     'hidden_dim': 128,
-    'train_freq': 50,
-    'learning_starts': 25000
+    'train_freq': 25,
+    'learning_starts': 50000
 }
 
 lunar_logu = {
@@ -156,6 +156,20 @@ pong_logu0 = {
     'theta_update_interval': 100,
 }
 
+cartpole_u = {
+    'beta': 0.2,
+    'batch_size': 1150,
+    'buffer_size': 100_000,
+    'gradient_steps': 4,
+    'learning_rate': 8e-4,
+    'target_update_interval': 500,
+    'tau': 0.04,
+    'tau_theta': 0.85,
+    'theta_update_interval': 875,
+    'train_freq': 2,
+    'hidden_dim': 128,
+}
+
 acrobot_logu = {
     'beta': 0.35/7,
     'batch_size': 1200//2,
@@ -168,7 +182,7 @@ acrobot_logu = {
     'train_freq': 1,
     'hidden_dim': 64,
     'theta_update_interval': 4*2,
-    'learning_starts': 1_000*5
+    'learning_starts': 1_000
 }
 
 pendulum_logu = {
