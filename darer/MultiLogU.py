@@ -166,7 +166,7 @@ class LogULearner:
         self.target_logus.load_state_dicts(
             [logu.state_dict() for logu in self.online_logus])
         # Make (all) LogUs learnable:
-        opts = [torch.optim.Adam(logu.parameters(), lr=self.learning_rate)
+        opts = [torch.optim.RMSprop(logu.parameters(), lr=self.learning_rate)
                 for logu in self.online_logus]
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
@@ -303,9 +303,10 @@ class LogULearner:
                               (self.train_freq != -1 and self.env_steps %
                                self.train_freq == 0)
 
-            if train_this_step:
+            if self.env_steps % self.train_freq == 0:
                 if self.env_steps > self.batch_size:
                     self.train()
+                    # print("trained")
 
             if self.env_steps % self.target_update_interval == 0:
                 # Do a Polyak update of parameters:

@@ -11,9 +11,9 @@
 #SBATCH --output=outfiles/%j.out
 ##SBATCH --partition=AMD6276
 # use the gpu:
-##SBATCH --gres=gpu:1
-##SBATCH --partition=DGXA100
-##SBATCH --export=NONE
+#SBATCH --gres=gpu:1
+#SBATCH --partition=DGXA100
+#SBATCH --export=NONE
 #SBATCH --array=1-5
 echo "using scavenger"
 
@@ -30,4 +30,4 @@ export MUJOCO_GL="glfw"
 
 # Start the evaluations
 EXPNAME=${1:-"atari-pong"}
-python experiments/atari_sweep.py --local-wandb False --device cpu --proj u-chi-learning --exp-name $EXPNAME --n_runs 100
+python experiments/atari_sweep.py --local-wandb False --device cuda --proj u-chi-learning --exp-name $EXPNAME --n_runs 100
