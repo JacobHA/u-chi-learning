@@ -7,7 +7,7 @@ parameters:
     values: [32, 64, 128, 256]
   beta:
     distribution: uniform
-    max: 10
+    max: 3
     min: 0.01
   final_beta_multiplier:
     max: 10
@@ -23,7 +23,7 @@ parameters:
     max: 10
     min: 1
   learning_rate:
-    distribution: log_uniform_values
+    distribution: uniform
     max: 0.01
     min: 0.0001
   target_update_interval:
@@ -31,17 +31,17 @@ parameters:
     max: 10000
     min: 1
   tau:
-    distribution: log_uniform_values
+    distribution: uniform
     max: 1
     min: 0.01
   theta_update_interval:
     distribution: uniform
-    max: 1000
+    max: 100
     min: 1
   tau_theta:
-    distribution: log_uniform_values
+    distribution: uniform
     max: 1
-    min: 0.8
+    min: 0.5
   learning_starts:
     distribution: uniform
     max: 10000
