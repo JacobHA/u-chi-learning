@@ -144,8 +144,8 @@ pong_logu = {
 
 pong_logu0 = {
     'beta': 0.2,
-    'batch_size': 64,
-    'buffer_size': 30_000,
+    'batch_size': 32,
+    'buffer_size': 50_000,
     'gradient_steps': 1,
     'learning_rate': 1.e-3,
     'target_update_interval': 10000,
@@ -154,6 +154,23 @@ pong_logu0 = {
     'train_freq': 4,
     'learning_starts': 15_000,
     'theta_update_interval': 100,
+}
+
+nature_pong = {
+  "batch_size": 32,
+  "beta": 0.2,
+  "buffer_size": 100_000,
+  "tau": 1.0,
+  "train_freq": 4,
+  "learning_starts": 50000 ,
+  "learning_rate": 0.00025 ,
+#   "gradient_momentum": 0.95 ,
+#   "squared_gradient_momentum": 0.95 ,
+#   "min_squared_gradient": 0.01 ,
+#   "action_history_len": 4 ,
+#   "action_repeat": 4 ,
+#   "discount_factor": 0.99 ,
+  "target_update_interval": 10000
 }
 
 cartpole_u = {

@@ -33,6 +33,7 @@ class LogU(BaseAgent):
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def exploration_policy(self, state: np.ndarray) -> int:
+        # return self.env.action_space.sample()
         return self.online_logus.choose_action(state)
     
     def evaluation_policy(self, state: np.ndarray) -> int:
@@ -92,15 +93,15 @@ def main():
     env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
-    # env_id = 'PongNoFrameskip-v4'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import acrobot_logu as config
-    agent = LogU(env_id, **config, device='cuda', log_interval=1500,
+    from hparams import nature_pong as config
+    agent = LogU(env_id, **config, device='cuda', log_interval=5000,
                         tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
-                        scheduler_str='none', beta_schedule = 'linear', beta_end=2.4)
+                        scheduler_str='none')#, beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=50_000)

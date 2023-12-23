@@ -1,16 +1,14 @@
-method: bayes
+method: random
 metric:
   goal: maximize
   name: avg_eval_auc
 parameters:
   batch_size:
-    distribution: uniform
-    max: 2000
-    min: 20
+    values: [32, 64, 128, 256]
   beta:
     distribution: uniform
     max: 10
-    min: 0.1
+    min: 0.01
   final_beta_multiplier:
     max: 10
     min: 1
@@ -20,17 +18,13 @@ parameters:
     distribution: uniform
     max: 200000
     min: 10000
-  gradient_steps:
-    distribution: uniform
-    max: 50
-    min: 1
   train_freq:
     distribution: uniform
-    max: 100
+    max: 10
     min: 1
   learning_rate:
     distribution: log_uniform_values
-    max: 0.5
+    max: 0.01
     min: 0.0001
   target_update_interval:
     distribution: uniform
@@ -47,13 +41,13 @@ parameters:
   tau_theta:
     distribution: log_uniform_values
     max: 1
-    min: 0.01
+    min: 0.8
   learning_starts:
     distribution: uniform
-    max: 20000
-    min: 100
+    max: 10000
+    min: 1
   aggregator:
-    values: [min, max]
+    values: [min, max, mean]
   hidden_dim:
     values: [64, 128, 256]
 program: wandb_job.py

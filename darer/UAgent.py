@@ -12,8 +12,8 @@ class UAgent(BaseAgent):
     def __init__(self,
                  *args,
                  use_rawlik=False,
-                 prior_update_freq: int = 10_000,
-                 prior_tau: float = 0.99,
+                 prior_update_freq: int = 20_000,
+                 prior_tau: float = 1.0,
                  **kwargs,
                  ):
         self.algo_name = 'U'
@@ -48,12 +48,14 @@ class UAgent(BaseAgent):
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def exploration_policy(self, state: np.ndarray) -> int:
+        # return self.env.action_space.sample()
         if self.use_rawlik:
             pi0 = self.target_prior.nets[0](state).squeeze()
             pi0 /= pi0.sum()
         else:
             pi0 = None
         return self.online_us.choose_action(state, prior=pi0)
+            
     
     def evaluation_policy(self, state: np.ndarray) -> int:
         if self.use_rawlik:
@@ -74,7 +76,6 @@ class UAgent(BaseAgent):
                 self.target_prior.polyak(self.online_prior, self.prior_tau)
 
     def gradient_descent(self, batch, grad_step: int):
- 
         # Sample a batch from the replay buffer:
         batch = self.replay_buffer.sample(self.batch_size)
         states, actions, next_states, dones, rewards = batch
@@ -120,12 +121,12 @@ class UAgent(BaseAgent):
             # logsumexp over actions:
             target_next_us = torch.stack(target_next_us, dim=1)
             # next_us = torch.logsumexp(target_next_us, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-            next_us = (target_next_us * target_prior_next.unsqueeze(1).repeat( 1,self.num_nets, 1)).sum(dim=-1)
+            next_us = (target_next_us * target_prior_next.unsqueeze(1).repeat(1, self.num_nets, 1)).sum(dim=-1)
             next_u, _ = self.aggregator_fn(next_us, dim=1)
 
             next_u = next_u.reshape(-1, 1)
             assert next_u.shape == dones.shape
-            next_u = next_u * (1-dones) 
+            next_u = next_u * (1-dones) #+ 1 * dones 
 
             # "Backup" eigenvector equation:
             # for numerical stability, first subtract a baseline:
@@ -164,24 +165,25 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
+    env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    # env_id = 'PongNoFrameskip-v4'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
-    env_id = 'MountainCar-v0'
+    # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import mcar_hparams as config
+    from hparams import nature_pong as config
     agent = UAgent(env_id, **config, device='cuda', log_interval=5000,
                         tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
-                        scheduler_str='none', beta_schedule='none', beta_end=2.4,
-                        use_rawlik=True)
+                        scheduler_str='none')#, beta_schedule='none', beta_end=2.4,
+                        # use_rawlik=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=150_000)
+    agent.learn(total_timesteps=5_000_000)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
 if __name__ == '__main__':
+
     for _ in range(1):
         main()

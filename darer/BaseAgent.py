@@ -7,7 +7,6 @@ import gymnasium as gym
 from typing import Optional, Union, List, Tuple, Dict, Any, get_type_hints
 from typeguard import typechecked
 import wandb
-
 from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder, get_eigvec_values
 
 HPARAM_ATTRS = {
@@ -84,7 +83,7 @@ class BaseAgent:
                  save_checkpoints: bool = False,
                  use_wandb: bool = False,
                  scheduler_str: str = 'none',    
-                 beta_end: float = None,
+                 beta_end: Optional[float] = None,
                  seed: Optional[int] = None,             
                  ) -> None:
 
@@ -212,16 +211,19 @@ class BaseAgent:
         #             ))
         # self.logger.record("train/max_grad", total_norm.item())
  
-    def learn(self, total_timesteps: int) -> None:
+    def learn(self, total_timesteps: int, early_stop: dict) -> bool:
         """
         Train the agent for total_timesteps
         """
+        stop_steps, stop_reward = early_stop['steps'], early_stop['reward']
         self.betas = self._beta_scheduler(self.beta_schedule, total_timesteps)
 
         # Start a timer to log fps:
         self.initial_time = time.thread_time_ns()
+
         while self.env_steps < total_timesteps:
             state, _ = self.env.reset()
+            action_freqs = torch.zeros(self.nA)
 
             episode_reward = 0
             done = False
@@ -233,6 +235,7 @@ class BaseAgent:
                 #     action = self.env.action_space.sample()
                 # else:
                 action = self.exploration_policy(state)
+                action_freqs[action] += 1
                 # action = self.online_logus.greedy_action(state)
                 # action = self.env.action_space.sample()
 
@@ -254,16 +257,25 @@ class BaseAgent:
                 state = next_state
                 if self.env_steps % self.log_interval == 0:
                     self._log_stats()
+                    if (self.avg_eval_rwd < stop_reward) and (self.env_steps > stop_steps):
+                        wandb.log({'early_stop': True}) 
+                        return True
 
             if done:
                 self.logger.record("rollout/reward", self.rollout_reward)
+                action_freqs /= action_freqs.sum()
+                for i, freq in enumerate(action_freqs):
+                    # As percentage:
+                    self.logger.record(f'rollout/action {i} (%)', freq.item() * 100)
+
+        return False
 
     def _on_step(self):
         """
         This method is called after every step in the environment
         """
-        self.env_steps += 1
         self.beta = self.betas[self.env_steps]
+        self.env_steps += 1
 
         if self.train_this_step:
             if self.env_steps > self.learning_starts:
