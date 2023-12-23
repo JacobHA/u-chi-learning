@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device", type=str, default='cuda')
-    parser.add_argument("-c", "--count", type=int, default=1000)
+    parser.add_argument("-c", "--count", type=int, default=5000)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='u-chi-learning')
     parser.add_argument("-s", "--sweep_id", type=str, default='ived4ut9')
