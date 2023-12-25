@@ -257,9 +257,10 @@ class BaseAgent:
                 state = next_state
                 if self.env_steps % self.log_interval == 0:
                     self._log_stats()
-                    if (self.avg_eval_rwd < stop_reward) and (self.env_steps > stop_steps):
-                        wandb.log({'early_stop': True}) 
-                        return True
+                    if (self.env_steps > stop_steps):
+                        if (self.avg_eval_rwd < stop_reward):
+                            wandb.log({'early_stop': True}) 
+                            return True
 
             if done:
                 self.logger.record("rollout/reward", self.rollout_reward)

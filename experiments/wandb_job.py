@@ -1,9 +1,9 @@
+from UAgent import UAgent
 import wandb
 import argparse
 import sys
 
 sys.path.append("darer")
-from UAgent import UAgent
 
 # env_id = 'CartPole-v1'
 # env_id = 'MountainCar-v0'
@@ -21,6 +21,7 @@ env_to_early_stop_dict = {
     'LunarLander-v2': {'reward': 0, 'steps': 20_000},
 }
 
+
 def runner(config=None, run=None, device='cpu'):
     # Convert the necessary kwargs to ints:
     for int_kwarg in ['batch_size', 'target_update_interval', 'theta_update_interval', 'gradient_steps',
@@ -28,7 +29,7 @@ def runner(config=None, run=None, device='cpu'):
         try:
             config[int_kwarg] = int(config[int_kwarg])
         except KeyError:
-            pass # use default value
+            pass  # use default value
     # config['buffer_size'] = 10_000
     # config['gradient_steps'] = 1
     # config['train_freq'] = 1
@@ -42,15 +43,18 @@ def runner(config=None, run=None, device='cpu'):
     for _ in range(runs_per_hparam):
         print(env_id)
         agent = UAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
-                            device=device, render=False, beta_end=beta_end,    
-                            # beta_schedule=config.pop('beta_scheduler', 'none'),
-                            num_nets=2,                 
-                            )
+                       device=device, render=False, beta_end=beta_end,
+                       # beta_schedule=config.pop('beta_scheduler', 'none'),
+                       num_nets=2,
+                       )
 
         wandb.log({'env_id': agent.env_str})
-
-        early_stopped = agent.learn(total_timesteps=50_000, 
-                    early_stop=env_to_early_stop_dict[env_id])
+        if env_id in ['LunarLander-v2', 'MountainCar-v0']:
+            total_timesteps = 500_000
+        else:
+            total_timesteps = 50_000
+        early_stopped = agent.learn(total_timesteps=total_timesteps,
+                                    early_stop=env_to_early_stop_dict[env_id])
         if early_stopped:
             break
         auc += agent.eval_auc
@@ -71,7 +75,7 @@ if __name__ == "__main__":
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device", type=str, default='cuda')
-    parser.add_argument("-c", "--count", type=int, default=5000)
+    parser.add_argument("-c", "--count", type=int, default=15_000)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='u-chi-learning')
     parser.add_argument("-s", "--sweep_id", type=str, default='ived4ut9')
@@ -83,7 +87,6 @@ if __name__ == "__main__":
     env_id = args.env_id
     # from disc_envs import get_environment
     # env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
-
 
     full_sweep_id = f"{entity}/{project}/{sweep_id}"
 
