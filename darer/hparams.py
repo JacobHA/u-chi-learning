@@ -41,19 +41,19 @@ cartpole_hparams2 = {
 mcar_hparams = {
     'beta': 0.078,
     'batch_size': 950,
-    'buffer_size': 50000,
+    'buffer_size': 150000,
     'gradient_steps': 25,
-    'learning_rate': 5e-4,
-    'target_update_interval': 270,
+    'learning_rate': 3e-4,
+    'target_update_interval': 2700,
     'tau': 0.28,
     'tau_theta': 0.95,
     'hidden_dim': 128,
-    'train_freq': 50,
-    'learning_starts': 25000
+    'train_freq': 25,
+    'learning_starts': 50000
 }
 
 lunar_logu = {
-    'beta': 10,
+    'beta': 10/40,
     'batch_size': 650,
     'buffer_size': 100_000,
     'gradient_steps': 1,
@@ -129,9 +129,23 @@ cartpole_dqn = {
 }
 
 pong_logu = {
+    'beta': 0.07,
+    'batch_size': 256,
+    'buffer_size': 50_000,
+    'gradient_steps': 1,
+    'learning_rate': 4.e-4,
+    'target_update_interval': 3500,
+    'tau': 0.35,
+    'tau_theta': 0.97,
+    'train_freq': 4,
+    'learning_starts': 80_000,
+    'theta_update_interval': 125,
+}
+
+pong_logu0 = {
     'beta': 0.2,
-    'batch_size': 64,
-    'buffer_size': 30_000,
+    'batch_size': 32,
+    'buffer_size': 50_000,
     'gradient_steps': 1,
     'learning_rate': 1.e-3,
     'target_update_interval': 10000,
@@ -142,18 +156,49 @@ pong_logu = {
     'theta_update_interval': 100,
 }
 
+nature_pong = {
+  "batch_size": 32,
+  "beta": 0.2,
+  "buffer_size": 100_000,
+  "tau": 1.0,
+  "train_freq": 4,
+  "learning_starts": 50000 ,
+  "learning_rate": 0.00025 ,
+#   "gradient_momentum": 0.95 ,
+#   "squared_gradient_momentum": 0.95 ,
+#   "min_squared_gradient": 0.01 ,
+#   "action_history_len": 4 ,
+#   "action_repeat": 4 ,
+#   "discount_factor": 0.99 ,
+  "target_update_interval": 10000
+}
+
+cartpole_u = {
+    'beta': 0.2,
+    'batch_size': 1150,
+    'buffer_size': 100_000,
+    'gradient_steps': 4,
+    'learning_rate': 8e-4,
+    'target_update_interval': 500,
+    'tau': 0.04,
+    'tau_theta': 0.85,
+    'theta_update_interval': 875,
+    'train_freq': 2,
+    'hidden_dim': 128,
+}
+
 acrobot_logu = {
-    'beta': 0.35,
-    'batch_size': 1200,
-    'buffer_size': 10_000,
+    'beta': 0.35/7,
+    'batch_size': 1200//2,
+    'buffer_size': 10_000*3,
     'gradient_steps': 1,
-    'learning_rate': 1.e-3,
-    'target_update_interval': 40,
+    'learning_rate': 1.e-3/3,
+    'target_update_interval': 40*4,
     'tau': 0.4,
-    'tau_theta': 0.9,
+    'tau_theta': 0.95,
     'train_freq': 1,
     'hidden_dim': 64,
-    'theta_update_interval': 4,
+    'theta_update_interval': 4*2,
     'learning_starts': 1_000
 }
 

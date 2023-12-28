@@ -149,7 +149,7 @@ class EmptyScheduler(LRScheduler):
         return [pg['lr'] for pg in self.optimizer.param_groups]
 
 str_to_scheduler = {
-    "step": (StepLR, {'step_size': 100_000, 'gamma': 0.5}),
+    "step": (StepLR, {'step_size': 10_000, 'gamma': 0.5}),
     # "MultiplicativeLR": (MultiplicativeLR, ()), 
     "linear": (LinearLR, {"start_factor":1./3, "end_factor":1.0, "last_epoch":-1}), 
     "exponential": (ExponentialLR, {'gamma': 0.9999}), 
@@ -253,7 +253,7 @@ class OnlineNets():
     def __iter__(self):
         return iter(self.nets)
     
-    def greedy_action(self, state):
+    def greedy_action(self, state, prior=None):
         with torch.no_grad():
             # logu = torch.stack([net(state) for net in self.nets], dim=-1)
             # logu = logu.squeeze(1)
@@ -261,14 +261,14 @@ class OnlineNets():
             
             # greedy_action = logu.argmax()
             # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-            greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
+            greedy_actions = [net.choose_action(state, greedy=True, prior=prior) for net in self.nets]
             greedy_action = np.random.choice(greedy_actions)
         return greedy_action
         # return greedy_action.item()
 
-    def choose_action(self, state):
+    def choose_action(self, state, prior=None):
         # Get a sample from each net, then sample uniformly over them:
-        actions = [net.choose_action(state) for net in self.nets]
+        actions = [net.choose_action(state, prior=prior) for net in self.nets]
         action = np.random.choice(actions)
         # perhaps re-weight this based on pessimism?
         return action
@@ -519,6 +519,7 @@ class UNet(nn.Module):
         # get machine epsilon:
         eps = torch.finfo(torch.float32).eps
         return x + eps
+        # return x
         
     def choose_action(self, state, greedy=False, prior=None):
         if prior is None:
@@ -526,7 +527,9 @@ class UNet(nn.Module):
         with torch.no_grad():
             # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
             u = self.forward(state)
-            # prior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
+            # prior = torch.tensor(prior.clone().detach(), device=self.device, dtype=torch.float32)
+            # ensure prior is normalized:
+            prior = prior / prior.sum()
             if greedy:
                 # not worth exponentiating since it is monotonic
                 a = (u * prior).argmax(dim=-1)
@@ -535,7 +538,7 @@ class UNet(nn.Module):
             # First subtract a baseline:
             u = u / (torch.max(u) + torch.min(u))/2
             # clamp to avoid overflow:
-            u = torch.clamp(u, min=-20, max=20)
+            u = torch.clamp(u, min=1e-8, max=200)
             dist = u * prior
             dist = dist / torch.sum(dist)
             c = Categorical(dist)#, validate_args=True)

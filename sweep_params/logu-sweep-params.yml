@@ -1,15 +1,17 @@
-method: bayes
+method: random
 metric:
   goal: maximize
   name: avg_eval_auc
 parameters:
   batch_size:
-    distribution: uniform
-    max: 2000
-    min: 20
+    values: [32, 64, 128, 256]
   beta:
     distribution: uniform
+<<<<<<< HEAD
     max: 10
+=======
+    max: 3
+>>>>>>> e605c505c7be23eae5974ee9169acf1dbb3e138a
     min: 0.01
   final_beta_multiplier:
     max: 10
@@ -20,38 +22,34 @@ parameters:
     distribution: uniform
     max: 200000
     min: 10000
-  gradient_steps:
-    distribution: uniform
-    max: 20
-    min: 1
   train_freq:
     distribution: uniform
-    max: 40
+    max: 10
     min: 1
   learning_rate:
-    distribution: log_uniform_values
+    distribution: uniform
     max: 0.01
-    min: 0.00005
+    min: 0.0001
   target_update_interval:
     distribution: uniform
     max: 10000
     min: 1
   tau:
-    distribution: log_uniform_values
+    distribution: uniform
     max: 1
     min: 0.01
   theta_update_interval:
     distribution: uniform
-    max: 1000
+    max: 100
     min: 1
   tau_theta:
-    distribution: log_uniform_values
+    distribution: uniform
     max: 1
-    min: 0.01
+    min: 0.5
   learning_starts:
     distribution: uniform
-    max: 20000
-    min: 100
+    max: 10000
+    min: 1
   aggregator:
     values: [min, max, mean]
   hidden_dim:

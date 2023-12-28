@@ -64,6 +64,7 @@ class uLearner:
                  max_grad_norm=10,
                  learning_starts=1000,
                  loss_fn=None,
+                 use_rawlik=True,
                  device='cpu',
                  render=False,
                  log_dir=None,
@@ -99,9 +100,9 @@ class uLearner:
         self.tau_theta = tau_theta
         self.theta_update_interval = theta_update_interval
         self.train_freq = train_freq
+        self.use_rawlik = use_rawlik
         self.max_grad_norm = max_grad_norm
         self.num_nets = num_nets
-        self.prior = None
         self.learning_starts = learning_starts
         self.use_wandb = use_wandb
         self.aggregator = aggregator
@@ -143,10 +144,15 @@ class uLearner:
         
         self.target_us = TargetNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
                                                      for _ in range(self.num_nets)])
+        
+        self.online_prior = OnlineNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)])
+        self.target_prior = TargetNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)])
+                                        
         self.target_us.load_state_dicts([u.state_dict() for u in self.online_us])
         # Make (all) Us learnable:
         opts = [torch.optim.Adam(u.parameters(), lr=self.learning_rate)
                 for u in self.online_us]
+        opts.append(torch.optim.Adam(self.online_prior.nets[0].parameters(), lr=self.learning_rate))
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def train(self):
@@ -156,35 +162,44 @@ class uLearner:
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(self.batch_size)
             states, actions, next_states, dones, rewards = batch
-            # send rewards through a tanh to make them more stable:
-            # rewards = 50*torch.tanh(rewards)
             # Calculate the current u values (feedforward):
             curr_u = torch.cat([online_u(states).squeeze().gather(1, actions.long())
                                    for online_u in self.online_us], dim=1)
+            curr_priora = self.online_prior.nets[0](states).squeeze()#.gather(1, actions.long())
+            # normalize the prior:
+            curr_priora /= curr_priora.sum(dim=-1, keepdim=True)
+            curr_prior = curr_priora.gather(1, actions.long())
+            if not self.use_rawlik:
+                curr_prior = 1/self.nA
+
             
             with torch.no_grad():
                 online_u_next = torch.stack([u(next_states)
                                     for u in self.online_us], dim=0)
                 online_curr_u = torch.stack([u(states).gather(1, actions)
                                     for u in self.online_us], dim=0)
-                
-                # since pi0 is same for all, just do exp(ref_u) and sum over actions:
-                # TODO: should this go outside no grad? Also, is it worth defining a log_prior value?
-                # online_log_chi = torch.logsumexp(online_u_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                online_chi = online_u_next.sum(dim=-1) / self.nA
+                online_curr_ua = torch.stack([u(states)
+                                    for u in self.online_us], dim=0)
+                target_priora = self.target_prior.nets[0](states).squeeze()
+                target_priora /= target_priora.sum(dim=-1, keepdim=True)
+
+                target_prior_next = self.target_prior.nets[0](next_states).squeeze()
+                target_prior_next /= target_prior_next.sum(dim=-1, keepdim=True)
+                # target_prior_next = target_prior_next
+
+                online_chi = (online_u_next * target_prior_next.repeat(self.num_nets, 1, 1)).sum(dim=-1)
                 online_curr_u = online_curr_u.squeeze(-1)
                 in_log = online_chi / online_curr_u
                 # clamp to a tolerable range:
                 # in_log = torch.clamp(in_log, -5, 5)
                 new_thetas[grad_step, :] = -(torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1))
 
-                target_next_us = [target_u(next_states)
-                                        for target_u in self.target_us]
+                target_next_us = [target_u(next_states) for target_u in self.target_us]
                 
                 # logsumexp over actions:
                 target_next_us = torch.stack(target_next_us, dim=1)
                 # next_us = torch.logsumexp(target_next_us, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                next_us = target_next_us.sum(dim=-1) / self.nA
+                next_us = (target_next_us * target_prior_next.unsqueeze(1).repeat( 1,self.num_nets, 1)).sum(dim=-1)
                 next_u, _ = self.aggregator_fn(next_us, dim=1)
  
                 next_u = next_u.reshape(-1, 1)
@@ -200,17 +215,29 @@ class uLearner:
                 # in_exp -= baseline
                 expected_curr_u = torch.exp(self.beta * (in_exp)) * next_u
                 expected_curr_u = expected_curr_u.squeeze(1)
+  
+  
 
             # Calculate the u ("critic") loss:
             loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in curr_u.T)
-            
+            if self.use_rawlik:
+                # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
+                pistar = self.aggregator_fn(online_curr_ua, dim=0)[0] * target_priora
+                pistar /= pistar.sum(dim=-1, keepdim=True)
+
+                prior_loss = F.kl_div(curr_priora.squeeze().log(), pistar, reduction='batchmean', log_target=False)
+
             self.logger.record("train/loss", loss.item())
+            if self.use_rawlik:
+                self.logger.record("train/prior_loss", prior_loss.item())
             self.optimizers.zero_grad()
             # Increase update counter
             self._n_updates += self.gradient_steps
 
             # Clip gradient norm
             loss.backward()
+            if self.use_rawlik:
+                prior_loss.backward()
             self.online_us.clip_grad_norm(self.max_grad_norm)
             self.optimizers.step()
         #TODO: Clamp based on reward range
@@ -237,6 +264,11 @@ class uLearner:
                     ))
         self.logger.record("train/max_grad", total_norm.item())
 
+        # log the average weights in first layer:
+        for i, u in enumerate(self.online_us.nets):
+            self.logger.record(f'train/avg_wts_{i}', u.model[0].weight.mean().item())
+            self.logger.record(f'train/avg_bias_{i}', u.model[0].bias.mean().item())
+
 
     def learn(self, total_timesteps, beta_schedule=None):
         # Start a timer to log fps:
@@ -254,7 +286,12 @@ class uLearner:
                 if self.env_steps < self.learning_starts:
                     action = self.env.action_space.sample()
                 else:
-                    action = self.online_us.choose_action(state)
+                    if self.use_rawlik:
+                        pi0 = self.target_prior.nets[0](state).squeeze()
+                        pi0 /= pi0.sum()
+                    else:
+                        pi0 = None
+                    action = self.online_us.choose_action(state, prior=pi0)
                     # action = self.online_us.greedy_action(state)
                     # action = self.env.action_space.sample()
 
@@ -272,6 +309,9 @@ class uLearner:
                 if self.env_steps % self.target_update_interval == 0:
                     # Do a Polyak update of parameters:
                     self.target_us.polyak(self.online_us, self.tau)
+                if self.use_rawlik:
+                    if self.env_steps % _000 == 0:
+                        self.target_prior.polyak(self.online_prior, 0.5)
 
                 self.beta = self.betas[self.env_steps - 1]
 
@@ -332,8 +372,13 @@ class uLearner:
             state, _ = self.eval_env.reset()
             done = False
             while not done:
-                action = self.online_us.greedy_action(state)
-                # action = self.online_us.choose_action(state)
+                if self.use_rawlik:
+                    pi0 = self.target_prior.nets[0](state).squeeze()
+                    pi0 /= pi0.sum()
+                else:
+                    pi0 = None
+                action = self.online_us.greedy_action(state, prior=pi0)
+                # action = self.online_us.choose_action(state, prior=self.online_prior.nets[0](state).squeeze())
                 action_freqs[action] += 1
                 action = action.item()
                 # action = self.online_us.choose_action(state)
@@ -376,23 +421,24 @@ def main():
     from disc_envs import get_environment
     env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    env_id = 'CartPole-v1'
+    # env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_hparams1 as config
-    agent = uLearner(env_id, **config, device='cpu', log_interval=1000,
-                        log_dir='pend', num_nets=1, render=0, aggregator='min',
-                        scheduler_str='none', algo_name='u', beta_end=2.4)
+    from hparams import lunar_logu as config
+    agent = uLearner(env_id, **config, device='cuda', log_interval=1000,
+                        log_dir='pend', num_nets=2, render=0,# aggregator='max',
+                        scheduler_str='none', algo_name='u',# beta_end=2.4,
+                        use_rawlik=1)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=25000_000, beta_schedule='none')
+    agent.learn(total_timesteps=350_000, beta_schedule='none')
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
