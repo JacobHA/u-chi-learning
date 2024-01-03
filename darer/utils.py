@@ -70,10 +70,28 @@ def logger_at_folder(log_dir=None, algo_name=None):
 
 
 class PermuteAtariObs(gym.Wrapper):
-    def step(*args, **kwargs):
-        res = super().step(*args, **kwargs)
-        res = np.transpose(obs, [2,1,0])
-        return obs, rew, 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.env = self.env
+        new_shape = (self.observation_space.shape[-1], *self.observation_space.shape[:-1])
+        self.observation_space = gym.spaces.Box(
+            low=self.observation_space.low.transpose([2,0,1]),
+            high=self.observation_space.high.transpose([2,0,1]),
+            shape=new_shape,
+            dtype=self.observation_space.dtype
+        )
+        self.action_space = self.action_space
+
+    def step(self, *args, **kwargs):
+        res = self.env.step(*args, **kwargs)
+        newres = (np.transpose(res[0], [2,1,0]), *res[1:])
+        del res
+        return newres
+
+    def reset(self, *args, **kwargs):
+        res, info = self.env.reset(*args, **kwargs)
+        res = np.transpose(res, [2,1,0])
+        return res, info
 
 
 from ray.rllib.env.wrappers.atari_wrappers import wrap_deepmind
@@ -86,21 +104,25 @@ def rllib_env_id_to_envs(env_id, render=False):
     return env, eval_env
 
 
-def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=False):
+def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=False, sb3dims=True):
     if isinstance(env_id, str):
         # Don't vectorize if there is only one env
         if n_envs==1:
             env = gym.make(env_id, frameskip=frameskip)
-            env = AtariPreprocessing(env, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, noop_max=30, frame_skip=1)
+            env = AtariPreprocessing(env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 env = FrameStack(env, framestack_k)
+            # permute dims for sb3
+            if sb3dims:
+                env = PermuteAtariObs(env)
             # env = AtariAdapter(env)
             # make another instance for evaluation purposes only:
             eval_env = gym.make(env_id, render_mode='human' if render else None, frameskip=frameskip)
-            eval_env = AtariPreprocessing(eval_env, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, noop_max=30, frame_skip=1)
-
+            eval_env = AtariPreprocessing(eval_env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 eval_env = FrameStack(eval_env, framestack_k)
+            if sb3dims:
+                eval_env = PermuteAtariObs(eval_env)
             # eval_env = AtariAdapter(eval_env)
             # if render:
             #     eval_env = RecordVideo(eval_env, video_folder='videos')
@@ -108,13 +130,13 @@ def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grays
             env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
                 wrappers=[
-                    lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
+                    lambda e: AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
                 ])
 
             eval_env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
                 wrappers=[
-                    lambda e: AtariPreprocessing(e, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
+                    lambda e: AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
                 ])
 
     elif isinstance(env_id, gym.Env):
