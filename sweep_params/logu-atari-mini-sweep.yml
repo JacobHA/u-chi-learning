@@ -3,7 +3,7 @@ metric:
   name: eval/auc
 parameters:
   env_id:
-    values: [ "ALE/Adventure-v4", "ALE/AirRaid-v4", "ALE/Alien-v4" ]
+    values: [ "AdventureNoFrameskip-v4", "AirRaidNoFrameskip-v4", "AlienNoFrameskip-v4" ]
   scheduler_str:
     values: [ "step", "linear", "exponential", "none" ]
   beta_schedule:

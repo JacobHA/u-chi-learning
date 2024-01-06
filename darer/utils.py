@@ -104,7 +104,7 @@ def rllib_env_id_to_envs(env_id, render=False):
     return env, eval_env
 
 
-def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=False, sb3dims=True):
+def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=False, permute_dims=True):
     if isinstance(env_id, str):
         # Don't vectorize if there is only one env
         if n_envs==1:
@@ -112,8 +112,8 @@ def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grays
             env = AtariPreprocessing(env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 env = FrameStack(env, framestack_k)
-            # permute dims for sb3
-            if sb3dims:
+            # permute dims for nature CNN in sb3
+            if permute_dims:
                 env = PermuteAtariObs(env)
             # env = AtariAdapter(env)
             # make another instance for evaluation purposes only:
@@ -121,7 +121,7 @@ def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grays
             eval_env = AtariPreprocessing(eval_env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 eval_env = FrameStack(eval_env, framestack_k)
-            if sb3dims:
+            if permute_dims:
                 eval_env = PermuteAtariObs(eval_env)
             # eval_env = AtariAdapter(eval_env)
             # if render:

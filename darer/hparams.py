@@ -190,7 +190,7 @@ lunar_logu2 = {
 pong_logu = {
     'beta': 0.8,
     'batch_size': 32,
-    'buffer_size': 10_000,
+    'buffer_size': 100_000,
     'gradient_steps': 1,
     'learning_rate': 1e-4,
     'target_update_interval': 1_000,

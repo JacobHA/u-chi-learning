@@ -80,10 +80,10 @@ class LogULearner:
                  grayscale_obs=False,
                  framestack_k=None,
                  ) -> None:
-        # self.env, self.eval_env = env_id_to_envs(
-        #     env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs)
-        self.env, self.eval_env = rllib_env_id_to_envs(env_id, render=render)
-        
+        # self.env, self.eval_env = rllib_env_id_to_envs(env_id, render=render)
+        self.env, self.eval_env = env_id_to_envs(
+            env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs, permute_dims=False)
+
         self.n_envs = n_envs
         self.is_vector_env = n_envs > 1
         # self.envs = gym.make_vec(env_id, render_mode='human' if render else None, num_envs=8)
@@ -175,6 +175,10 @@ class LogULearner:
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(self.batch_size)
             states, actions, next_states, dones, rewards = batch
+            # normalize if needed
+            # if states.dtype == torch.uint8:
+            #     states = states.float() / 255
+            #     next_states = next_states.float() / 255
             # Calculate the current logu values (feedforward):
             curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
                                    for online_logu in self.online_logus], dim=1)
@@ -473,6 +477,6 @@ if __name__ == '__main__':
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=1_000_000, log_dir='pend', aggregator='max',
+    main(env_id, total_timesteps=1_200_000, log_dir='pend', aggregator='max',
          scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda',
          final_beta_multiplier=10, render=False)
