@@ -50,4 +50,12 @@ parameters:
     values: [min, max, mean]
   hidden_dim:
     values: [64, 128, 256]
+  prior_tau:
+    distribution: uniform
+    max: 1
+    min: 0.1
+  prior_update_interval:
+    distribution: uniform
+    max: 100
+    min: 1
 program: wandb_job.py
