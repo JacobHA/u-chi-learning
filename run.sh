@@ -9,12 +9,12 @@
 # additional options
 #SBATCH --error=outfiles/%j.err
 #SBATCH --output=outfiles/%j.out
-##SBATCH --partition=AMD6276
+#SBATCH --partition=AMD6276
 # use the gpu:
-#SBATCH --gres=gpu:1
-#SBATCH --partition=DGXA100
-#SBATCH --export=NONE
-#SBATCH --array=1-5
+##SBATCH --gres=gpu:1
+##SBATCH --partition=DGXA100
+##SBATCH --export=NONE
+#SBATCH --array=1-10
 echo "using scavenger"
 
 # Prepare conda:
@@ -29,6 +29,8 @@ echo "Start Run"
 echo `date`
 # python uchi_agent_NN.py
 python experiments/wandb_job.py -d cpu -env CartPole-v1
+# python experiments/wandb_job.py -d cuda -env PongNoFrameskip-v4
+
 # python darer/MultiLogU.py
 # python local_finetuned_runs.py -a logu
 
