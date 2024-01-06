@@ -1,26 +1,29 @@
+import gymnasium as gym
+import sys
+import wandb
+from sb3buffertensors import ReplayBufferTensors
+from sb3buffers import ReplayBuffer
+import time
+from torch.nn import functional as F
+import torch
+import numpy as np
 from utils import env_id_to_envs, rllib_env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 from Models import LogUNet, OnlineNets, Optimizers, TargetNets
 import matplotlib.pyplot as plt
+
 
 def show_frames(frames):
     # Assuming frames is a numpy array of shape (w, h, 4)
     for i in range(frames.shape[2]):
         plt.subplot(2, 2, i+1)
-        plt.imshow(frames[:,:,i], cmap='gray')
+        plt.imshow(frames[:, :, i], cmap='gray')
         plt.axis('off')
     plt.show()
-import gymnasium as gym
-import numpy as np
-import torch
-from torch.nn import functional as F
-import time
+
+
 # temporarily fix the stable-baselines3 bug:
 # from stable_baselines3.common.buffers import ReplayBuffer
-from sb3buffers import ReplayBuffer
-from sb3buffertensors import ReplayBufferTensors
 # from stable_baselines3.common.envs import SubprocVecEnv
-import wandb
-import sys
 
 sys.path.append("tabular")
 sys.path.append("darer")
@@ -175,10 +178,6 @@ class LogULearner:
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(self.batch_size)
             states, actions, next_states, dones, rewards = batch
-            # normalize if needed
-            # if states.dtype == torch.uint8:
-            #     states = states.float() / 255
-            #     next_states = next_states.float() / 255
             # Calculate the current logu values (feedforward):
             curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
                                    for online_logu in self.online_logus], dim=1)
@@ -297,7 +296,6 @@ class LogULearner:
             next_state, reward, terminated, truncated, infos = self.env.step(
                 action)
             done = np.bitwise_or(terminated, truncated)
-            
             self.num_episodes += np.sum(done)
             self.rollout_reward += reward
 
@@ -305,7 +303,7 @@ class LogULearner:
                               (self.train_freq != -1 and self.env_steps %
                                self.train_freq == 0)
 
-            if train_this_step:
+            if self.env_steps % self.train_freq == 0:
                 if self.env_steps > self.batch_size:
                     self.train()
 
@@ -380,8 +378,8 @@ class LogULearner:
             state, _ = self.eval_env.reset()
             done = np.zeros(self.n_envs, dtype=bool)
             while not all(done):
-                # action = self.online_logus.greedy_action(state)
-                action = self.online_logus.choose_action(state)
+                action = self.online_logus.greedy_action(state)
+                # action = self.online_logus.choose_action(state)
                 action_freqs[action] += 1
                 action = action.item() if not self.is_vector_env else action
                 # action = self.online_logus.choose_action(state)
@@ -425,8 +423,8 @@ def main(env_id,
          aggregator,
          beta_schedule,
          final_beta_multiplier,
-         device,
          render,
+         device,
          **kwargs):
     from disc_envs import get_environment
     # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
@@ -434,7 +432,7 @@ def main(env_id,
     if not kwargs:
         print("Using default hparams")
         from hparams import pong_logu as kwargs
-    kwargs['beta'] = 0.1
+    # kwargs['beta'] = 0.1
 
     beta_end = final_beta_multiplier * kwargs['beta']
     assert beta_end > kwargs['beta']
@@ -455,8 +453,6 @@ def main(env_id,
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=total_timesteps, beta_schedule=beta_schedule)
-    # log the final auc:
-    wandb.log({'eval/auc': agent.eval_auc})
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1 - t0) / 1e9} seconds")
 
@@ -473,7 +469,7 @@ if __name__ == '__main__':
     # env_id = 'ALE/AirRaid-v5'
     env_id = 'PongNoFrameskip-v4'
     # env_id = 'BoxingNoFrameskip-v4'
-    # env_id = 'ALE/Pong-v5'
+    # env_id = 'ALE/Pong-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'

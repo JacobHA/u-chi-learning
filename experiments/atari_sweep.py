@@ -1,14 +1,12 @@
+import argparse
+import wandb
+import yaml
+import numpy as np
+import random
+import copy
+from MultiLogU import main
 import sys
 sys.path.append('darer')
-from MultiLogU import main
-import copy
-import random
-
-import numpy as np
-import yaml
-
-import wandb
-import argparse
 
 
 exp_to_config = {
@@ -20,7 +18,8 @@ exp_to_config = {
     "atari-pong": "logu-atari-pong-sweep.yml"
 }
 int_hparams = {'batch_size', 'buffer_size', 'gradient_steps',
-               'target_update_interval', 'theta_update_interval'}
+               'target_update_interval', 'theta_update_interval',
+               'train_freq'}
 device = None
 
 
