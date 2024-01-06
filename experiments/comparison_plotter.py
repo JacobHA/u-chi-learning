@@ -83,8 +83,10 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             print("No data to plot.")
 
 if __name__ == "__main__":
-    folder = 'experiments/ft/Acrobot-v1'
-    plotter(folder=folder, metrics=['eval/avg_reward', 'rollout/reward'], xlim=(0, 30_000), ylim=(-500, -50))
+    # folder = 'experiments/ft/Acrobot-v1'
+    folder = 'experiments/ft/LunarLander-v2'
+
+    plotter(folder=folder, metrics=['eval/avg_reward', 'train/theta'], ylim=(-300, 300))
     # plotter(folder=folder, metrics=['step', 'rollout/reward'])
     # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
     # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])

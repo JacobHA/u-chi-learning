@@ -4,6 +4,7 @@ import numpy as np
 from stable_baselines3.common.logger import configure
 from gymnasium.wrappers.atari_preprocessing import AtariPreprocessing
 import time
+import wandb
 
 import torch
 import sys
@@ -155,7 +156,7 @@ def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grays
 
     return env, eval_env
 
-def log_class_vars(self, params):
+def log_class_vars(self, params, use_wandb=False):
     logger = self.logger
     for key, value in params.items():
         value = self.__dict__[value]
@@ -163,6 +164,8 @@ def log_class_vars(self, params):
         if isinstance(value, torch.Tensor):
             value = value.item()
         logger.record(key, value)
+        if use_wandb:
+            wandb.log({key: value})
 
 def get_eigvec_values(fa, save_name=None):
     env = fa.env

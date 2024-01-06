@@ -1,34 +1,15 @@
 import gymnasium as gym
-import sys
-import wandb
-from sb3buffertensors import ReplayBufferTensors
-from sb3buffers import ReplayBuffer
-import time
-from torch.nn import functional as F
-import torch
 import numpy as np
-from utils import env_id_to_envs, rllib_env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
-from Models import LogUNet, OnlineNets, Optimizers, TargetNets
-import matplotlib.pyplot as plt
-
-
-def show_frames(frames):
-    # Assuming frames is a numpy array of shape (w, h, 4)
-    for i in range(frames.shape[2]):
-        plt.subplot(2, 2, i+1)
-        plt.imshow(frames[:, :, i], cmap='gray')
-        plt.axis('off')
-    plt.show()
-
-
-# temporarily fix the stable-baselines3 bug:
-# from stable_baselines3.common.buffers import ReplayBuffer
-# from stable_baselines3.common.envs import SubprocVecEnv
-
+import torch
+from torch.nn import functional as F
+import time
+from stable_baselines3.common.buffers import ReplayBuffer
+import wandb
+import sys
 sys.path.append("tabular")
 sys.path.append("darer")
-from Models import LogUNet, OnlineNets, Optimizers, TargetNets
-from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
+from Models import UNet, OnlineNets, Optimizers, TargetNets
+from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder, rllib_env_id_to_envs
 
 torch.backends.cudnn.benchmark = True
 
@@ -61,11 +42,11 @@ LOG_PARAMS = {
     'train/lr': 'lr',
 }
 
-str_to_aggregator = {'min': torch.min,
-                     'max': torch.max,
+str_to_aggregator = {'min': torch.min, 
+                     'max': torch.max, 
                      'mean': lambda x, dim: (torch.mean(x, dim=dim), None)}
 
-class LogULearner:
+class uLearner:
     def __init__(self,
                  env_id,
                  beta,
@@ -86,20 +67,16 @@ class LogULearner:
                  device='cpu',
                  render=False,
                  log_dir=None,
-                 algo_name='logu',
+                 algo_name='u',
                  log_interval=1000,
                  save_checkpoints=False,
                  use_wandb=False,
                  aggregator='max',
-                 scheduler_str='none',
-                 beta_end=None,
-                 n_envs=5,
-                 frameskip=1,
-                 grayscale_obs=False,
-                 framestack_k=None,
+                 scheduler_str='none',    
+                 beta_end=None,             
                  ) -> None:
-        self.env, self.eval_env = env_id_to_envs(
-            env_id, render, n_envs=n_envs, frameskip=frameskip, framestack_k=framestack_k, grayscale_obs=grayscale_obs, permute_dims=False)
+        
+        self.env, self.eval_env = env_id_to_envs(env_id, render)
         self.env_str = self.env.unwrapped.spec.id if hasattr(self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
         self.beta = beta
         self.is_tabular = is_tabular(self.env)
@@ -133,23 +110,23 @@ class LogULearner:
         self.fps = None
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
-
+        
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
-                                 observation_space=self.env.observation_space,
-                                 action_space=self.env.action_space,
-                                 n_envs=1,
-                                 handle_timeout_termination=True,
-                                 device=device,
-                                 optimize_memory_usage=True)
-        self.nA = self.env.action_space.nvec[0] if isinstance(self.env.action_space,
-                                                              gym.spaces.MultiDiscrete) else self.env.action_space.n
+                                          observation_space=self.env.observation_space,
+                                          action_space=self.env.action_space,
+                                          n_envs=1,
+                                          handle_timeout_termination=True,
+                                          device=device)
+        assert isinstance(self.env.action_space, gym.spaces.Discrete), \
+            "Only discrete action spaces are supported."
+        self.nA = self.env.action_space.n
+
         self.theta = torch.Tensor([0]).to(self.device)
         self.eval_auc = 0
         self.num_episodes = 0
 
         # Set up the logger:
-        self.logger = logger_at_folder(
-            log_dir, algo_name=f'{env_id}-{algo_name}')
+        self.logger = logger_at_folder(log_dir, algo_name=f'{env_id}-{algo_name}')
         # Log the hparams:
         log_class_vars(self, HPARAM_ATTRS)
         self.logger.dump()
@@ -160,20 +137,16 @@ class LogULearner:
         self.loss_fn = F.smooth_l1_loss if loss_fn is None else loss_fn
 
     def _initialize_networks(self):
-        self.online_logus = OnlineNets(
-            [LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
-             for _ in range(self.num_nets)],
-            aggregator=self.aggregator,
-            is_vector_env=self.is_vector_env,
-        )
-
-        self.target_logus = TargetNets([LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
-                                        for _ in range(self.num_nets)])
-        self.target_logus.load_state_dicts(
-            [logu.state_dict() for logu in self.online_logus])
-        # Make (all) LogUs learnable:
-        opts = [torch.optim.Adam(logu.parameters(), lr=self.learning_rate)
-                for logu in self.online_logus]
+        self.online_us = OnlineNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
+                                                     for _ in range(self.num_nets)],
+                                                     aggregator=self.aggregator)
+        
+        self.target_us = TargetNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
+                                                     for _ in range(self.num_nets)])
+        self.target_us.load_state_dicts([u.state_dict() for u in self.online_us])
+        # Make (all) Us learnable:
+        opts = [torch.optim.Adam(u.parameters(), lr=self.learning_rate)
+                for u in self.online_us]
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def train(self):
@@ -183,42 +156,54 @@ class LogULearner:
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(self.batch_size)
             states, actions, next_states, dones, rewards = batch
-            # Calculate the current logu values (feedforward):
-            curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
-                                   for online_logu in self.online_logus], dim=1)
+            # send rewards through a tanh to make them more stable:
+            # rewards = 50*torch.tanh(rewards)
+            # Calculate the current u values (feedforward):
+            curr_u = torch.cat([online_u(states).squeeze().gather(1, actions.long())
+                                   for online_u in self.online_us], dim=1)
             
             with torch.no_grad():
-                online_logu_next = torch.stack([logu(next_states)
-                                    for logu in self.online_logus], dim=0)
-                online_curr_logu = torch.stack([logu(states).gather(1, actions)
-                                    for logu in self.online_logus], dim=0)
-
-                # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
+                online_u_next = torch.stack([u(next_states)
+                                    for u in self.online_us], dim=0)
+                online_curr_u = torch.stack([u(states).gather(1, actions)
+                                    for u in self.online_us], dim=0)
+                
+                # since pi0 is same for all, just do exp(ref_u) and sum over actions:
                 # TODO: should this go outside no grad? Also, is it worth defining a log_prior value?
-                online_log_chi = torch.logsumexp(online_logu_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                online_curr_logu = online_curr_logu.squeeze(-1)
+                # online_log_chi = torch.logsumexp(online_u_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+                online_chi = online_u_next.sum(dim=-1) / self.nA
+                online_curr_u = online_curr_u.squeeze(-1)
+                in_log = online_chi / online_curr_u
+                # clamp to a tolerable range:
+                # in_log = torch.clamp(in_log, -5, 5)
+                new_thetas[grad_step, :] = -(torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1))
 
-                new_thetas[grad_step, :] = -torch.mean(rewards.squeeze(-1) + (online_log_chi - online_curr_logu) / self.beta, dim=1)
-
-                target_next_logus = [target_logu(next_states)
-                                        for target_logu in self.target_logus]
-
+                target_next_us = [target_u(next_states)
+                                        for target_u in self.target_us]
+                
                 # logsumexp over actions:
-                target_next_logus = torch.stack(target_next_logus, dim=1)
-                next_logus = torch.logsumexp(target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-                next_logu, _ = self.aggregator_fn(next_logus, dim=1)
-
-                next_logu = next_logu.reshape(-1, 1)
-                assert next_logu.shape == dones.shape
-                next_logu = next_logu * (1-dones) # + self.theta * dones
+                target_next_us = torch.stack(target_next_us, dim=1)
+                # next_us = torch.logsumexp(target_next_us, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+                next_us = target_next_us.sum(dim=-1) / self.nA
+                next_u, _ = self.aggregator_fn(next_us, dim=1)
+ 
+                next_u = next_u.reshape(-1, 1)
+                assert next_u.shape == dones.shape
+                next_u = next_u * (1-dones) 
 
                 # "Backup" eigenvector equation:
-                expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
-                expected_curr_logu = expected_curr_logu.squeeze(1)
+                # for numerical stability, first subtract a baseline:
+                in_exp = rewards + self.theta
+                # clamp to a tolerable range:
+                # in_exp = torch.clamp(in_exp, -5, 5)
+                # baseline = in_exp.mean()
+                # in_exp -= baseline
+                expected_curr_u = torch.exp(self.beta * (in_exp)) * next_u
+                expected_curr_u = expected_curr_u.squeeze(1)
 
-            # Calculate the logu ("critic") loss:
-            loss = 0.5*sum(self.loss_fn(logu, expected_curr_logu) for logu in curr_logu.T)
-
+            # Calculate the u ("critic") loss:
+            loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in curr_u.T)
+            
             self.logger.record("train/loss", loss.item())
             self.optimizers.zero_grad()
             # Increase update counter
@@ -226,7 +211,7 @@ class LogULearner:
 
             # Clip gradient norm
             loss.backward()
-            self.online_logus.clip_grad_norm(self.max_grad_norm)
+            self.online_us.clip_grad_norm(self.max_grad_norm)
             self.optimizers.step()
         #TODO: Clamp based on reward range
         # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
@@ -242,13 +227,13 @@ class LogULearner:
 
         # Log info from this training cycle:
         self.logger.record("train/theta", self.theta.item())
-        self.logger.record("train/avg logu", curr_logu.mean().item())
-        self.logger.record("train/min logu", curr_logu.min().item())
-        self.logger.record("train/max logu", curr_logu.max().item())
+        self.logger.record("train/avg u", curr_u.mean().item())
+        self.logger.record("train/min u", curr_u.min().item())
+        self.logger.record("train/max u", curr_u.max().item())
         # Log the max gradient:
         total_norm = torch.max(torch.stack(
-                    [px.grad.detach().abs().max()
-                        for p in self.online_logus.parameters() for px in p]
+                    [px.grad.detach().abs().max() 
+                        for p in self.online_us.parameters() for px in p]
                     ))
         self.logger.record("train/max_grad", total_norm.item())
 
@@ -269,43 +254,38 @@ class LogULearner:
                 if self.env_steps < self.learning_starts:
                     action = self.env.action_space.sample()
                 else:
-                    action = self.online_logus.choose_action(state)
-                    # action = self.online_logus.greedy_action(state)
+                    action = self.online_us.choose_action(state)
+                    # action = self.online_us.greedy_action(state)
                     # action = self.env.action_space.sample()
 
-            next_state, reward, terminated, truncated, infos = self.env.step(
-                action)
-            done = np.bitwise_or(terminated, truncated)
-            self.num_episodes += np.sum(done)
-            self.rollout_reward += reward
+                next_state, reward, terminated, truncated, infos = self.env.step(
+                    action)
+                done = terminated or truncated
+                self.rollout_reward += reward
 
-            train_this_step = (self.train_freq == -1 and terminated) or \
-                              (self.train_freq != -1 and self.env_steps %
-                               self.train_freq == 0)
+                train_this_step = (self.train_freq == -1 and terminated) or \
+                    (self.train_freq != -1 and self.env_steps % self.train_freq == 0)
+                if train_this_step:
+                    if self.env_steps > self.batch_size:#self.learning_starts:
+                        self.train()
 
-            if self.env_steps % self.train_freq == 0:
-                if self.env_steps > self.batch_size:
-                    self.train()
+                if self.env_steps % self.target_update_interval == 0:
+                    # Do a Polyak update of parameters:
+                    self.target_us.polyak(self.online_us, self.tau)
 
-            if self.env_steps % self.target_update_interval == 0:
-                # Do a Polyak update of parameters:
-                self.target_logus.polyak(self.online_logus, self.tau)
+                self.beta = self.betas[self.env_steps - 1]
 
-            self.beta = self.betas[self.env_steps - 1]
+                self.env_steps += 1
+                episode_reward += reward
 
-            self.env_steps += 1
-            episode_reward += reward
+                # Add the transition to the replay buffer:
+                sarsa = (state, next_state, action, reward, terminated)
+                self.replay_buffer.add(*sarsa, [infos])
+                state = next_state
+                self._log_stats()
 
-            # Add the transition to the replay buffer:
-            sarsa = (state, next_state, action, reward, terminated)
-            # todo: fix stable-baselines bug in adding multiple parallel sarsa
-            self.replay_buffer.add(*sarsa, [infos])
-            state = next_state
-            if any(done) if self.is_vector_env else done:
-                self.logger.record(
-                    "rollout/reward", np.mean(episode_reward[done == True]))
-                # reset the terminated environments:
-                episode_reward[done == True] = 0
+            if done:
+                self.logger.record("rollout/reward", self.rollout_reward)
 
 
     def _log_stats(self):
@@ -320,7 +300,7 @@ class LogULearner:
                 self.eval_auc += self.avg_eval_rwd
             if self.save_checkpoints:
                 raise NotImplementedError
-                torch.save(self.online_logu.state_dict(),
+                torch.save(self.online_u.state_dict(),
                            'sql-policy.para')
             # Get the current learning rate from the optimizer:
             self.lr = self.optimizers.get_lr()
@@ -350,29 +330,21 @@ class LogULearner:
         n_steps = 0
         for ep in range(n_episodes):
             state, _ = self.eval_env.reset()
-            done = np.zeros(self.n_envs, dtype=bool)
-            while not all(done):
-                action = self.online_logus.greedy_action(state)
-                # action = self.online_logus.choose_action(state)
+            done = False
+            while not done:
+                action = self.online_us.greedy_action(state)
+                # action = self.online_us.choose_action(state)
                 action_freqs[action] += 1
-                action = action.item() if not self.is_vector_env else action
-                # action = self.online_logus.choose_action(state)
+                action = action.item()
+                # action = self.online_us.choose_action(state)
                 n_steps += 1
-                # ensure there is no pending call to reset:
 
                 next_state, reward, terminated, truncated, info = self.eval_env.step(
                     action)
-
                 avg_reward += reward
                 state = next_state
-                _done = terminated or truncated if not self.is_vector_env else np.bitwise_or(
-                    terminated, truncated)
-                done = np.bitwise_or(done, _done)
+                done = terminated or truncated
 
-        # close the video recorder if it is open:
-        self.eval_env.close()
-        if self.n_envs > 1:
-            avg_reward = sum(avg_reward) / self.n_envs
         avg_reward /= n_episodes
         # log the action frequencies:
         action_freqs /= n_episodes
@@ -399,65 +371,31 @@ class LogULearner:
         else:
             raise NotImplementedError(f"Unknown beta schedule: {beta_schedule}")
         return self.betas
-
-def main(env_id,
-         total_timesteps,
-         n_envs,
-         log_dir,
-         scheduler_str,
-         aggregator,
-         beta_schedule,
-         final_beta_multiplier,
-         render,
-         device,
-         **kwargs):
+    
+def main():
     from disc_envs import get_environment
-    # env_id = get_environment('Pendulum5', nbins=3, max_episode_steps=200, reward_offset=0)
+    env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 
-    if not kwargs:
-        print("Using default hparams")
-        from hparams import pong_logu as kwargs
-    # kwargs['beta'] = 0.1
-
-    beta_end = final_beta_multiplier * kwargs['beta']
-    assert beta_end > kwargs['beta']
-
-    # I'm not sure why, but there's an extra beta_end coming in from somewhere,
-    # so I'm just popping it out of kwargs to be safe
-    try:
-        kwargs.pop('beta_end')
-    except KeyError:
-        pass
-    agent = LogULearner(env_id, **kwargs, device=device, log_interval=5000,
-                        log_dir=log_dir, num_nets=2, render=render, aggregator=aggregator,
-                        scheduler_str=scheduler_str, algo_name='std', beta_end=beta_end,
-                        n_envs=n_envs, frameskip=4, framestack_k=4, grayscale_obs=True,
-                        use_wandb=False
-                        )
-    # hidden_dim=hidden_dim)
-    # Measure the time it takes to learn:
-    t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=total_timesteps, beta_schedule=beta_schedule)
-    t1 = time.thread_time_ns()
-    print(f"Time to learn: {(t1 - t0) / 1e9} seconds")
-
-
-if __name__ == '__main__':
-    # import cProfile
-    # cProfile.run('main()', sort='cumtime')
-    # env_id = 'CartPole-v1'
+    env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    env_id = 'Acrobot-v1'
+    # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    # env_id = 'ALE/Boxing-v5'
-    # env_id = 'ALE/AirRaid-v5'
-    env_id = 'PongNoFrameskip-v4'
-    # env_id = 'BoxingNoFrameskip-v4'
-    # env_id = 'ALE/Pong-v4'
+    # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-    main(env_id, total_timesteps=1_200_000, log_dir='pend', aggregator='max',
-         scheduler_str='none', n_envs=1, beta_schedule='linear', device='cuda',
-         final_beta_multiplier=10, render=False)
+
+    from hparams import cartpole_hparams1 as config
+    agent = uLearner(env_id, **config, device='cpu', log_interval=1000,
+                        log_dir='pend', num_nets=1, render=0, aggregator='min',
+                        scheduler_str='none', algo_name='u', beta_end=2.4)
+    # Measure the time it takes to learn:
+    t0 = time.thread_time_ns()
+    agent.learn(total_timesteps=25000_000, beta_schedule='none')
+    t1 = time.thread_time_ns()
+    print(f"Time to learn: {(t1-t0)/1e9} seconds")
+
+if __name__ == '__main__':
+    for _ in range(1):
+        main()

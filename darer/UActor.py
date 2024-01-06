@@ -8,7 +8,7 @@ import time
 import wandb
 import sys
 sys.path.append('darer')
-from Models import OnlineNets, Optimizers, TargetNets, LogUsa, GaussianPolicy
+from Models import OnlineNets, Optimizers, TargetNets, LogUsa, GaussianPolicy, Usa
 from utils import env_id_to_envs, log_class_vars, logger_at_folder
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
@@ -37,7 +37,7 @@ LOG_PARAMS = {
     'rollout/beta': 'beta',
 }
 
-class LogUActor:
+class UActor:
     def __init__(self,
                  env_id,
                  beta,
@@ -122,17 +122,17 @@ class LogUActor:
 
 
     def _initialize_networks(self):
-        self.online_logus = OnlineNets([LogUsa(self.env,
+        self.online_us = OnlineNets([Usa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)],
                                         aggregator=self.aggregator)
-        self.target_logus = TargetNets([LogUsa(self.env,
+        self.target_us = TargetNets([Usa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)])
-        self.target_logus.load_state_dicts(
-            [logu.state_dict() for logu in self.online_logus])
+        self.target_us.load_state_dicts(
+            [u.state_dict() for u in self.online_us])
         # self.actor = GaussianPolicy(self.hidden_dim, 
         #                             self.env.observation_space, self.env.action_space,
         #                             use_action_bounds=True,
@@ -145,9 +145,9 @@ class LogUActor:
         # send the actor to device:
         self.actor.to(self.device)
         # TODO: Try a fixed covariance network (no/ignored output)
-        # Make (all) LogUs and Actor learnable:
-        opts = [torch.optim.Adam(logu.parameters(), lr=self.learning_rate)
-                for logu in self.online_logus]
+        # Make (all) us and Actor learnable:
+        opts = [torch.optim.Adam(u.parameters(), lr=self.learning_rate)
+                for u in self.online_us]
         opts.append(torch.optim.Adam(
             self.actor.parameters(), lr=self.actor_learning_rate))
         self.optimizers = Optimizers(opts)
@@ -164,13 +164,15 @@ class LogUActor:
             # actor_actions, curr_log_prob, means = self.actor.sample(states)
             actor_actions, curr_log_prob = self.actor.action_log_prob(states)
 
-            curr_logu = torch.stack([online_logu(states, actions)
-                                   for online_logu in self.online_logus], dim=-1).squeeze(1)
+            curr_u = torch.stack([online_u(states, actions)
+                                   for online_u in self.online_us], dim=-1).squeeze(1)
             with torch.no_grad():
                 # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
                                                 #   _ in range(self.batch_size)])).to(self.device)
                 # sampled_action, log_prob = self.actor.action_log_prob(observations)
-                sampled_action = actions#self.actor.action_log_prob(next_states)[0]#.squeeze(1)
+                # randomly shuffle the actions:
+                sampled_action = actions[torch.randperm(actions.shape[0])]
+                # sampled_action = actions#self.actor.action_log_prob(next_states)[0]#.squeeze(1)
                 # use same number of samples as the batch size for convenience:
                 # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
                 #                                _ in range(self.batch_size)])).to(self.device)
@@ -179,51 +181,45 @@ class LogUActor:
                 # repeat the sampled action for each state in batch:
                 # sampled_action = sampled_action.repeat(self.batch_size, 1)
 
-                
-                ref_logu_next = torch.stack([logu(next_states, sampled_action)
-                            for logu in self.online_logus], dim=0)
-                ref_curr_logu = torch.stack([logu(states, actions)
-                            for logu in self.online_logus], dim=0)  
+                # tile next states across the batch:
+                next_states = next_states.unsqueeze(-1)
+                next_states = next_states.repeat(1,1, self.batch_size)
+                # tile sampled actions across the batch:
+                sampled_action = sampled_action.repeat(1, self.batch_size).T
+                sampled_action = sampled_action.unsqueeze(-1)
+                # permute randomly:
+                # sampled_action = sampled_action[torch.randperm(sel.shape[0])]
+                ref_u_next = torch.stack([u(next_states.permute(0,2,1), sampled_action).sum(dim=1)/self.batch_size
+                            for u in self.online_us], dim=0)
+                ref_curr_u = torch.stack([u(states, actions)
+                            for u in self.online_us], dim=0)  
 
-                log_next_chi = ref_logu_next# - torch.log(torch.Tensor([self.nA])).to(self.device)
+                next_chi = ref_u_next# - torch.log(torch.Tensor([self.nA])).to(self.device)
                 # log_next_chi = log_next_chi.unsqueeze(-1)
                 # new_thetas[grad_step, :] = self.ref_reward - log_ref_chi
-                new_thetas[grad_step, :] = torch.mean(-(rewards + (log_next_chi - ref_curr_logu) / self.beta), dim=1).T
-                
-                # rand_actions = np.array([rand_action for _ in range(self.batch_size)])
+                new_thetas[grad_step, :] = -torch.mean(rewards + torch.log(next_chi / ref_curr_u) / self.beta, dim=1).T
 
-                # rand_actions = torch.Tensor(np.array([self.env.action_space.sample() for 
-                #                                _ in range(self.batch_size)])).to(self.device)
-                                
-                target_next_logu = torch.stack([target_logu(next_states, sampled_action)
-                                                for target_logu in self.target_logus], dim=-1)
+                target_next_u = torch.stack([target_u(next_states.permute(0,2,1), sampled_action).sum(dim=1)/self.batch_size
+                                                for target_u in self.target_us], dim=-1)
 
-                next_logu, _ = self.aggregator_fn(target_next_logu, dim=-1)
-                next_logu = next_logu * (1 - dones) #+ self.theta * dones
+                next_u, _ = self.aggregator_fn(target_next_u, dim=-1)
+                next_u = next_u * (1 - dones) #+ self.theta * dones
 
-                expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
-                expected_curr_logu = expected_curr_logu.squeeze(1)
+                expected_curr_u = torch.exp(self.beta * (rewards + self.theta)) * next_u
+                expected_curr_u = expected_curr_u.squeeze(1)
 
             self.logger.record("train/theta", self.theta.item())
-            self.logger.record("train/avg logu", curr_logu.mean().item())
+            self.logger.record("train/avg u", curr_u.mean().item())
             # Huber loss:
-            loss = 0.5*sum(F.smooth_l1_loss(logu, expected_curr_logu)
-                           for logu in curr_logu.T)
+            loss = 0.5*sum(F.smooth_l1_loss(u, expected_curr_u)
+                           for u in curr_u.T)
             # MSE loss:
-            actor_curr_logu = torch.stack([online_logu(states, actor_actions)
-                                         for online_logu in self.online_logus], dim=-1)
+            actor_curr_u = torch.stack([online_u(states, actor_actions)
+                                         for online_u in self.online_us], dim=-1)
 
-            # actor_loss = 0.5 * \
-            #     F.smooth_l1_loss(curr_log_prob, self.aggregator_fn(actor_curr_logu))
-            # PPO clips the prioritzed sampling
-            # ratio = torch.exp(curr_logu - actor_curr_logu.min(dim=-1)[0] )
-            # Clip the ratio:
-            # eps=0.2
-            # ratio = torch.clamp(ratio, 1-eps, 1+eps)
-            # actor_loss = torch.log(ratio)
-                
-            actor_loss = F.smooth_l1_loss(curr_log_prob, self.aggregator_fn(actor_curr_logu,dim=-1)[0].squeeze())
-                # curr_log_prob - self.aggregator_fn(actor_curr_logu)).mse()
+            log_u_prob = torch.log(self.aggregator_fn(actor_curr_u,dim=-1)[0].squeeze())
+            actor_loss = F.smooth_l1_loss(curr_log_prob, log_u_prob)
+                # curr_log_prob - self.aggregator_fn(actor_curr_u)).mse()
             self.logger.record("train/log_prob", curr_log_prob.mean().item())
             self.logger.record("train/loss", loss.item())
             self.logger.record("train/actor_loss", actor_loss.item())
@@ -237,14 +233,14 @@ class LogUActor:
             
             # Clip gradient norm
             loss.backward()
-            self.online_logus.clip_grad_norm(self.max_grad_norm)
+            self.online_us.clip_grad_norm(self.max_grad_norm)
 
             # Log the average gradient:
-            for idx, logu in enumerate(self.online_logus.nets):
+            for idx, u in enumerate(self.online_us.nets):
                 norm = torch.max(torch.stack(
-                [p.grad.detach().abs().max() for p in logu.parameters()]
+                [p.grad.detach().abs().max() for p in u.parameters()]
                 ))
-                self.logger.record(f"grad/logu{idx}_norm", norm.item())
+                self.logger.record(f"grad/u{idx}_norm", norm.item())
             # actor_norm = torch.max(torch.stack(
             #     [p.grad.detach().abs().max() for p in self.actor.parameters()]
             # ))
@@ -297,7 +293,7 @@ class LogUActor:
 
                 if self.env_steps % self.target_update_interval == 0:
                     # Do a Polyak update of parameters:
-                    self.target_logus.polyak(self.online_logus, self.tau)
+                    self.target_us.polyak(self.online_us, self.tau)
                     
                 self.env_steps += 1
                 self.beta = self.betas[self.env_steps]
@@ -322,14 +318,14 @@ class LogUActor:
             self.avg_eval_rwd = avg_eval_rwd
             self.eval_auc += avg_eval_rwd
             if self.save_checkpoints:
-                torch.save(self.online_logu.state_dict(),
+                torch.save(self.online_u.state_dict(),
                             'sql-policy.para')
             log_class_vars(self, LOG_PARAMS)
 
             # Log network params:
-            # for idx, logu in enumerate(self.online_logus.nets):
-            #     for name, param in logu.named_parameters():
-            #         self.logger.record(f"params/logu_{idx}/{name}",
+            # for idx, u in enumerate(self.online_us.nets):
+            #     for name, param in u.named_parameters():
+            #         self.logger.record(f"params/u_{idx}/{name}",
             #                            param.data.mean().item())
             # for name, param in self.actor.named_parameters():
             #     self.logger.record(f"params/actor/{name}",
@@ -352,7 +348,7 @@ class LogUActor:
             raise NotImplementedError("beta_schedule must be one of exp, linear, or none")
         return self.betas
 
-    def evaluate(self, n_episodes=1):
+    def evaluate(self, n_episodes=3):
         # run the current policy and return the average reward
         avg_reward = 0.
         for ep in range(n_episodes):
@@ -362,7 +358,7 @@ class LogUActor:
                 self.actor.set_training_mode(False)
                 with torch.no_grad():
                     # noisyaction, logprob, action = self.actor.sample(state)  # , deterministic=True)
-                    action,_ = self.actor.predict(state)  # , deterministic=True)
+                    action,_ = self.actor.predict(state, deterministic=True)
 
                     # action = action.cpu().numpy()
                 next_state, reward, terminated, truncated, info = self.eval_env.step(
@@ -383,16 +379,17 @@ def main():
     # env_id = 'LunarLanderContinuous-v2'
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
-    # env_id = 'Pendulum-v1'
+    env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
-    env_id = 'Ant-v4'
+    # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
-    agent = LogUActor(env_id, **config, device='cuda',
-                      num_nets=2, log_dir='pend', 
+    agent = UActor(env_id, **config, device='cpu',
+                      num_nets=1, log_dir='pend', 
                       actor_learning_rate=1e-3, 
-                      render=1, max_grad_norm=10, log_interval=1000)
+                      render=0, max_grad_norm=10, log_interval=1000,
+                      )
     agent.learn(total_timesteps=500_000, beta_schedule='linear')
 
 

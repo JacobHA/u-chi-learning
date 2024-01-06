@@ -1,7 +1,7 @@
 """Customized Frozen lake enviroment"""
 import sys
 from contextlib import closing
-from tabular.tabular_utils import DiscreteEnv
+from tabular_utils import DiscreteEnv
 from gymnasium.envs.toy_text import FrozenLakeEnv
 from gymnasium import utils
 import numpy as np
@@ -247,6 +247,15 @@ class ModifiedFrozenLake(DiscreteEnv):
 
 
 MAPS = {
+    "hallway1": [
+        "SFFFFFG", #H at end?
+    ],
+    "hallway2": [
+        "SFFFFFFFFFG",
+    ],
+    "hallway3": [
+        "SFFFFFFFFFFFFFFG",
+    ],
     "2x9ridge": [
         "FFFFFFFFF",
         "FSFHHHFGF"

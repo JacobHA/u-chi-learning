@@ -1,10 +1,10 @@
 LogU learning implementation in gym (mazes and cartpole)
 
 # Simple TODOs:
-- [ ] Add Heaven & Hell experiment in the tabular case
+- [x] "bigger" tabular expt overrides: Add Heaven & Hell experiment in the tabular case
 - [ ] Start thinking about bigger WHY question (lifelong learning, episode length hparam, gamma->1 ...)
-- [ ] Compare multilogu w/ and w/o the 1/A factor in chi calc.
-- [ ] Same w/ periodic updates of ref s,a,s'
+- [x] Theory comparison overrides: Compare multilogu w/ and w/o the 1/A factor in chi calc.
+- [x] Batch theta overrides: Same w/ periodic updates of ref s,a,s'
 - [x] Implement LR schedule
 - [x] Create a folder when one is missing for logging
 - [ ] Correct log interval for PPO
@@ -16,7 +16,7 @@ LogU learning implementation in gym (mazes and cartpole)
 - [ ] Possibly use SB3 style: :param train_freq: Update the model every ``train_freq`` steps. Alternatively pass a tuple of frequency and unit
         like ``(5, "step")`` or ``(2, "episode")``.
 - [x] Add gradient clipping
-- [x] More clever normalization to avoid logu divergence
+- [x] More clever normalization to avoid logu divergence (just clamping)
 - [ ] Merge Rawlik with LogU as an option. e.g. prior_update_interval=0 for no updates, and otherwise use Rawlik iteration
 - [x] Switch to SB3 Replay Buffer
 
