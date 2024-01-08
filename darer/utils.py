@@ -4,7 +4,6 @@ import numpy as np
 from stable_baselines3.common.logger import configure
 from gymnasium.wrappers.atari_preprocessing import AtariPreprocessing
 import time
-import wandb
 
 import torch
 import sys
@@ -26,11 +25,15 @@ def logger_at_folder(log_dir=None, algo_name=None):
         os.makedirs(log_dir, exist_ok=True)
         files = os.listdir(log_dir)
         # Get the number of existing "LogU" directories:
+        # another run may be creating a folder:
+        time.sleep(0.5)
         num = len([int(f.split('_')[1]) for f in files if algo_name in f]) + 1
         tmp_path = f"{log_dir}/{algo_name}_{num}"
 
         # If the path exists already, increment the number:
         while os.path.exists(tmp_path):
+            # another run may be creating a folder:
+            time.sleep(0.5)
             num += 1
             tmp_path = f"{log_dir}/{algo_name}_{num}"
             # try:
@@ -104,8 +107,16 @@ def rllib_env_id_to_envs(env_id, render=False):
     eval_env = wrap_deepmind(eval_env, framestack=True, noframeskip=False)
     return env, eval_env
 
+def env_id_to_envs(env_id, render, is_atari=False):
+    if is_atari:
+        return atari_env_id_to_envs(env_id, render, n_envs=1)
+    else:
+        env = gym.make(env_id)
+        eval_env = gym.make(env_id, render_mode='human' if render else None)
+        return env, eval_env
 
-def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=False, permute_dims=True):
+
+def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=True, permute_dims=False):
     if isinstance(env_id, str):
         # Don't vectorize if there is only one env
         if n_envs==1:
@@ -156,8 +167,8 @@ def env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grays
 
     return env, eval_env
 
-def log_class_vars(self, params, use_wandb=False):
-    logger = self.logger
+def log_class_vars(self, logger, params, use_wandb=False):
+    # logger = self.logger
     for key, value in params.items():
         value = self.__dict__[value]
         # first check if value is a tensor:
@@ -174,10 +185,10 @@ def get_eigvec_values(fa, save_name=None):
     eigvec = np.zeros((nS, nA))
     for i in range(nS):
         eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.online_logus.nets],axis=0)
-
+    # normalize:
+    eigvec /= np.linalg.norm(eigvec)
     if save_name is not None:
         np.save(f'{save_name}.npy', eigvec)
-
     return eigvec
 
 def get_true_eigvec(fa):
@@ -189,6 +200,9 @@ def get_true_eigvec(fa):
     solution = solve_unconstrained(
         fa.beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
     l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
+
+    # normalize:
+    u_true /= np.linalg.norm(u_true)
     return u_true
 
 def is_tabular(env):

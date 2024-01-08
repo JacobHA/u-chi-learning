@@ -61,7 +61,7 @@ def test_clip_grad_norm(online_nets):
     # Test the clip_grad_norm method
 
     # Calculate losses based on online_nets values and distance to 1:
-    losses = [torch.abs(net(torch.ones(10)) - torch.ones(num_actions)).mean() for net in online_nets]
+    losses = [torch.abs(net(100*torch.ones(10)) - torch.ones(num_actions)).mean() for net in online_nets]
     total_loss = sum(losses)
 
     total_loss.backward()

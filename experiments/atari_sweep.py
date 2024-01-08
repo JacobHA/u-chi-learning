@@ -18,8 +18,7 @@ exp_to_config = {
     "atari-pong": "logu-atari-pong-sweep.yml"
 }
 int_hparams = {'batch_size', 'buffer_size', 'gradient_steps',
-               'target_update_interval', 'theta_update_interval',
-               'train_freq'}
+               'target_update_interval', 'theta_update_interval'}
 device = None
 
 
