@@ -263,14 +263,11 @@ class OnlineNets():
     Args:
         list_of_nets (list): A list of online networks.
     """
-    def __init__(self, list_of_nets, aggregator='min', is_vector_env=False):
+    def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
         self.nets = list_of_nets
-        if aggregator == 'min':
-            self.aggregator = torch.min
-        elif aggregator == 'mean':
-            self.aggregator = torch.mean
-        elif aggregator == 'max':
-            self.aggregator = torch.max
+        self.nA = list_of_nets[0].nA
+        self.device = list_of_nets[0].device
+        self.aggregator_fn = aggregator_fn
         self.is_vector_env = is_vector_env
 
     def __len__(self):
@@ -279,48 +276,67 @@ class OnlineNets():
     def __iter__(self):
         return iter(self.nets)
     
-    def greedy_action(self, state, prior=None):
-        with torch.no_grad():
-            # logu = torch.stack([net(state) for net in self.nets], dim=-1)
-            # logu = logu.squeeze(1)
-            # logu = self.aggregator(logu, dim=-1)[0]
+    # def greedy_action(self, state, prior=None):
+    #     with torch.no_grad():
+    #         # logu = torch.stack([net(state) for net in self.nets], dim=-1)
+    #         # logu = logu.squeeze(1)
+    #         # logu = self.aggregator(logu, dim=-1)[0]
             
-            # greedy_action = logu.argmax()
-            # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-            # TODO: first aggregate, then greedify
-            if not self.is_vector_env:
-                greedy_actions = [net.choose_action(state, greedy=True, prior=prior) for net in self.nets]
-                greedy_action = np.random.choice(greedy_actions)
-            else:
-                actions = np.array([net.choose_action(state, greedy=True, prior=prior) for net in self.nets])
-                rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
-                greedy_action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
-        return greedy_action
-        # return greedy_action.item()
+    #         # greedy_action = logu.argmax()
+    #         # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
+    #         # TODO: first aggregate, then greedify
+    #         if not self.is_vector_env:
+    #             greedy_actions = [net.choose_action(state, greedy=True, prior=prior) for net in self.nets]
+    #             greedy_action = np.random.choice(greedy_actions)
+    #         else:
+    #             actions = np.array([net.choose_action(state, greedy=True, prior=prior) for net in self.nets])
+    #             rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
+    #             greedy_action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
+    #     return greedy_action
+    #     # return greedy_action.item()
 
-    def choose_action(self, state, prior=None):
-        # Get a sample from each net, then sample uniformly over them:
-        actions = [net.choose_action(state, prior=prior) for net in self.nets]
-        if not self.is_vector_env:
-            action = np.random.choice(actions)
-        else:
-            actions = np.array(actions)
-            rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
-            action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
-        # perhaps re-weight this based on pessimism?
-        return action
-        # with torch.no_grad():
-        #     logus = [net(state) for net in self.nets]
-        #     logu = torch.stack(logus, dim=-1)
-        #     logu = logu.squeeze(1)
-        #     logu = torch.mean(logu, dim=-1)#[0]
-        #     baseline = (torch.max(logu) + torch.min(logu))/2
-        #     logu = logu - baseline
-        #     logu = torch.clamp(logu, min=-20, max=20)
-        #     dist = torch.exp(logu)
-        #     dist = dist / torch.sum(dist)
-        #     c = Categorical(dist)#, validate_args=True)
-        #     return c.sample()#.item()
+    def choose_action(self, state, prior=None, greedy=False):
+        with torch.no_grad():
+            
+            if prior is None:
+                prior = 1 / self.nA
+            logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
+            # Get a sample from each net, then sample uniformly over them:
+            logus = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
+            logus = logus.squeeze()
+            logu, idxs = self.aggregator_fn(logus, dim=-1)
+
+            if not self.is_vector_env:
+                if greedy:
+                    action_net_idx = torch.argmax(logu + logprior, dim=0)
+                    action = idxs[action_net_idx].numpy()
+                else:
+                    # pi* = pi0 * exp(logu)
+                    in_exp = logu + logprior
+                    in_exp -= (in_exp.max() + in_exp.min())/2
+                    dist = torch.exp(in_exp)
+                    dist /= torch.sum(dist)
+                    c = Categorical(dist)
+                    action = idxs[c.sample().item()].numpy()
+            else:
+                raise NotImplementedError
+                actions = np.array(actions)
+                rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
+                action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
+            # perhaps re-weight this based on pessimism?
+            return action
+            # with torch.no_grad():
+            #     logus = [net(state) for net in self.nets]
+            #     logu = torch.stack(logus, dim=-1)
+            #     logu = logu.squeeze(1)
+            #     logu = torch.mean(logu, dim=-1)#[0]
+            #     baseline = (torch.max(logu) + torch.min(logu))/2
+            #     logu = logu - baseline
+            #     logu = torch.clamp(logu, min=-20, max=20)
+            #     dist = torch.exp(logu)
+            #     dist = dist / torch.sum(dist)
+            #     c = Categorical(dist)#, validate_args=True)
+            #     return c.sample()#.item()
 
 
     def parameters(self):
@@ -550,9 +566,7 @@ class UNet(nn.Module):
                 else:
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
-                    
-
-            
+                                
         x = self.model(x)
         # get machine epsilon:
         eps = torch.finfo(torch.float32).eps

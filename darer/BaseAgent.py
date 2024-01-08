@@ -289,7 +289,7 @@ class BaseAgent:
                 avg_ep_len += 1
             if done:
                 self.rollout_reward
-                self.logger.record("rollout/reward", self.rollout_reward)
+                self.logger.record("rollout/ep_reward", self.rollout_reward)
                 free_energy = (self.rollout_reward + 1/self.beta * entropy) 
                 try:
                     free_energy = free_energy.item()
@@ -299,7 +299,7 @@ class BaseAgent:
                 self.logger.record("rollout/neg_free_energy", free_energy / avg_ep_len)
                 self.logger.record("rollout/avg_entropy", entropy / avg_ep_len)
                 self.logger.record("rollout/avg_episode_length", avg_ep_len)
-                self.logger.record("rollout/avg_reward", self.rollout_reward / avg_ep_len)
+                self.logger.record("rollout/avg_reward_rate", self.rollout_reward / avg_ep_len)
                 if self.use_wandb:
                     wandb.log({'rollout/reward': self.rollout_reward})
                 action_freqs /= action_freqs.sum()

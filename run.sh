@@ -31,7 +31,7 @@ echo `date`
 # python experiments/wandb_job.py -d cpu -env CartPole-v1
 # python experiments/wandb_job.py -d cuda -env PongNoFrameskip-v4
 
-python darer/SoftQAgent.py
+python darer/LogUAgent.py
 # python local_finetuned_runs.py -a logu
 
 # Diagnostic/Logging Information
