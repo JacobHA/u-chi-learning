@@ -2,6 +2,7 @@ import pytest
 import sys
 import numpy as np
 sys.path.append('darer')
+sys.path.append('../darer')
 from darer.LogUAgent import LogU
 import gymnasium as gym
 from pytest_mock import mocker  # Import the mocker fixture

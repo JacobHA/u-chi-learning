@@ -303,8 +303,8 @@ class OnlineNets():
             logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
             # Get a sample from each net, then sample uniformly over them:
             logus = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
-            logus = logus.squeeze()
-            logu, idxs = self.aggregator_fn(logus, dim=-1)
+            logus = logus.squeeze(0)
+            logu, idxs = self.aggregator_fn(logus, dim=0)
 
             if not self.is_vector_env:
                 if greedy:
@@ -312,6 +312,7 @@ class OnlineNets():
                     action = idxs[action_net_idx].numpy()
                 else:
                     # pi* = pi0 * exp(logu)
+                    logu = logu.clamp(-30,30)
                     in_exp = logu + logprior
                     in_exp -= (in_exp.max() + in_exp.min())/2
                     dist = torch.exp(in_exp)
