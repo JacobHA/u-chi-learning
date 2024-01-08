@@ -76,7 +76,7 @@ class BaseAgent:
                  max_grad_norm: float = 10,
                  learning_starts=5_000,
                  aggregator: str = 'max',
-                 loss_fn: torch.nn.modules.loss = torch.nn.SmoothL1Loss(),
+                 loss_fn: torch.nn.modules.loss = torch.nn.HuberLoss(),
                  device: Union[torch.device, str] = "auto",
                  render: bool = False,
                  tensorboard_log: Optional[str] = None,
@@ -89,7 +89,10 @@ class BaseAgent:
                  ) -> None:
 
         # first check if Atari env or not:
-        is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
+        if isinstance(env_id, str):
+            is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
+        else:
+            is_atari = False
         self.env, self.eval_env = env_id_to_envs(
             env_id, render, is_atari=is_atari)
 
@@ -152,7 +155,7 @@ class BaseAgent:
 
         self._n_updates = 0
         self.env_steps = 0
-        self._initialize_networks()
+        # self._initialize_networks()
         self.loss_fn = F.smooth_l1_loss if loss_fn is None else loss_fn
 
     def log_hparams(self, logger):
@@ -163,13 +166,13 @@ class BaseAgent:
     def _initialize_networks(self):
         raise NotImplementedError
 
-    def exploration_policy(self, state: np.ndarray) -> int:
+    def exploration_policy(self, state: np.ndarray) -> (int, float):
         """
         Sample an action from the policy of choice
         """
         raise NotImplementedError
 
-    def gradient_descent(self, grad_step: int):
+    def gradient_descent(self, batch, grad_step: int):
         """
         Do a gradient descent step
         """
@@ -228,8 +231,8 @@ class BaseAgent:
         """
         Train the agent for total_timesteps
         """
-        stop_steps, stop_reward = early_stop.get(
-            'steps', 0), early_stop.get('reward', -np.inf)
+        stop_steps = early_stop.get('steps', 0)
+        stop_reward = early_stop.get('reward', -np.inf)
         self.betas = self._beta_scheduler(self.beta_schedule, total_timesteps)
 
         # Start a timer to log fps:
@@ -239,23 +242,27 @@ class BaseAgent:
             state, _ = self.env.reset()
             action_freqs = torch.zeros(self.nA)
 
-            episode_reward = 0
             done = False
             self.num_episodes += 1
             self.rollout_reward = 0
+            avg_ep_len = 0
+            entropy = 0
             while not done and self.env_steps < total_timesteps:
                 # take a random action:
                 # if self.env_steps < self.learning_starts:
                 #     action = self.env.action_space.sample()
                 # else:
-                action = self.exploration_policy(state)
+                action, kl = self.exploration_policy(state)
                 action_freqs[action] += 1
+                # Add KL divergence bw the current policy and the prior:
+                entropy += float(kl)
                 # action = self.online_logus.greedy_action(state)
                 # action = self.env.action_space.sample()
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
                     action)
                 self._on_step()
+                avg_ep_len += 1
                 done = terminated or truncated
                 self.rollout_reward += reward
 
@@ -263,7 +270,6 @@ class BaseAgent:
                     (self.train_freq != -1 and self.env_steps %
                      self.train_freq == 0)
 
-                episode_reward += reward
 
                 # Add the transition to the replay buffer:
                 sarsa = (state, next_state, action, reward, terminated)
@@ -277,9 +283,23 @@ class BaseAgent:
                     #     if (self.avg_eval_rwd < stop_reward):
                     #         wandb.log({'early_stop': True})
                     #         return True
-
+                
+            if terminated:
+                self.rollout_reward += 0
+                avg_ep_len += 1
             if done:
+                self.rollout_reward
                 self.logger.record("rollout/reward", self.rollout_reward)
+                free_energy = (self.rollout_reward + 1/self.beta * entropy) 
+                try:
+                    free_energy = free_energy.item()
+                except:
+                    pass
+                # entropy = 0
+                self.logger.record("rollout/neg_free_energy", free_energy / avg_ep_len)
+                self.logger.record("rollout/avg_entropy", entropy / avg_ep_len)
+                self.logger.record("rollout/avg_episode_length", avg_ep_len)
+                self.logger.record("rollout/avg_reward", self.rollout_reward / avg_ep_len)
                 if self.use_wandb:
                     wandb.log({'rollout/reward': self.rollout_reward})
                 action_freqs /= action_freqs.sum()

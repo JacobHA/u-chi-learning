@@ -36,8 +36,26 @@ cartpole_hparams2 = {
     'theta_update_interval': 8,
     'hidden_dim': 64,
     'train_freq': 1,
-    'learning_starts': 10000
+    'learning_starts': 1000
 }
+
+cartpole_hparams3 = {
+    'batch_size': 32,
+    'beta': 0.1,
+    # 'beta_schedule': 'linear',
+    # 'beta_end': 3,
+    'buffer_size': 500_000,
+    'gradient_steps': 1,
+    'learning_rate': 2.5e-4,
+    'target_update_interval': 10_000,
+    'tau': 0.99,
+    'tau_theta': 0.85,
+    'theta_update_interval': 1_000,
+    'hidden_dim': 256,
+    'train_freq': 4,
+    'learning_starts': 50_000
+}
+
 mcar_hparams = {
     'beta': 0.078,
     'batch_size': 950,

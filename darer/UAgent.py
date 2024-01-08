@@ -26,6 +26,7 @@ class UAgent(BaseAgent):
         self.logger = logger_at_folder(self.tensorboard_log,
                                        algo_name=f'{self.env_str}-{self.algo_name}')
         self.log_hparams(self.logger)
+        self._initialize_networks()
 
     def _initialize_networks(self):
         self.online_us = OnlineNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
@@ -52,14 +53,21 @@ class UAgent(BaseAgent):
 
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
-    def exploration_policy(self, state: np.ndarray) -> int:
-        # return self.env.action_space.sample()
-        if self.use_rawlik:
-            pi0 = self.target_prior.nets[0](state).squeeze()
-            pi0 /= pi0.sum()
-        else:
-            pi0 = None
-        return self.online_us.choose_action(state, prior=pi0)
+    def exploration_policy(self, state: np.ndarray) -> (int, float):
+        with torch.no_grad():
+
+            # return self.env.action_space.sample()
+            if self.use_rawlik:
+                pi0 = self.target_prior.nets[0](state).squeeze()
+                pi0 /= pi0.sum()
+            else:
+                pi0 = 1 / self.nA
+            chosen_action = self.online_us.choose_action(state, prior=pi0)
+            pi_by_pi0 = self.aggregator_fn(
+                torch.stack([u(state) for u in self.online_us], dim=0), dim=0)[0]
+            kl = torch.log(pi_by_pi0[0][chosen_action])
+            kl = float(kl.item())
+            return chosen_action, kl
 
     def evaluation_policy(self, state: np.ndarray) -> int:
         if self.use_rawlik:
@@ -67,6 +75,7 @@ class UAgent(BaseAgent):
             pi0 /= pi0.sum()
         else:
             pi0 = None
+
         return self.online_us.greedy_action(state, prior=pi0)
 
     def _update_target(self):
@@ -161,10 +170,7 @@ class UAgent(BaseAgent):
             prior_loss = F.kl_div(curr_priora.squeeze().log(
             ), pistar, reduction='batchmean', log_target=False)
 
-        if self.use_rawlik:
             self.logger.record("train/prior_loss", prior_loss.item())
-
-        if self.use_rawlik:
             prior_loss.backward()
 
         return loss
@@ -178,21 +184,22 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    env_id = 'Acrobot-v1'
+    # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    env_id = 'PongNoFrameskip-v4'
+    # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import nature_pong as config
-    agent = UAgent(env_id, **config, device='cuda', log_interval=5000,
-                   tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
-                   scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
+    from hparams import cartpole_u as config
+
+    agent = UAgent(env_id, **config, device='auto', log_interval=500,
+                   tensorboard_log='pong', num_nets=2, render=False, aggregator='max')  # , use_rawlik=True)
+    #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=5_000_000)
+    agent.learn(total_timesteps=150_000)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
