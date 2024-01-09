@@ -1,6 +1,5 @@
 import pytest
 import sys
-import numpy as np
 sys.path.append('darer')
 sys.path.append('../darer')
 from darer.LogUAgent import LogU
@@ -15,8 +14,10 @@ env = gym.make(env_id)
 def logu_agent():
     return LogU(env_id=env_id, learning_starts=0)  # Initialize LogU with a specific environment ID
 
+
 def test_logu_agent_creation(logu_agent):
     assert isinstance(logu_agent, LogU)
+
 
 def test_exploration_policy(logu_agent):
     state = env.observation_space.sample()
@@ -24,14 +25,17 @@ def test_exploration_policy(logu_agent):
     assert action in env.action_space  # Assuming the action is valid
     assert kl >= 0
 
+
 def test_evaluation_policy(logu_agent):
     state = env.observation_space.sample()
     action = logu_agent.evaluation_policy(state)
     assert action in env.action_space  # Assuming the action is valid
 
+
 def test_rollout(logu_agent):
     logu_agent.learn(total_timesteps=10)
     assert logu_agent.env_steps == 10
+
 
 def test_on_step_increment_environment_steps(logu_agent):
     initial_env_steps = logu_agent.env_steps
@@ -52,6 +56,7 @@ def test_learn_calls_train_descent_if_learning_starts_exceeded(logu_agent, mocke
     logu_agent.gradient_steps = 1
     logu_agent.learn(6)
     logu_agent._train.assert_called_once()
+
 
 def test_learn_calls_gradient_descent_if_learning_starts_exceeded(logu_agent, mocker):
     mocker.patch.object(logu_agent, 'gradient_descent')

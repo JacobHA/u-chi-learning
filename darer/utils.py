@@ -109,7 +109,7 @@ def rllib_env_id_to_envs(env_id, render=False):
 
 def env_id_to_envs(env_id, render, is_atari=False):
     if is_atari:
-        return atari_env_id_to_envs(env_id, render, n_envs=1)
+        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4)
     else:
         env = gym.make(env_id)
         eval_env = gym.make(env_id, render_mode='human' if render else None)

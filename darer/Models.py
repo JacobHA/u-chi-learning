@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
-from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
+from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim
 from utils import is_tabular
 
 def is_image_space_simple(observation_space, is_vector_env=False):
@@ -275,25 +275,6 @@ class OnlineNets():
     
     def __iter__(self):
         return iter(self.nets)
-    
-    # def greedy_action(self, state, prior=None):
-    #     with torch.no_grad():
-    #         # logu = torch.stack([net(state) for net in self.nets], dim=-1)
-    #         # logu = logu.squeeze(1)
-    #         # logu = self.aggregator(logu, dim=-1)[0]
-            
-    #         # greedy_action = logu.argmax()
-    #         # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-    #         # TODO: first aggregate, then greedify
-    #         if not self.is_vector_env:
-    #             greedy_actions = [net.choose_action(state, greedy=True, prior=prior) for net in self.nets]
-    #             greedy_action = np.random.choice(greedy_actions)
-    #         else:
-    #             actions = np.array([net.choose_action(state, greedy=True, prior=prior) for net in self.nets])
-    #             rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
-    #             greedy_action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
-    #     return greedy_action
-    #     # return greedy_action.item()
 
     def choose_action(self, state, prior=None, greedy=False):
         with torch.no_grad():
@@ -304,12 +285,14 @@ class OnlineNets():
             # Get a sample from each net, then sample uniformly over them:
             logus = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
             logus = logus.squeeze(0)
-            logu, idxs = self.aggregator_fn(logus, dim=0)
+            # Aggregate over the networks:
+            logu, _ = self.aggregator_fn(logus, dim=0)
 
             if not self.is_vector_env:
                 if greedy:
                     action_net_idx = torch.argmax(logu + logprior, dim=0)
-                    action = idxs[action_net_idx].numpy()
+                    # action = idxs[action_net_idx].cpu().numpy()
+                    action = action_net_idx.cpu().numpy()
                 else:
                     # pi* = pi0 * exp(logu)
                     logu = logu.clamp(-30,30)
@@ -318,7 +301,8 @@ class OnlineNets():
                     dist = torch.exp(in_exp)
                     dist /= torch.sum(dist)
                     c = Categorical(dist)
-                    action = idxs[c.sample().item()].numpy()
+                    # action = idxs[c.sample().cpu().item()].cpu().numpy()
+                    action = c.sample().cpu().numpy()
             else:
                 raise NotImplementedError
                 actions = np.array(actions)
