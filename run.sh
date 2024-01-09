@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=u-chi
-#SBATCH --time=3-23:00:00
+#SBATCH --time=23:00:00
 #SBATCH --mem-per-cpu=16gb
 #SBATCH --cpus-per-task=4
 
@@ -11,9 +11,9 @@
 #SBATCH --output=outfiles/%j.out
 ##SBATCH --partition=AMD6276
 # use the gpu:
-##SBATCH --gres=gpu:1
-##SBATCH --partition=DGXA100
-##SBATCH --export=NONE
+#SBATCH --gres=gpu:1
+#SBATCH --partition=DGXA100
+#SBATCH --export=NONE
 ##SBATCH --array=1-3
 echo "using scavenger"
 

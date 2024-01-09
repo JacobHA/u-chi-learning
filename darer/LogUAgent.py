@@ -100,24 +100,24 @@ def main():
     env_id = get_environment('Pendulum21', nbins=3,
                              max_episode_steps=200, reward_offset=0)
 
-    # env_id = 'CartPole-v1'
+    env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
-    # env_id = 'PongNoFrameskip-v4'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
-    env_id = 'MountainCar-v0'
+    # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_u as config
-    agent = LogU(env_id, **config, device='cpu', log_interval=500,
-                 tensorboard_log='pong', num_nets=2, render=False, aggregator='max',
+    from hparams import nature_pong as config
+    agent = LogU(env_id, **config, device='auto', log_interval=2500,
+                 tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
                  scheduler_str='none')  # , beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=1_500_000)
+    agent.learn(total_timesteps=15_000_000)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
