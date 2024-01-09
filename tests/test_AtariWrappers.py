@@ -3,7 +3,7 @@ import sys
 sys.path.append('../darer')
 sys.path.append('darer')
 
-from darer.utils import atari_env_id_to_envs
+from utils import atari_env_id_to_envs
 
 
 def test_atari_env_id_to_envs():
