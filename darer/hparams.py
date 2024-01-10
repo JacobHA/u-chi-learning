@@ -193,7 +193,7 @@ nature_pong = {
 
 cartpole_u = {
     'beta': 0.2,
-    'batch_size': 1150,
+    'batch_size': 64,#150,
     'buffer_size': 100_000,
     'gradient_steps': 4,
     'learning_rate': 8e-4,
@@ -201,7 +201,7 @@ cartpole_u = {
     'tau': 0.04,
     'tau_theta': 0.85,
     'theta_update_interval': 875,
-    'train_freq': 2,
+    'train_freq': 10,
     'hidden_dim': 128,
 }
 

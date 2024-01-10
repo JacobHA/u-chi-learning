@@ -2,7 +2,7 @@ import time
 import numpy as np
 import torch
 from BaseAgent import BaseAgent
-from Models import LogUNet, OnlineNets, Optimizers, TargetNets
+from Models import LogUNet, OnlineLogUNets, Optimizers, TargetNets
 from utils import logger_at_folder
 
 
@@ -20,7 +20,7 @@ class LogU(BaseAgent):
         self._initialize_networks()
 
     def _initialize_networks(self):
-        self.online_logus = OnlineNets([LogUNet(self.env,
+        self.online_logus = OnlineLogUNets([LogUNet(self.env,
                                                 hidden_dim=self.hidden_dim, 
                                                 device=self.device)
                                         for _ in range(self.num_nets)],
@@ -28,7 +28,9 @@ class LogU(BaseAgent):
         # alias for compatibility as self.model:
         self.model = self.online_logus
 
-        self.target_logus = TargetNets([LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
+        self.target_logus = TargetNets([LogUNet(self.env, 
+                                                hidden_dim=self.hidden_dim, 
+                                                device=self.device)
                                         for _ in range(self.num_nets)])
         self.target_logus.load_state_dicts(
             [logu.state_dict() for logu in self.online_logus])
@@ -113,7 +115,7 @@ def main():
 
     from hparams import nature_pong as config
     agent = LogU(env_id, **config, device='auto', log_interval=2500,
-                 tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
+                 tensorboard_log='pong', num_nets=2, render=False, aggregator='max',
                  scheduler_str='none')  # , beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()

@@ -276,7 +276,22 @@ class OnlineNets():
     def __iter__(self):
         return iter(self.nets)
 
-    def choose_action(self, state, prior=None, greedy=False):
+    def choose_action(self, state, greedy=False, prior=None):
+        raise NotImplementedError
+
+    def parameters(self):
+        return [net.parameters() for net in self]
+
+    def clip_grad_norm(self, max_grad_norm):
+        for net in self:
+            torch.nn.utils.clip_grad_norm_(net.parameters(), max_grad_norm)
+
+
+class OnlineLogUNets(OnlineNets):
+    def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
+        super().__init__(list_of_nets, aggregator_fn, is_vector_env)
+
+    def choose_action(self, state, greedy=False, prior=None):
         with torch.no_grad():
             
             if prior is None:
@@ -323,13 +338,35 @@ class OnlineNets():
             #     c = Categorical(dist)#, validate_args=True)
             #     return c.sample()#.item()
 
+class OnlineUNets(OnlineNets):
+    def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
+        super().__init__(list_of_nets, aggregator_fn, is_vector_env)
 
-    def parameters(self):
-        return [net.parameters() for net in self]
+    def choose_action(self, state, greedy=False, prior=None):
+        with torch.no_grad():
+            
+            if prior is None:
+                prior = 1 / self.nA
+            # Get a sample from each net, then sample uniformly over them:
+            us = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
+            us = us.squeeze(0)
+            # Aggregate over the networks:
+            u, _ = self.aggregator_fn(us, dim=0)
 
-    def clip_grad_norm(self, max_grad_norm):
-        for net in self:
-            torch.nn.utils.clip_grad_norm_(net.parameters(), max_grad_norm)
+            if not self.is_vector_env:
+                if greedy:
+                    action_net_idx = torch.argmax(prior * u, dim=0)
+                    action = action_net_idx.cpu().numpy()
+                else:
+                    dist = prior * u
+                    dist /= torch.sum(dist)
+                    c = Categorical(dist)
+                    action = c.sample().cpu().numpy()
+            else:
+                raise NotImplementedError
+
+            return action
+
 
 
 class LogUsa(nn.Module):
