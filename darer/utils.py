@@ -1,4 +1,6 @@
 import os
+import random
+
 import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.logger import configure
@@ -207,3 +209,26 @@ def get_true_eigvec(fa):
 
 def is_tabular(env):
     return isinstance(env.observation_space, gym.spaces.Discrete) and isinstance(env.action_space, gym.spaces.Discrete)
+
+
+def sample_wandb_hyperparams(params, int_hparams=None):
+    sampled = {}
+    for k, v in params.items():
+        if 'values' in v:
+            sampled[k] = random.choice(v['values'])
+        elif 'distribution' in v:
+            if v['distribution'] == 'uniform' or v['distribution'] == 'uniform_values':
+                sampled[k] = random.uniform(v['min'], v['max'])
+            elif v['distribution'] == 'normal':
+                sampled[k] = random.normalvariate(v['mean'], v['std'])
+            elif v['distribution'] == 'log_uniform_values':
+                emin, emax = np.log(v['max']), np.log(v['min'])
+                sample = np.exp(random.uniform(emin, emax))
+                sampled[k] = sample
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError
+        if k in int_hparams:
+            sampled[k] = int(sampled[k])
+    return sampled
