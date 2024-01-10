@@ -9,15 +9,6 @@ parameters:
     distribution: uniform
     max: 3
     min: 0.01
-  final_beta_multiplier:
-    max: 10
-    min: 1
-  beta_schedule:
-    values: [linear, none]
-  buffer_size:
-    distribution: uniform
-    max: 200000
-    min: 10000
   train_freq:
     distribution: uniform
     max: 10
@@ -36,18 +27,18 @@ parameters:
     min: 0.01
   theta_update_interval:
     distribution: uniform
-    max: 100
+    max: 1000
     min: 1
   tau_theta:
     distribution: uniform
     max: 1
     min: 0.5
-  learning_starts:
+  learning_starts_ratio:
     distribution: uniform
-    max: 10000
-    min: 1
+    max: 0.1
+    min: 0.0
   aggregator:
     values: [min, max, mean]
   hidden_dim:
-    values: [64, 128, 256]
+    values: [32, 64, 128]
 program: wandb_job.py
