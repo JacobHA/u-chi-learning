@@ -101,7 +101,7 @@ class BaseAgent:
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
             # calculate the eigenvector exactly:
-            self.true_eigvec = get_true_eigvec(self).A.flatten()
+            self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
         self.beta = beta
@@ -226,7 +226,7 @@ class BaseAgent:
         #                 for p in self.online_logus.parameters() for px in p]
         #             ))
         # self.logger.record("train/max_grad", total_norm.item())
-
+ 
     def learn(self, total_timesteps: int, early_stop: dict = {}) -> bool:
         """
         Train the agent for total_timesteps

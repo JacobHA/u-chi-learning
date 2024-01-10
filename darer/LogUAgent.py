@@ -5,8 +5,7 @@ from BaseAgent import BaseAgent
 from Models import LogUNet, OnlineLogUNets, Optimizers, TargetNets
 from utils import logger_at_folder
 
-
-class LogU(BaseAgent):
+class LogUAgent(BaseAgent):
     def __init__(self,
                  *args,
                  **kwargs,
@@ -114,9 +113,9 @@ def main():
     # env_id = 'Drug-v0'
 
     from hparams import nature_pong as config
-    agent = LogU(env_id, **config, device='auto', log_interval=2500,
-                 tensorboard_log='pong', num_nets=2, render=False, aggregator='max',
-                 scheduler_str='none')  # , beta_schedule = 'linear', beta_end=2.4)
+    agent = LogUAgent(env_id, **config, device='cuda', log_interval=5000,
+                        tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
+                        scheduler_str='none')#, beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=15_000_000)

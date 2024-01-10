@@ -1,9 +1,11 @@
-from UAgent import UAgent
-import wandb
-import argparse
 import sys
 
 sys.path.append("darer")
+from UAgent import UAgent
+from LogUAgent import LogUAgent
+import wandb
+import argparse
+
 
 # env_id = 'CartPole-v1'
 # env_id = 'MountainCar-v0'
@@ -39,11 +41,12 @@ def runner(config=None, run=None, device='cpu'):
 
     for _ in range(runs_per_hparam):
         print(env_id)
-        agent = UAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
+        agent = LogUAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
                        device=device, render=False, beta_end=beta_end,
                        # beta_schedule=config.pop('beta_scheduler', 'none'),
                        num_nets=2, use_rawlik=True,
                        )
+        wandb.log({'agent_name': agent.algo_name})
 
         wandb.log({'env_id': agent.env_str})
         if env_id in ['LunarLander-v2', 'MountainCar-v0', 'PongNoFrameskip-v4']:

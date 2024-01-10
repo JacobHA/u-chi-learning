@@ -184,21 +184,26 @@ def get_eigvec_values(fa, save_name=None):
     nA = fa.nA
     eigvec = np.zeros((nS, nA))
     for i in range(nS):
-        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.online_logus.nets],axis=0)
+
+        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.model.nets],axis=0)
+
+    if save_name is not None:
+        np.save(f'{save_name}.npy', eigvec)
+
     # normalize:
     eigvec /= np.linalg.norm(eigvec)
     if save_name is not None:
         np.save(f'{save_name}.npy', eigvec)
     return eigvec
 
-def get_true_eigvec(fa):
+def get_true_eigvec(fa, beta):
     dynamics, rewards = get_dynamics_and_rewards(fa.env.unwrapped)
     # uniform prior:
     n_states, SA = dynamics.shape
     n_actions = int(SA / n_states)
     prior_policy = np.ones((n_states, n_actions)) / n_actions
     solution = solve_unconstrained(
-        fa.beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
+        beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
     l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
     
     # normalize:
