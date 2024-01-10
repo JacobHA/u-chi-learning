@@ -37,23 +37,24 @@ LOG_PARAMS = {
     'train/lr': 'lr',
 }
 
-int_args = ['batch_size', 
-            'buffer_size', 
-            'target_update_interval', 
-            'theta_update_interval', 
-            'hidden_dim', 
-            'num_nets', 
-            'gradient_steps', 
-            'train_freq', 
-            'max_grad_norm', 
+int_args = ['batch_size',
+            'buffer_size',
+            'target_update_interval',
+            'theta_update_interval',
+            'hidden_dim',
+            'num_nets',
+            'gradient_steps',
+            'train_freq',
+            'max_grad_norm',
             'learning_starts']
 
 
-str_to_aggregator = {'min': torch.min, 
-                     'max': torch.max, 
+str_to_aggregator = {'min': torch.min,
+                     'max': torch.max,
                      'mean': lambda x, dim: (torch.mean(x, dim=dim), None)}
 
 # use get_type_hints to throw errors if the user passes in an invalid type:
+
 
 class BaseAgent:
     @typechecked
@@ -75,27 +76,37 @@ class BaseAgent:
                  max_grad_norm: float = 10,
                  learning_starts=5_000,
                  aggregator: str = 'max',
-                 loss_fn: torch.nn.modules.loss = torch.nn.SmoothL1Loss(),
+                 loss_fn: torch.nn.modules.loss = torch.nn.HuberLoss(),
                  device: Union[torch.device, str] = "auto",
                  render: bool = False,
                  tensorboard_log: Optional[str] = None,
                  log_interval: int = 1_000,
                  save_checkpoints: bool = False,
                  use_wandb: bool = False,
-                 scheduler_str: str = 'none',    
+                 scheduler_str: str = 'none',
                  beta_end: Optional[float] = None,
-                 seed: Optional[int] = None,             
+                 seed: Optional[int] = None,
                  ) -> None:
 
         # first check if Atari env or not:
-        is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
-        self.env, self.eval_env = env_id_to_envs(env_id, render, is_atari=is_atari)
+        if isinstance(env_id, str):
+            is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
+        else:
+            is_atari = False
+        self.env, self.eval_env = env_id_to_envs(
+            env_id, render, is_atari=is_atari)
 
-        self.env_str = self.env.unwrapped.spec.id if hasattr(self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
+        if hasattr(self.env.unwrapped.spec, 'id'):
+            self.env_str = self.env.unwrapped.spec.id 
+        elif hasattr(self.env.unwrapped, 'id'):
+            self.env_str = self.env.unwrapped.id
+        else:
+            self.env_str = str(self.env.unwrapped)
+
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
             # calculate the eigenvector exactly:
-            self.true_eigvec = get_true_eigvec(self).A.flatten()
+            self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
         self.beta = beta
@@ -107,7 +118,10 @@ class BaseAgent:
         self.tau = tau
         self.hidden_dim = hidden_dim
         self.gradient_steps = gradient_steps
-        self.device = device
+        if device == "auto":
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
         self.save_checkpoints = save_checkpoints
         self.log_interval = log_interval
         self.tau_theta = tau_theta
@@ -129,7 +143,7 @@ class BaseAgent:
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
         self.train_this_step = False
-        
+
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
                                           observation_space=self.env.observation_space,
                                           action_space=self.env.action_space,
@@ -146,7 +160,7 @@ class BaseAgent:
 
         self._n_updates = 0
         self.env_steps = 0
-        self._initialize_networks()
+        # self._initialize_networks()
         self.loss_fn = F.smooth_l1_loss if loss_fn is None else loss_fn
 
     def log_hparams(self, logger):
@@ -154,16 +168,21 @@ class BaseAgent:
         log_class_vars(self, logger, HPARAM_ATTRS)
         logger.dump()
 
-
     def _initialize_networks(self):
         raise NotImplementedError
-    
-    def exploration_policy(self, state: np.ndarray) -> int:
+
+    def exploration_policy(self, state: np.ndarray) -> (int, float):
         """
         Sample an action from the policy of choice
         """
         raise NotImplementedError
-    
+
+    def gradient_descent(self, batch, grad_step: int):
+        """
+        Do a gradient descent step
+        """
+        raise NotImplementedError
+
     def _train(self, gradient_steps: int, batch_size: int) -> None:
         """
         Sample the replay buffer and do the updates
@@ -172,7 +191,8 @@ class BaseAgent:
         # Increase update counter
         self._n_updates += gradient_steps
         # average self.theta over multiple gradient steps
-        self.new_thetas = torch.zeros(gradient_steps, self.num_nets).to(self.device)
+        self.new_thetas = torch.zeros(
+            gradient_steps, self.num_nets).to(self.device)
         for grad_step in range(gradient_steps):
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(batch_size)
@@ -186,8 +206,8 @@ class BaseAgent:
             loss.backward()
             self.model.clip_grad_norm(self.max_grad_norm)
             self.optimizers.step()
-            
-        #TODO: Clamp based on reward range
+
+        # TODO: Clamp based on reward range
         # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
         # Log both theta values:
         for idx, new_theta in enumerate(self.new_thetas.T):
@@ -197,7 +217,8 @@ class BaseAgent:
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
         if self._n_updates % self.theta_update_interval == 0:
-            self.theta = self.tau_theta * self.theta + (1 - self.tau_theta) * new_theta
+            self.theta = self.tau_theta * self.theta + \
+                (1 - self.tau_theta) * new_theta
 
         # # Log info from this training cycle:
         # self.logger.record("train/avg logu", curr_logu.mean().item())
@@ -206,16 +227,17 @@ class BaseAgent:
 
         # Log the max gradient:
         # total_norm = torch.max(torch.stack(
-        #             [px.grad.detach().abs().max() 
+        #             [px.grad.detach().abs().max()
         #                 for p in self.online_logus.parameters() for px in p]
         #             ))
         # self.logger.record("train/max_grad", total_norm.item())
  
-    def learn(self, total_timesteps: int, early_stop: dict) -> bool:
+    def learn(self, total_timesteps: int, early_stop: dict = {}) -> bool:
         """
         Train the agent for total_timesteps
         """
-        stop_steps, stop_reward = early_stop['steps'], early_stop['reward']
+        stop_steps = early_stop.get('steps', 0)
+        stop_reward = early_stop.get('reward', -np.inf)
         self.betas = self._beta_scheduler(self.beta_schedule, total_timesteps)
 
         # Start a timer to log fps:
@@ -225,31 +247,34 @@ class BaseAgent:
             state, _ = self.env.reset()
             action_freqs = torch.zeros(self.nA)
 
-            episode_reward = 0
             done = False
             self.num_episodes += 1
             self.rollout_reward = 0
+            avg_ep_len = 0
+            entropy = 0
             while not done and self.env_steps < total_timesteps:
                 # take a random action:
                 # if self.env_steps < self.learning_starts:
                 #     action = self.env.action_space.sample()
                 # else:
-                action = self.exploration_policy(state)
+                action, kl = self.exploration_policy(state)
                 action_freqs[action] += 1
+                # Add KL divergence bw the current policy and the prior:
+                entropy += float(kl)
                 # action = self.online_logus.greedy_action(state)
                 # action = self.env.action_space.sample()
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
                     action)
                 self._on_step()
+                avg_ep_len += 1
                 done = terminated or truncated
                 self.rollout_reward += reward
 
                 self.train_this_step = (self.train_freq == -1 and terminated) or \
-                    (self.train_freq != -1 and self.env_steps % self.train_freq == 0)                
+                    (self.train_freq != -1 and self.env_steps %
+                     self.train_freq == 0)
 
-                
-                episode_reward += reward
 
                 # Add the transition to the replay buffer:
                 sarsa = (state, next_state, action, reward, terminated)
@@ -257,17 +282,36 @@ class BaseAgent:
                 state = next_state
                 if self.env_steps % self.log_interval == 0:
                     self._log_stats()
-                    if (self.env_steps > stop_steps):
-                        if (self.avg_eval_rwd < stop_reward):
-                            wandb.log({'early_stop': True}) 
-                            return True
-
+                    # if (self.env_steps > stop_steps):
+                    # this was too strict. trying this:
+                    # if self.env_steps == stop_steps:
+                    #     if (self.avg_eval_rwd < stop_reward):
+                    #         wandb.log({'early_stop': True})
+                    #         return True
+                
+            if terminated:
+                # self.rollout_reward += 0
+                avg_ep_len += 1
             if done:
-                self.logger.record("rollout/reward", self.rollout_reward)
+                self.rollout_reward
+                self.logger.record("rollout/ep_reward", self.rollout_reward)
+                free_energy = (self.rollout_reward + 1/self.beta * entropy) 
+                try:
+                    free_energy = free_energy.item()
+                except:
+                    pass
+                # entropy = 0
+                self.logger.record("rollout/neg_free_energy", free_energy / avg_ep_len)
+                self.logger.record("rollout/avg_entropy", entropy / avg_ep_len)
+                self.logger.record("rollout/avg_episode_length", avg_ep_len)
+                self.logger.record("rollout/avg_reward_rate", self.rollout_reward / avg_ep_len)
+                if self.use_wandb:
+                    wandb.log({'rollout/reward': self.rollout_reward})
                 action_freqs /= action_freqs.sum()
                 for i, freq in enumerate(action_freqs):
                     # As percentage:
-                    self.logger.record(f'rollout/action {i} (%)', freq.item() * 100)
+                    self.logger.record(
+                        f'rollout/action {i} (%)', freq.item() * 100)
 
         return False
 
@@ -288,25 +332,24 @@ class BaseAgent:
         if self.env_steps % self.log_interval == 0:
             # Log info from this training cycle:
             self.logger.record("train/theta", self.theta.item())
-            
 
     def _log_stats(self):
         # end timer:
         t_final = time.thread_time_ns()
         # fps averaged over log_interval steps:
-        self.fps = self.log_interval / ((t_final - self.initial_time + 1e-16) / 1e9)
+        self.fps = self.log_interval / \
+            ((t_final - self.initial_time + 1e-16) / 1e9)
 
-        if self.env_steps >= 0:
+        if self.env_steps > self.learning_starts: # skip untrained agent
             self.avg_eval_rwd = self.evaluate()
             self.eval_auc += self.avg_eval_rwd
         if self.save_checkpoints:
             raise NotImplementedError
             torch.save(self.online_logu.state_dict(),
-                        'sql-policy.para')
+                       'sql-policy.para')
         # Get the current learning rate from the optimizer:
         self.lr = self.optimizers.get_lr()
         log_class_vars(self, self.logger, LOG_PARAMS, use_wandb=self.use_wandb)
-
 
         if self.is_tabular:
             # Record the error in the eigenvector:
@@ -316,11 +359,11 @@ class BaseAgent:
 
         if self.use_wandb:
             wandb.log({'env_steps': self.env_steps,
-                        'eval/avg_reward': self.avg_eval_rwd})
+                       'eval/avg_reward': self.avg_eval_rwd})
         self.logger.dump(step=self.env_steps)
         self.initial_time = time.thread_time_ns()
 
-    def evaluate(self, n_episodes=3):
+    def evaluate(self, n_episodes=3) -> float:
         # run the current policy and return the average reward
         self.initial_time = time.process_time_ns()
         avg_reward = 0.
@@ -361,16 +404,19 @@ class BaseAgent:
         self.eval_fps = eval_fps
         self.avg_eval_rwd = avg_reward
         return avg_reward
-    
+
     def _beta_scheduler(self, beta_schedule, total_timesteps):
         # setup beta scheduling
         if beta_schedule == 'exp':
-            self.betas = torch.exp(torch.linspace(np.log(self.beta), np.log(self.beta_end), total_timesteps)).to(self.device)
+            self.betas = torch.exp(torch.linspace(np.log(self.beta), np.log(
+                self.beta_end), total_timesteps)).to(self.device)
         elif beta_schedule == 'linear':
-            self.betas = torch.linspace(self.beta, self.beta_end, total_timesteps).to(self.device)
+            self.betas = torch.linspace(
+                self.beta, self.beta_end, total_timesteps).to(self.device)
         elif beta_schedule == 'none':
-            self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
+            self.betas = torch.tensor(
+                [self.beta] * total_timesteps).to(self.device)
         else:
-            raise NotImplementedError(f"Unknown beta schedule: {beta_schedule}")
+            raise NotImplementedError(
+                f"Unknown beta schedule: {beta_schedule}")
         return self.betas
-    

@@ -1,8 +1,12 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from gymnasium.wrappers import TimeLimit
-from darer.MultiLogU import LogULearner
+import sys
+sys.path.append("darer")
+from LogUAgent import LogUAgent
+from UAgent import UAgent
 from darer.hparams import *
 from darer.utils import get_eigvec_values
 from tabular.tabular_utils import get_dynamics_and_rewards, solve_unconstrained
@@ -28,12 +32,12 @@ def exact_solution(beta, env):
     return -np.log(l_true) / beta
 
 def FA_solution(beta, env):
-    # Use MultiLogU to solve the environment
+    # Use an agent to solve the environment
 
-    agent = LogULearner(env, **config, log_interval=1000, log_dir='pend',
-                        num_nets=2, device='cpu', 
-                        beta=beta, render=0, aggregator='max')
-    agent.learn(total_timesteps=100_000)
+    agent = UAgent(env, **config, log_interval=1000, tensorboard_log='pend',
+                        num_nets=2, device='cuda',# use_rawlik=False,
+                        beta=beta, render=False, aggregator='max')
+    agent.learn(total_timesteps=70_000)
     get_eigvec_values(agent, save_name=f'tabular/tabular_expt/data/{map_name}eigvec')
     # convert agent.theta to float
     theta = agent.theta.item()
@@ -57,7 +61,7 @@ def main():
     betas = np.logspace(1, 1, 4)
     betas = [14,19,24,30,37]
     betas = np.linspace(1, 50, 50)
-    betas = [35]
+    betas = [3]
 
     exact = [exact_solution(beta, env) for beta in betas]
     print(exact)
@@ -65,8 +69,9 @@ def main():
 
     # save the data:
     data = pd.DataFrame({'beta': betas, 'exact': exact, 'FA': FA})
-    data.to_csv(f'tabular/tabular_expt/data/{map_name}tabular_vs_FA50.csv', index=False)
-# [0.9999155228491464, 0.9987485370048285, 0.9891983268590409, 0.9777515697268231, 0.9681814068991201, 0.9603645308274785
+    # get number of files with same prefix:
+    num = len([f for f in os.listdir('tabular/tabular_expt/data') if f.startswith(f'{map_name}tabular_vs_FA')])
+    data.to_csv(f'tabular/tabular_expt/data/{map_name}tabular_vs_FA_{num}.csv', index=False)
     plt.figure()
     plt.plot(betas, exact, 'ko-', label='Exact')
     plt.plot(betas, FA, 'bo', label='FA')

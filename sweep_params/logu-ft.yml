@@ -7,11 +7,7 @@ parameters:
     values: [16, 32, 64, 128]
   beta:
     distribution: uniform
-<<<<<<< HEAD
-    max: 10
-=======
     max: 3
->>>>>>> e605c505c7be23eae5974ee9169acf1dbb3e138a
     min: 0.01
   final_beta_multiplier:
     max: 10
@@ -53,5 +49,13 @@ parameters:
   aggregator:
     values: [min, max, mean]
   hidden_dim:
-    values: [32, 64, 128, 256]
+    values: [64, 128, 256]
+  prior_tau:
+    distribution: uniform
+    max: 1
+    min: 0.1
+  prior_update_interval:
+    distribution: uniform
+    max: 100
+    min: 1
 program: wandb_job.py
