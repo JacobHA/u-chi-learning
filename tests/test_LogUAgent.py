@@ -2,7 +2,7 @@ import pytest
 import sys
 sys.path.append('darer')
 sys.path.append('../darer')
-from darer.LogUAgent import LogU
+from LogUAgent import LogUAgent
 import gymnasium as gym
 from pytest_mock import mocker  # Import the mocker fixture
 
@@ -12,11 +12,11 @@ env = gym.make(env_id)
 
 @pytest.fixture
 def logu_agent():
-    return LogU(env_id=env_id, learning_starts=0)  # Initialize LogU with a specific environment ID
+    return LogUAgent(env_id=env_id, learning_starts=0)  # Initialize LogU with a specific environment ID
 
 
 def test_logu_agent_creation(logu_agent):
-    assert isinstance(logu_agent, LogU)
+    assert isinstance(logu_agent, LogUAgent)
 
 
 def test_exploration_policy(logu_agent):

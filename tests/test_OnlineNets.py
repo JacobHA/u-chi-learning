@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import pytest
 import gymnasium as gym
-from Models import OnlineNets, LogUNet
+from Models import OnlineLogUNets, LogUNet
 
 num_actions = 5
 num_nets = 3
@@ -17,7 +17,7 @@ def online_nets():
     # Create a list of nets for testing
     dummy_env = DummyEnv()
     list_of_nets = [LogUNet(dummy_env, device='cpu', hidden_dim=8) for _ in range(num_nets)]
-    return OnlineNets(list_of_nets, torch.min)
+    return OnlineLogUNets(list_of_nets, torch.min)
 
 def test_greedy_action(online_nets):
     # Test the greedy_action method

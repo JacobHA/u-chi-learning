@@ -3,7 +3,8 @@ import torch
 import torch.optim as optim
 import sys
 sys.path.append('darer')
-from darer.Models import Optimizers 
+sys.path.append('../darer')
+from Models import Optimizers 
 
 @pytest.fixture
 def optimizers():

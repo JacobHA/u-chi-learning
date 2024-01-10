@@ -21,6 +21,70 @@ def is_image_space_simple(observation_space, is_vector_env=False):
     return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3
 NORMALIZE_IMG = False
 
+
+def model_initializer(is_image_space,
+                      observation_space,
+                      nA,
+                      activation,
+                      hidden_dim,
+                      device):
+    model = nn.Sequential()
+
+    # check if image:
+    if is_image_space:
+        nS = get_flattened_obs_dim(observation_space)
+        # Use a CNN:
+        n_channels = observation_space.shape[2]
+        model.extend(nn.Sequential(
+            nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.uint8),
+            activation(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, dtype=torch.uint8),
+            activation(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, dtype=torch.uint8),
+            nn.Flatten(start_dim=1),
+        ))
+        # calculate resulting shape for FC layers:
+        rand_inp = observation_space.sample()
+        x = torch.tensor(rand_inp, device=device, dtype=torch.float32)  # Convert to PyTorch tensor
+        x = x.detach()
+        x = preprocess_obs(x, observation_space, normalize_images=NORMALIZE_IMG)
+        x = x.permute([2,0,1]).unsqueeze(0)
+        flat_size = model(x).shape[1]
+        with torch.no_grad():
+            n_flatten = model(torch.as_tensor(observation_space.sample()[None]).float()).shape[1]
+
+        print(f"Using a CNN with {flat_size}-dim. outputs.")
+
+        model.extend(nn.Sequential(
+            nn.Linear(n_flatten, hidden_dim, dtype=torch.uint8),
+            activation(),
+            nn.Linear(hidden_dim, nA, dtype=torch.uin8),
+        ))
+
+    else:
+        if isinstance(observation_space, spaces.Discrete):
+            nS = observation_space.n
+            input_dim = nS
+        else:    
+            nS = observation_space.shape
+            input_dim = nS[0]
+        
+        # Use a simple MLP:
+        model.extend(nn.Sequential(
+            nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
+            activation(),
+            nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
+            activation(),
+            nn.Linear(hidden_dim, nA, dtype=torch.float32),
+        ))
+        # intialize weights with xavier:
+        # for m in model:
+        #     if isinstance(m, nn.Linear):
+        #         nn.init.xavier_uniform_(m.weight, gain=1)
+        #         nn.init.constant_(m.bias, 0)
+
+    return model, nS
+
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(LogUNet, self).__init__()
@@ -29,70 +93,24 @@ class LogUNet(nn.Module):
         if self.using_vector_env:
             self.observation_space = self.env.single_observation_space
             self.action_space = self.env.single_action_space
-            from sb3preprocessing import is_image_space
         else:
             self.observation_space = self.env.observation_space
             self.action_space = self.env.action_space
-            # a hack to make atari wrapped envs work:
         self.nA = self.action_space.n
         # do the check on an env before wrapping it
         self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
         self.is_tabular = is_tabular(env)
         self.device = device
-        # Start with an empty model:
-        model = nn.Sequential()
-        if isinstance(self.observation_space, spaces.Discrete):
-            self.nS = self.observation_space.n
-            input_dim = self.nS
-        elif isinstance(self.observation_space, spaces.Box):
-            # check if image:
-            if self.is_image_space:
-                self.nS = get_flattened_obs_dim(self.observation_space)
-                # Use a CNN:
-                n_channels = self.observation_space.shape[2]
-                model.extend(nn.Sequential(
-                    nn.Conv2d(n_channels, 16, kernel_size=8, stride=4, dtype=torch.float32),
-                    activation(),
-                    nn.Conv2d(16, 32, kernel_size=4, stride=2, dtype=torch.float32),
-                    activation(),
-                    nn.Flatten(start_dim=1),
-                ))
-                model.to(self.device)
-                # calculate resulting shape for FC layers:
-                rand_inp = self.observation_space.sample()
-                x = torch.tensor(rand_inp, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-                x = x.detach()
-                x = preprocess_obs(x, self.observation_space, normalize_images=NORMALIZE_IMG)
-                x = x.permute([2,0,1]).unsqueeze(0)
-                flat_size = model(x).shape[1]
-                print(f"Using a CNN with {flat_size}-dim. outputs.")
-                # flat part
-                input_dim = flat_size
+        model, nS = model_initializer(self.is_image_space,
+                                  self.observation_space,
+                                  self.nA,
+                                  activation,
+                                  hidden_dim,
+                                  self.device)
 
-                model.extend(nn.Sequential(
-                    nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
-                    activation(),
-                    nn.Linear(hidden_dim, self.nA, dtype=torch.float32),
-                ))
-
-            else:
-                self.nS = self.observation_space.shape
-                input_dim = self.nS[0]
-
-                model.extend(nn.Sequential(
-                    nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
-                    activation(),
-                    nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
-                    activation(),
-                    nn.Linear(hidden_dim, self.nA, dtype=torch.float32),
-                ))
-        # intialize weights with xavier:
-        # for m in model:
-        #     if isinstance(m, nn.Linear):
-        #         nn.init.xavier_uniform_(m.weight, gain=1)
-        #         nn.init.constant_(m.bias, 0)
         model.to(self.device)
         self.model = model
+        self.nS = nS
         
         self.to(device)
      
