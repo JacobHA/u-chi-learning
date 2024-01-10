@@ -196,7 +196,7 @@ pong_logu0 = {
 nature_pong = {
   "batch_size": 32,
   "beta": 0.1,
-  "buffer_size": 500_000,
+  "buffer_size": 300_000,
   "tau": 1.0,
   "train_freq": 4,
   "learning_starts": 50000 ,
