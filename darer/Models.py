@@ -135,37 +135,6 @@ class LogUNet(nn.Module):
 
         x = self.model(x)
         return x
-        
-    def choose_action(self, state, greedy=False, prior=None):
-        if prior is None:
-            prior = 1 / self.nA
-        with torch.no_grad():
-            # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-            logu = self.forward(state)
-
-            if greedy:
-                # not worth exponentiating since it is monotonic
-                logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
-                a = (logu + logprior).argmax(dim=-1)
-                if not self.using_vector_env:
-                    return a.item()
-                else:
-                    return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
-
-            # First subtract a baseline:
-            # logu = logu - (torch.max(logu) + torch.min(logu))/2
-            # clamp to avoid overflow:
-            logu = torch.clamp(logu, min=-20, max=20)
-            dist = torch.exp(logu) * prior
-            dist = dist / torch.sum(dist)
-            c = Categorical(dist)#, validate_args=True)
-            # c = Categorical(logits=logu*prior)
-            a = c.sample()
-
-        if not self.using_vector_env:
-            return a.item()
-        else:
-            return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
 
 class EmptyScheduler(LRScheduler):
     def __init__(self, *args, **kwargs):
@@ -298,30 +267,58 @@ class OnlineNets():
         return greedy_action
         # return greedy_action.item()
 
-    def choose_action(self, state, prior=None):
-        # Get a sample from each net, then sample uniformly over them:
-        actions = [net.choose_action(state, prior=prior) for net in self.nets]
-        if not self.is_vector_env:
-            action = np.random.choice(actions)
-        else:
-            actions = np.array(actions)
-            rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
-            action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
-        # perhaps re-weight this based on pessimism?
-        return action
-        # with torch.no_grad():
-        #     logus = [net(state) for net in self.nets]
-        #     logu = torch.stack(logus, dim=-1)
-        #     logu = logu.squeeze(1)
-        #     logu = torch.mean(logu, dim=-1)#[0]
-        #     baseline = (torch.max(logu) + torch.min(logu))/2
-        #     logu = logu - baseline
-        #     logu = torch.clamp(logu, min=-20, max=20)
-        #     dist = torch.exp(logu)
-        #     dist = dist / torch.sum(dist)
-        #     c = Categorical(dist)#, validate_args=True)
-        #     return c.sample()#.item()
+    def choose_action(self, state, greedy=False, prior=None):
+        # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tenso
+        if greedy:
+            # not worth exponentiating since it is monotonic
+            logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
+            a = (logu + logprior).argmax(dim=-1)
+            if not self.using_vector_env:
+                return a.item()
+            else:
+                return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
 
+        # First subtract a baseline:
+        # logu = logu - (torch.max(logu) + torch.min(logu))/2
+        # clamp to avoid overflow:
+        logu = torch.clamp(logu, min=-20, max=20)
+        dist = torch.exp(logu) * prior
+        dist = dist / torch.sum(dist)
+        c = Categorical(dist)  # , validate_args=True)
+        # c = Categorical(logits=logu*prior)
+        a = c.sample()
+
+        if not self.using_vector_env:
+            return a.item()
+        else:
+            return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
+
+    def choose_action(self, state, prior=None):
+        with torch.no_grad():
+            # Get a sample from each net, then sample uniformly over them:
+            if prior is None:
+                prior = 1 / self.nA
+            actions = [net.choose_action(state, prior=prior) for net in self.nets]
+            if not self.is_vector_env:
+                action = np.random.choice(actions)
+            else:
+                actions = np.array(actions)
+                rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
+                action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
+            # perhaps re-weight this based on pessimism?
+        return action
+            # with torch.no_grad():
+            #     logus = [net(state) for net in self.nets]
+            #     logu = torch.stack(logus, dim=-1)
+            #     logu = logu.squeeze(1)
+            #     logu = torch.mean(logu, dim=-1)#[0]
+            #     baseline = (torch.max(logu) + torch.min(logu))/2
+            #     logu = logu - baseline
+            #     logu = torch.clamp(logu, min=-20, max=20)
+            #     dist = torch.exp(logu)
+            #     dist = dist / torch.sum(dist)
+            #     c = Categorical(dist)#, validate_args=True)
+            #     return c.sample()#.item()
 
     def parameters(self):
         return [net.parameters() for net in self]
@@ -550,8 +547,6 @@ class UNet(nn.Module):
                 else:
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
-
-
 
         x = self.model(x)
         # get machine epsilon:

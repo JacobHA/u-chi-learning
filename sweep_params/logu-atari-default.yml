@@ -1,7 +1,7 @@
 method: random
 parameters:
   env_id:
-    values: [ 'ALE/Pong-v5' ]
+    values: [ 'PongNoFrameskip-v4' ]
   scheduler_str:
     values: [ 'none' ]
   aggregator:

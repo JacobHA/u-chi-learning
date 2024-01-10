@@ -107,9 +107,9 @@ def rllib_env_id_to_envs(env_id, render=False):
     eval_env = wrap_deepmind(eval_env, framestack=True, noframeskip=False)
     return env, eval_env
 
-def env_id_to_envs(env_id, render, is_atari=False):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False):
     if is_atari:
-        return atari_env_id_to_envs(env_id, render, n_envs=1)
+        return atari_env_id_to_envs(env_id, render, n_envs=1, permute_dims=permute_dims)
     else:
         env = gym.make(env_id)
         eval_env = gym.make(env_id, render_mode='human' if render else None)

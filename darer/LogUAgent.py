@@ -92,6 +92,11 @@ class LogU(BaseAgent):
         # Do a Polyak update of parameters:
         self.target_logus.polyak(self.online_logus, self.tau)
 
+from hparams import cartpole_hparams2, pendulum_logu, nature_pong
+env_to_hparams = {
+    'PongNoFrameskip-v4': nature_pong,
+    'CartPole-v1': cartpole_hparams2,
+}
 
 def main():
     from disc_envs import get_environment
@@ -104,13 +109,12 @@ def main():
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
-    # env_id = 'PongNoFrameskip-v4'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_hparams2 as config
-    agent = LogU(env_id, **config, device='cpu', log_interval=500,
+    agent = LogU(env_id, **env_to_hparams[env_id], device='cpu', log_interval=500,
                  tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
                  scheduler_str='none')  # , beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:

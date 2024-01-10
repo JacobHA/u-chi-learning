@@ -249,8 +249,6 @@ class BaseAgent:
             entropy = 0
             while not done and self.env_steps < total_timesteps:
                 # take a random action:
-                # if self.env_steps < self.learning_starts:
-                #     action = self.env.action_space.sample()
                 # else:
                 action, kl = self.exploration_policy(state)
                 action_freqs[action] += 1
@@ -288,7 +286,6 @@ class BaseAgent:
                 self.rollout_reward += 0
                 avg_ep_len += 1
             if done:
-                self.rollout_reward
                 self.logger.record("rollout/reward", self.rollout_reward)
                 free_energy = (self.rollout_reward + 1/self.beta * entropy) 
                 try:
