@@ -1,4 +1,6 @@
 import os
+import random
+
 import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.logger import configure
@@ -109,7 +111,7 @@ def rllib_env_id_to_envs(env_id, render=False):
     eval_env = wrap_deepmind(eval_env, framestack=True, noframeskip=False)
     return env, eval_env
 
-def env_id_to_envs(env_id, render, is_atari=False):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False):
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -117,7 +119,7 @@ def env_id_to_envs(env_id, render, is_atari=False):
         eval_env = copy.deepcopy(env_id)
         return env, eval_env
     if is_atari:
-        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4)
+        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims)
     else:
         env = gym.make(env_id)
         eval_env = gym.make(env_id, render_mode='human' if render else None)
@@ -220,3 +222,26 @@ def get_true_eigvec(fa, beta):
 
 def is_tabular(env):
     return isinstance(env.observation_space, gym.spaces.Discrete) and isinstance(env.action_space, gym.spaces.Discrete)
+
+
+def sample_wandb_hyperparams(params, int_hparams=None):
+    sampled = {}
+    for k, v in params.items():
+        if 'values' in v:
+            sampled[k] = random.choice(v['values'])
+        elif 'distribution' in v:
+            if v['distribution'] == 'uniform' or v['distribution'] == 'uniform_values':
+                sampled[k] = random.uniform(v['min'], v['max'])
+            elif v['distribution'] == 'normal':
+                sampled[k] = random.normalvariate(v['mean'], v['std'])
+            elif v['distribution'] == 'log_uniform_values':
+                emin, emax = np.log(v['max']), np.log(v['min'])
+                sample = np.exp(random.uniform(emin, emax))
+                sampled[k] = sample
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError
+        if k in int_hparams:
+            sampled[k] = int(sampled[k])
+    return sampled
