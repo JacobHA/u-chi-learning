@@ -96,8 +96,13 @@ class BaseAgent:
         self.env, self.eval_env = env_id_to_envs(
             env_id, render, is_atari=is_atari)
 
-        self.env_str = self.env.unwrapped.spec.id if hasattr(
-            self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
+        if hasattr(self.env.unwrapped.spec, 'id'):
+            self.env_str = self.env.unwrapped.spec.id 
+        elif hasattr(self.env.unwrapped, 'id'):
+            self.env_str = self.env.unwrapped.id
+        else:
+            self.env_str = str(self.env.unwrapped)
+            
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
             # calculate the eigenvector exactly:

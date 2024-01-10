@@ -108,6 +108,12 @@ def rllib_env_id_to_envs(env_id, render=False):
     return env, eval_env
 
 def env_id_to_envs(env_id, render, is_atari=False):
+    if isinstance(env_id, gym.Env):
+        env = env_id
+        # Make a new copy for the eval env:
+        import copy
+        eval_env = copy.deepcopy(env_id)
+        return env, eval_env
     if is_atari:
         return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4)
     else:
