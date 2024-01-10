@@ -19,7 +19,7 @@ def is_image_space_simple(observation_space, is_vector_env=False):
     if is_vector_env:
         return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 4
     return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3
-NORMALIZE_IMG = False
+NORMALIZE_IMG = True
 
 
 def model_initializer(is_image_space,
@@ -36,11 +36,11 @@ def model_initializer(is_image_space,
         # Use a CNN:
         n_channels = observation_space.shape[2]
         model.extend(nn.Sequential(
-            nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.uint8),
+            nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, device=device),
             activation(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, dtype=torch.uint8),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, device=device),
             activation(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, dtype=torch.uint8),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, device=device),
             nn.Flatten(start_dim=1),
         ))
         # calculate resulting shape for FC layers:
@@ -50,15 +50,15 @@ def model_initializer(is_image_space,
         x = preprocess_obs(x, observation_space, normalize_images=NORMALIZE_IMG)
         x = x.permute([2,0,1]).unsqueeze(0)
         flat_size = model(x).shape[1]
-        with torch.no_grad():
-            n_flatten = model(torch.as_tensor(observation_space.sample()[None]).float()).shape[1]
+        # with torch.no_grad():
+        #     n_flatten = model(torch.as_tensor(observation_space.sample()[None]).float()).shape[1]
 
         print(f"Using a CNN with {flat_size}-dim. outputs.")
 
         model.extend(nn.Sequential(
-            nn.Linear(n_flatten, hidden_dim, dtype=torch.uint8),
+            nn.Linear(flat_size, hidden_dim),
             activation(),
-            nn.Linear(hidden_dim, nA, dtype=torch.uin8),
+            nn.Linear(hidden_dim, nA),
         ))
 
     else:
@@ -154,36 +154,7 @@ class LogUNet(nn.Module):
         x = self.model(x)
         return x
         
-    def choose_action(self, state, greedy=False, prior=None):
-        if prior is None:
-            prior = 1 / self.nA
-        with torch.no_grad():
-            # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-            logu = self.forward(state)
-
-            if greedy:
-                # not worth exponentiating since it is monotonic
-                logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
-                a = (logu + logprior).argmax(dim=-1)
-                if not self.using_vector_env:
-                    return a.item()
-                else:
-                    return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
-
-            # First subtract a baseline:
-            # logu = logu - (torch.max(logu) + torch.min(logu))/2
-            # clamp to avoid overflow:
-            logu = torch.clamp(logu, min=-20, max=20)
-            dist = torch.exp(logu) * prior
-            dist = dist / torch.sum(dist)
-            c = Categorical(dist)#, validate_args=True)
-            # c = Categorical(logits=logu*prior)
-            a = c.sample()
-
-        if not self.using_vector_env:
-            return a.item()
-        else:
-            return a.numpy() if a.device == 'cpu' else a.cpu().numpy()
+   
 
 class EmptyScheduler(LRScheduler):
     def __init__(self, *args, **kwargs):
@@ -536,62 +507,31 @@ class GaussianPolicy(nn.Module):
 class UNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(UNet, self).__init__()
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
         self.env = env
-        self.nA = env.action_space.n
-        self.is_image_space = is_image_space(env.observation_space)
+        if self.using_vector_env:
+            self.observation_space = self.env.single_observation_space
+            self.action_space = self.env.single_action_space
+        else:
+            self.observation_space = self.env.observation_space
+            self.action_space = self.env.action_space
+        self.nA = self.action_space.n
+        # do the check on an env before wrapping it
+        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
         self.is_tabular = is_tabular(env)
         self.device = device
-        # Start with an empty model:
-        model = nn.Sequential()
-        if isinstance(env.observation_space, spaces.Discrete):
-            self.nS = env.observation_space.n
-            input_dim = self.nS
-        elif isinstance(env.observation_space, spaces.Box):
-            # check if image:
-            if is_image_space(env.observation_space):
-                self.nS = get_flattened_obs_dim(env.observation_space)
-                # Use a CNN:
-                n_channels = env.observation_space.shape[2]
-                model.extend(nn.Sequential(
-                    nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, dtype=torch.float32),
-                    activation(),
-                    nn.Conv2d(32, 16, kernel_size=4, stride=2, dtype=torch.float32),
-                    activation(),
-                    nn.Conv2d(16, 8, kernel_size=3, stride=1, dtype=torch.float32),
-                    activation(),
-                    nn.Flatten(start_dim=1),
-                ))
-                model.to(self.device)
-                # calculate resulting shape for FC layers:
-                rand_inp = env.observation_space.sample()
-                x = torch.tensor(rand_inp, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-                x = x.detach()
-                x = preprocess_obs(x, self.env.observation_space)
-                x = x.permute([2,0,1]).unsqueeze(0)
-                flat_size = model(x).shape[1]
-                print(f"Using a CNN with {flat_size}-dim. outputs.")
-                # flat part
-                input_dim = flat_size
-            else:
-                self.nS = env.observation_space.shape
-                input_dim = self.nS[0]
+        model, nS = model_initializer(self.is_image_space,
+                                  self.observation_space,
+                                  self.nA,
+                                  activation,
+                                  hidden_dim,
+                                  self.device)
 
-        model.extend(nn.Sequential(
-                    nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
-                    activation(),
-                    nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
-                    activation(),
-                    nn.Linear(hidden_dim, self.nA, dtype=torch.float32),
-                    nn.Softplus(),
-                ))
-        
+        # Add a softplus layer:
+        model = nn.Sequential(model, nn.Softplus())
         model.to(self.device)
         self.model = model
-        # for m in self.model:
-        #     if isinstance(m, nn.Linear):
-        #         torch.nn.init.xavier_uniform_(m.weight)
-        #         if m.bias is not None:
-        #             torch.nn.init.constant_(m.bias, 0)
+        self.nS = nS
         
         self.to(device)
      
