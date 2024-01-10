@@ -17,7 +17,7 @@ def online_nets():
     # Create a list of nets for testing
     dummy_env = DummyEnv()
     list_of_nets = [LogUNet(dummy_env, device='cpu', hidden_dim=8) for _ in range(num_nets)]
-    return OnlineNets(list_of_nets)
+    return OnlineNets(list_of_nets, torch.min)
 
 def test_greedy_action(online_nets):
     # Test the greedy_action method
@@ -26,10 +26,10 @@ def test_greedy_action(online_nets):
         state = torch.rand(10)
 
         # Call the greedy_action method
-        action = online_nets.greedy_action(state)
+        action = online_nets.choose_action(state, greedy=True)
 
         # Ensure the result is an integer
-        # assert isinstance(action, int)
+        assert action in DummyEnv().action_space
 
 def test_choose_action(online_nets, monkeypatch):
     # Test the choose_action method
@@ -44,7 +44,7 @@ def test_choose_action(online_nets, monkeypatch):
     action = online_nets.choose_action(state)
 
     # Ensure the result is an integer
-    assert isinstance(action, int)
+    assert action in DummyEnv().action_space
 
 def test_parameters(online_nets):
     # Test the parameters method
@@ -61,7 +61,7 @@ def test_clip_grad_norm(online_nets):
     # Test the clip_grad_norm method
 
     # Calculate losses based on online_nets values and distance to 1:
-    losses = [torch.abs(net(torch.ones(10)) - torch.ones(num_actions)).mean() for net in online_nets]
+    losses = [torch.abs(net(100*torch.ones(10)) - torch.ones(num_actions)).mean() for net in online_nets]
     total_loss = sum(losses)
 
     total_loss.backward()

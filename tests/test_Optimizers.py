@@ -1,7 +1,9 @@
 import pytest
 import torch
 import torch.optim as optim
-from Models import Optimizers 
+import sys
+sys.path.append('darer')
+from darer.Models import Optimizers 
 
 @pytest.fixture
 def optimizers():

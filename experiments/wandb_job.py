@@ -21,6 +21,7 @@ env_to_early_stop_dict = {
     'Acrobot-v1': {'reward': -200, 'steps': 10_000},
     'MountainCar-v0': {'reward': -190, 'steps': 20_000},
     'LunarLander-v2': {'reward': 0, 'steps': 20_000},
+    'PongNoFrameskip-v4': {'reward': -22, 'steps': 20_000},
 }
 
 
@@ -32,11 +33,7 @@ def runner(config=None, run=None, device='cpu'):
             config[int_kwarg] = int(config[int_kwarg])
         except KeyError:
             pass  # use default value
-    # config['buffer_size'] = 10_000
-    # config['gradient_steps'] = 1
-    # config['train_freq'] = 1
-    # config['learning_starts'] = 1_000
-    # config.pop('actor_learning_rate')
+
     beta_end = config.pop('final_beta_multiplier') * config['beta']
     config['gradient_steps'] = config['train_freq']
     runs_per_hparam = 5
@@ -47,12 +44,12 @@ def runner(config=None, run=None, device='cpu'):
         agent = LogUAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
                        device=device, render=False, beta_end=beta_end,
                        # beta_schedule=config.pop('beta_scheduler', 'none'),
-                       num_nets=2,
+                       num_nets=2, use_rawlik=True,
                        )
         wandb.log({'agent_name': agent.algo_name})
 
         wandb.log({'env_id': agent.env_str})
-        if env_id in ['LunarLander-v2', 'MountainCar-v0']:
+        if env_id in ['LunarLander-v2', 'MountainCar-v0', 'PongNoFrameskip-v4']:
             total_timesteps = 500_000
         else:
             total_timesteps = 50_000
@@ -73,16 +70,14 @@ def wandb_agent():
 
 
 if __name__ == "__main__":
-    # set up wandb variables (TODO: these should be set up as globals per user):
-
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device", type=str, default='cuda')
     parser.add_argument("-c", "--count", type=int, default=15_000)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='u-chi-learning')
-    parser.add_argument("-s", "--sweep_id", type=str, default='rud90h68')
-    parser.add_argument("-env", "--env_id", type=str, default='CartPole-v1')
+    parser.add_argument("-s", "--sweep_id", type=str, default='spr47ds0')
+    parser.add_argument("-env", "--env_id", type=str, default='Acrobot-v1')
     args = parser.parse_args()
     entity = args.entity
     project = args.project
