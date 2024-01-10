@@ -8,7 +8,6 @@
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 
-
 # Load the required modules
 module load anaconda/3.9
 # activate conda
@@ -20,4 +19,4 @@ export WANDB_MODE=offline
 wandb offline
 
 # Start the evaluations
-python experiments/baselines/DQN_comparison.py
+python experiments/dqn_baseline.py --n_runs=1 --proj=u-chi-learning

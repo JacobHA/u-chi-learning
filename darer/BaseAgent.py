@@ -96,12 +96,17 @@ class BaseAgent:
         self.env, self.eval_env = env_id_to_envs(
             env_id, render, is_atari=is_atari)
 
-        self.env_str = self.env.unwrapped.spec.id if hasattr(
-            self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
+        if hasattr(self.env.unwrapped.spec, 'id'):
+            self.env_str = self.env.unwrapped.spec.id
+        elif hasattr(self.env.unwrapped, 'id'):
+            self.env_str = self.env.unwrapped.id
+        else:
+            self.env_str = str(self.env.unwrapped)
+
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
             # calculate the eigenvector exactly:
-            self.true_eigvec = get_true_eigvec(self).A.flatten()
+            self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
         self.beta = beta
@@ -283,10 +288,11 @@ class BaseAgent:
                     #         return True
                 
             if terminated:
-                self.rollout_reward += 0
+                # self.rollout_reward += 0
                 avg_ep_len += 1
             if done:
-                self.logger.record("rollout/reward", self.rollout_reward)
+                self.rollout_reward
+                self.logger.record("rollout/ep_reward", self.rollout_reward)
                 free_energy = (self.rollout_reward + 1/self.beta * entropy) 
                 try:
                     free_energy = free_energy.item()
@@ -296,7 +302,7 @@ class BaseAgent:
                 self.logger.record("rollout/neg_free_energy", free_energy / avg_ep_len)
                 self.logger.record("rollout/avg_entropy", entropy / avg_ep_len)
                 self.logger.record("rollout/avg_episode_length", avg_ep_len)
-                self.logger.record("rollout/avg_reward", self.rollout_reward / avg_ep_len)
+                self.logger.record("rollout/avg_reward_rate", self.rollout_reward / avg_ep_len)
                 if self.use_wandb:
                     wandb.log({'rollout/reward': self.rollout_reward})
                 action_freqs /= action_freqs.sum()
@@ -332,7 +338,7 @@ class BaseAgent:
         self.fps = self.log_interval / \
             ((t_final - self.initial_time + 1e-16) / 1e9)
 
-        if self.env_steps >= 0:
+        if self.env_steps > self.learning_starts: # skip untrained agent
             self.avg_eval_rwd = self.evaluate()
             self.eval_auc += self.avg_eval_rwd
         if self.save_checkpoints:

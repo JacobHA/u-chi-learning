@@ -2,11 +2,10 @@ import time
 import numpy as np
 import torch
 from BaseAgent import BaseAgent
-from Models import LogUNet, OnlineNets, Optimizers, TargetNets
+from Models import LogUNet, OnlineLogUNets, Optimizers, TargetNets
 from utils import logger_at_folder
 
-
-class LogU(BaseAgent):
+class LogUAgent(BaseAgent):
     def __init__(self,
                  *args,
                  **kwargs,
@@ -20,13 +19,17 @@ class LogU(BaseAgent):
         self._initialize_networks()
 
     def _initialize_networks(self):
-        self.online_logus = OnlineNets([LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
+        self.online_logus = OnlineLogUNets([LogUNet(self.env,
+                                                hidden_dim=self.hidden_dim,
+                                                device=self.device)
                                         for _ in range(self.num_nets)],
-                                       aggregator=self.aggregator)
+                                       aggregator_fn=self.aggregator_fn)
         # alias for compatibility as self.model:
         self.model = self.online_logus
 
-        self.target_logus = TargetNets([LogUNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
+        self.target_logus = TargetNets([LogUNet(self.env,
+                                                hidden_dim=self.hidden_dim,
+                                                device=self.device)
                                         for _ in range(self.num_nets)])
         self.target_logus.load_state_dicts(
             [logu.state_dict() for logu in self.online_logus])
@@ -36,16 +39,16 @@ class LogU(BaseAgent):
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
     def exploration_policy(self, state: np.ndarray) -> (int, float):
-        # return self.env.action_space.sample()
+        # return self.env.action_space.sample(), 0
         kl = 0
-        return self.online_logus.choose_action(state), kl
+        return self.online_logus.choose_action(state, greedy=False), kl
 
     def evaluation_policy(self, state: np.ndarray) -> int:
-        return self.online_logus.greedy_action(state)
+        return self.online_logus.choose_action(state, greedy=True)
 
     def gradient_descent(self, batch, grad_step: int):
         states, actions, next_states, dones, rewards = batch
-        rewards[dones.bool()] -= 10
+        # rewards[dones.bool()] -= 10
 
         # Calculate the current logu values (feedforward):
         curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
@@ -77,7 +80,7 @@ class LogU(BaseAgent):
 
             next_logu = next_logu.reshape(-1, 1)
             assert next_logu.shape == dones.shape
-            next_logu = next_logu  # * (1-dones)  # + self.theta * dones
+            next_logu = next_logu  * (1-dones)  # + self.theta * dones
 
             # "Backup" eigenvector equation:
             expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
@@ -114,9 +117,10 @@ def main():
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    agent = LogU(env_id, **env_to_hparams[env_id], device='cpu', log_interval=500,
-                 tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
-                 scheduler_str='none')  # , beta_schedule = 'linear', beta_end=2.4)
+    from hparams import nature_pong as config
+    agent = LogUAgent(env_id, **config, device='cuda', log_interval=5000,
+                        tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
+                        scheduler_str='none')#, beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=1_500_000)

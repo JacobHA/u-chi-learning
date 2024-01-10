@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 from BaseAgent import BaseAgent
-from Models import OnlineNets, Optimizers, TargetNets, UNet
+from Models import OnlineUNets, Optimizers, TargetNets, UNet
 from utils import logger_at_folder
 
 
@@ -29,9 +29,11 @@ class UAgent(BaseAgent):
         self._initialize_networks()
 
     def _initialize_networks(self):
-        self.online_us = OnlineNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
+        self.online_us = OnlineUNets([UNet(self.env, 
+                                          hidden_dim=self.hidden_dim, 
+                                          device=self.device)
                                      for _ in range(self.num_nets)],
-                                    aggregator=self.aggregator)
+                                    aggregator_fn=self.aggregator_fn)
         # alias for compatibility as self.model:
         self.model = self.online_us
         self.target_us = TargetNets([UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)
@@ -42,8 +44,9 @@ class UAgent(BaseAgent):
         opts = [torch.optim.Adam(u.parameters(), lr=self.learning_rate)
                 for u in self.online_us]
         if self.use_rawlik:
-            self.online_prior = OnlineNets(
-                [UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)])
+            self.online_prior = OnlineUNets(
+                [UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)],
+                aggregator_fn=self.aggregator_fn)
             self.target_prior = TargetNets(
                 [UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)])
             self.target_prior.load_state_dicts(
@@ -62,7 +65,7 @@ class UAgent(BaseAgent):
                 pi0 /= pi0.sum()
             else:
                 pi0 = 1 / self.nA
-            chosen_action = self.online_us.choose_action(state, prior=pi0)
+            chosen_action = self.online_us.choose_action(state, prior=pi0, greedy=False)
             pi_by_pi0 = self.aggregator_fn(
                 torch.stack([u(state) for u in self.online_us], dim=0), dim=0)[0]
             kl = torch.log(pi_by_pi0[0][chosen_action])
@@ -70,13 +73,14 @@ class UAgent(BaseAgent):
             return chosen_action, kl
 
     def evaluation_policy(self, state: np.ndarray) -> int:
-        if self.use_rawlik:
-            pi0 = self.target_prior.nets[0](state).squeeze()
-            pi0 /= pi0.sum()
-        else:
-            pi0 = None
+        with torch.no_grad():
+            if self.use_rawlik:
+                pi0 = self.target_prior.nets[0](state).squeeze()
+                pi0 /= pi0.sum()
+            else:
+                pi0 = None
 
-        return self.online_us.greedy_action(state, prior=pi0)
+            return self.online_us.choose_action(state, prior=pi0, greedy=False)
 
     def _update_target(self):
         # Do a Polyak update of parameters:
@@ -92,6 +96,7 @@ class UAgent(BaseAgent):
         # Sample a batch from the replay buffer:
         batch = self.replay_buffer.sample(self.batch_size)
         states, actions, next_states, dones, rewards = batch
+        # rewards[dones.bool()] -= 10
         # Calculate the current u values (feedforward):
         curr_u = torch.cat([online_u(states).squeeze().gather(1, actions.long())
                             for online_u in self.online_us], dim=1)
@@ -100,9 +105,7 @@ class UAgent(BaseAgent):
                 states).squeeze()  # .gather(1, actions.long())
             # normalize the prior:
             curr_priora /= curr_priora.sum(dim=-1, keepdim=True)
-            curr_prior = curr_priora.gather(1, actions.long())
-        else:
-            curr_prior = 1/self.nA
+
 
         with torch.no_grad():
             online_u_next = torch.stack([u(next_states)
@@ -119,7 +122,7 @@ class UAgent(BaseAgent):
                     next_states).squeeze()
                 target_prior_next /= target_prior_next.sum(
                     dim=-1, keepdim=True)
-                # target_prior_next = target_prior_next
+
             else:
                 target_priora = torch.ones_like(
                     actions, device=self.device) * (1/self.nA)
@@ -131,7 +134,6 @@ class UAgent(BaseAgent):
             online_curr_u = online_curr_u.squeeze(-1)
             in_log = online_chi / online_curr_u
             # clamp to a tolerable range:
-            # in_log = torch.clamp(in_log, -5, 5)
             self.new_thetas[grad_step, :] = - \
                 (torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1))
 
@@ -140,7 +142,6 @@ class UAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_us = torch.stack(target_next_us, dim=1)
-            # next_us = torch.logsumexp(target_next_us, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
             next_us = (target_next_us * target_prior_next.unsqueeze(1).repeat(1,
                        self.num_nets, 1)).sum(dim=-1)
             next_u, _ = self.aggregator_fn(next_us, dim=1)
@@ -150,12 +151,7 @@ class UAgent(BaseAgent):
             next_u = next_u * (1-dones)  # + 1 * dones
 
             # "Backup" eigenvector equation:
-            # for numerical stability, first subtract a baseline:
             in_exp = rewards + self.theta
-            # clamp to a tolerable range:
-            # in_exp = torch.clamp(in_exp, -5, 5)
-            # baseline = in_exp.mean()
-            # in_exp -= baseline
             expected_curr_u = torch.exp(self.beta * (in_exp)) * next_u
             expected_curr_u = expected_curr_u.squeeze(1)
 
@@ -186,20 +182,21 @@ def main():
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    # env_id = 'PongNoFrameskip-v4'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_u as config
+    from hparams import nature_pong as config
 
-    agent = UAgent(env_id, **config, device='auto', log_interval=500,
-                   tensorboard_log='pong', num_nets=2, render=False, aggregator='max')  # , use_rawlik=True)
+    agent = UAgent(env_id, **config, device='cuda', log_interval=2500,
+                   tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
+                   beta_schedule='linear', beta_end=5)  # , use_rawlik=True)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=150_000)
+    agent.learn(total_timesteps=1_500_000)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

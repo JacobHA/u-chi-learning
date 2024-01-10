@@ -56,6 +56,25 @@ cartpole_hparams3 = {
     'learning_starts': 50_000
 }
 
+cartpole_rawlik = {
+    'batch_size': 16,
+    'beta': 0.8,
+    # 'beta_schedule': 'linear',
+    'buffer_size': 100_000,
+    # 'final_beta_multiplier': 6,
+    'hidden_dim': 64,
+    'learning_rate': 0.009,
+    'learning_starts': 1000,
+    'prior_tau': 0.35,
+    'prior_update_interval': 64,
+    'target_update_interval': 200,
+    'tau': 0.3,
+    'tau_theta': 0.6,
+    'theta_update_interval': 100,
+    'train_freq': 3,
+    'learning_starts': 500,
+}
+
 mcar_hparams = {
     'beta': 0.078,
     'batch_size': 950,
@@ -176,8 +195,8 @@ pong_logu0 = {
 
 nature_pong = {
   "batch_size": 32,
-  "beta": 0.2,
-  "buffer_size": 100_000,
+  "beta": 0.1,
+  "buffer_size": 300_000,
   "tau": 1.0,
   "train_freq": 4,
   "learning_starts": 50000 ,
@@ -192,16 +211,17 @@ nature_pong = {
 }
 
 cartpole_u = {
-    'beta': 0.2,
-    'batch_size': 1150,
+    'beta': 1.2,
+    'batch_size': 64,#1150,
     'buffer_size': 100_000,
     'gradient_steps': 4,
     'learning_rate': 8e-4,
     'target_update_interval': 500,
+    'learning_starts': 0,
     'tau': 0.04,
     'tau_theta': 0.85,
     'theta_update_interval': 875,
-    'train_freq': 2,
+    'train_freq': 10,
     'hidden_dim': 128,
 }
 

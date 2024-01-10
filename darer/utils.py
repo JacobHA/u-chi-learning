@@ -9,6 +9,8 @@ import time
 
 import torch
 import sys
+
+import wandb
 sys.path.append("../tabular")
 sys.path.append("tabular")
 from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
@@ -110,8 +112,14 @@ def rllib_env_id_to_envs(env_id, render=False):
     return env, eval_env
 
 def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False):
+    if isinstance(env_id, gym.Env):
+        env = env_id
+        # Make a new copy for the eval env:
+        import copy
+        eval_env = copy.deepcopy(env_id)
+        return env, eval_env
     if is_atari:
-        return atari_env_id_to_envs(env_id, render, n_envs=1, permute_dims=permute_dims)
+        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims)
     else:
         env = gym.make(env_id)
         eval_env = gym.make(env_id, render_mode='human' if render else None)
@@ -186,21 +194,26 @@ def get_eigvec_values(fa, save_name=None):
     nA = fa.nA
     eigvec = np.zeros((nS, nA))
     for i in range(nS):
-        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.online_logus.nets],axis=0)
+
+        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.model.nets],axis=0)
+
+    if save_name is not None:
+        np.save(f'{save_name}.npy', eigvec)
+
     # normalize:
     eigvec /= np.linalg.norm(eigvec)
     if save_name is not None:
         np.save(f'{save_name}.npy', eigvec)
     return eigvec
 
-def get_true_eigvec(fa):
+def get_true_eigvec(fa, beta):
     dynamics, rewards = get_dynamics_and_rewards(fa.env.unwrapped)
     # uniform prior:
     n_states, SA = dynamics.shape
     n_actions = int(SA / n_states)
     prior_policy = np.ones((n_states, n_actions)) / n_actions
     solution = solve_unconstrained(
-        fa.beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
+        beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
     l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
 
     # normalize:

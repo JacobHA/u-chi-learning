@@ -1,8 +1,9 @@
 import pytest
 import sys
 sys.path.append('darer')
+sys.path.append('../darer')
 # Import your BaseAgent class from your code
-from darer.BaseAgent import BaseAgent
+from BaseAgent import BaseAgent
 
 
 @pytest.fixture

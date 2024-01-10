@@ -1,20 +1,21 @@
 #!/bin/bash
 #SBATCH --job-name=u-chi
-#SBATCH --time=3-23:00:00
-#SBATCH --mem-per-cpu=16gb
-#SBATCH --cpus-per-task=4
+#SBATCH --time=23:00:00
+#SBATCH --mem-per-cpu=32gb
+#SBATCH --cpus-per-task=2
 
 # Set filenames for stdout and stderr.  %j can be used for the jobid.
 # see "filename patterns" section of the sbatch man page for
 # additional options
 #SBATCH --error=outfiles/%j.err
 #SBATCH --output=outfiles/%j.out
-##SBATCH --partition=AMD6276
+#SBATCH --partition=AMD6276
 # use the gpu:
-##SBATCH --gres=gpu:1
-##SBATCH --partition=DGXA100
-##SBATCH --export=NONE
+#SBATCH --gres=gpu:1
+#SBATCH --partition=DGXA100
+#SBATCH --export=NONE
 ##SBATCH --array=1-3
+## --begin=now+1min
 echo "using scavenger"
 
 # Prepare conda:
@@ -31,7 +32,7 @@ echo `date`
 # python experiments/wandb_job.py -d cpu -env CartPole-v1
 # python experiments/wandb_job.py -d cuda -env PongNoFrameskip-v4
 
-python darer/SoftQAgent.py
+python darer/UAgent.py
 # python local_finetuned_runs.py -a logu
 
 # Diagnostic/Logging Information
