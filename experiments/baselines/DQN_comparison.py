@@ -24,7 +24,7 @@ train_ferq = hparams.pop("train_freq") // hparams.pop('action_repeat')
 # optimizer = torch.optim.RMSprop
 model = DQN('CnnPolicy', env, verbose=4, device='cuda',
             policy_kwargs={
-                'normalize_images': False,
+                'normalize_images': True,
                 # 'optimizer_class': optimizer,
                 # 'optimizer_kwargs': {"momentum": momentum},
             }, **hparams,

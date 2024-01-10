@@ -154,8 +154,6 @@ class LogUNet(nn.Module):
 
         x = self.model(x)
         return x
-        
-
 
 class EmptyScheduler(LRScheduler):
     def __init__(self, *args, **kwargs):
@@ -283,7 +281,7 @@ class OnlineLogUNets(OnlineNets):
 
     def choose_action(self, state, greedy=False, prior=None):
         with torch.no_grad():
-            
+
             if prior is None:
                 prior = 1 / self.nA
             logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
@@ -533,7 +531,7 @@ class UNet(nn.Module):
         model.to(self.device)
         self.model = model
         self.nS = nS
-        
+
         self.to(device)
 
     def forward(self, x):
@@ -604,7 +602,7 @@ class UNet(nn.Module):
 
         return a.item()
 
-    
+
 class SoftQNet(torch.nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(SoftQNet, self).__init__()

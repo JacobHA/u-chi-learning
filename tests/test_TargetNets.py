@@ -1,5 +1,7 @@
 import copy
 import pytest
+sys.path.append('darer')
+sys.path.append('../darer')
 import torch
 from Models import TargetNets
 

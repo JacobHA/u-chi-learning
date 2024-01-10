@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import pytest
+sys.path.append('darer')
+sys.path.append('../darer')
 import gymnasium as gym
 from Models import OnlineLogUNets, LogUNet
 
