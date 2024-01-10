@@ -1,6 +1,6 @@
 import torch
-import numpy as np
 import pytest
+import sys
 sys.path.append('darer')
 sys.path.append('../darer')
 import gymnasium as gym
