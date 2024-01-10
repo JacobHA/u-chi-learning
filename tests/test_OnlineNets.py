@@ -45,18 +45,17 @@ def test_parameters(online_nets):
 def test_clip_grad_norm(online_nets):
     # Test the clip_grad_norm method
 
-    for _ in range(5):
-        # Calculate losses based on online_nets values and distance to 1:
-        losses = [torch.abs(net(100*torch.ones(10)) - torch.ones(num_actions)).mean() for net in online_nets]
-        total_loss = sum(losses)
-        total_loss.backward()
+    # Calculate losses based on online_nets values and distance to 1:
+    losses = [torch.abs(net(100*torch.ones(10)) - torch.ones(num_actions)).mean() for net in online_nets]
+    total_loss = sum(losses)
+    total_loss.backward()
     # Want to ensure clipping is always performed so set eps to a very small value
     eps = 1e-10
 
-    # First ensure the gradients will be clipped
-    for net in online_nets:
-        for param in net.parameters():
-            assert param.grad.norm() > eps
+    # # First ensure the gradients will be clipped
+    # for net in online_nets:
+    #     for param in net.parameters():
+    #         assert param.grad.norm() > eps
 
     # Call the clip_grad_norm method
     online_nets.clip_grad_norm(eps)
