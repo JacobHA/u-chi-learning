@@ -102,7 +102,7 @@ class BaseAgent:
             self.env_str = self.env.unwrapped.id
         else:
             self.env_str = str(self.env.unwrapped)
-            
+
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
             # calculate the eigenvector exactly:
@@ -290,7 +290,7 @@ class BaseAgent:
                     #         return True
                 
             if terminated:
-                self.rollout_reward += 0
+                # self.rollout_reward += 0
                 avg_ep_len += 1
             if done:
                 self.rollout_reward
@@ -340,7 +340,7 @@ class BaseAgent:
         self.fps = self.log_interval / \
             ((t_final - self.initial_time + 1e-16) / 1e9)
 
-        if self.env_steps >= 0:
+        if self.env_steps > self.learning_starts: # skip untrained agent
             self.avg_eval_rwd = self.evaluate()
             self.eval_auc += self.avg_eval_rwd
         if self.save_checkpoints:

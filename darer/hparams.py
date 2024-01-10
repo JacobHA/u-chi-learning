@@ -195,7 +195,7 @@ pong_logu0 = {
 
 nature_pong = {
   "batch_size": 32,
-  "beta": 1,
+  "beta": 0.1,
   "buffer_size": 500_000,
   "tau": 1.0,
   "train_freq": 4,
@@ -211,12 +211,13 @@ nature_pong = {
 }
 
 cartpole_u = {
-    'beta': 0.2,
-    'batch_size': 64,#150,
+    'beta': 1.2,
+    'batch_size': 64,#1150,
     'buffer_size': 100_000,
     'gradient_steps': 4,
     'learning_rate': 8e-4,
     'target_update_interval': 500,
+    'learning_starts': 0,
     'tau': 0.04,
     'tau_theta': 0.85,
     'theta_update_interval': 875,

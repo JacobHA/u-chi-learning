@@ -44,7 +44,7 @@ class UAgent(BaseAgent):
         opts = [torch.optim.Adam(u.parameters(), lr=self.learning_rate)
                 for u in self.online_us]
         if self.use_rawlik:
-            self.online_prior = OnlineNets(
+            self.online_prior = OnlineUNets(
                 [UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)],
                 aggregator_fn=self.aggregator_fn)
             self.target_prior = TargetNets(
@@ -73,13 +73,14 @@ class UAgent(BaseAgent):
             return chosen_action, kl
 
     def evaluation_policy(self, state: np.ndarray) -> int:
-        if self.use_rawlik:
-            pi0 = self.target_prior.nets[0](state).squeeze()
-            pi0 /= pi0.sum()
-        else:
-            pi0 = None
+        with torch.no_grad():
+            if self.use_rawlik:
+                pi0 = self.target_prior.nets[0](state).squeeze()
+                pi0 /= pi0.sum()
+            else:
+                pi0 = None
 
-        return self.online_us.choose_action(state, prior=pi0, greedy=True)
+            return self.online_us.choose_action(state, prior=pi0, greedy=False)
 
     def _update_target(self):
         # Do a Polyak update of parameters:
@@ -95,7 +96,7 @@ class UAgent(BaseAgent):
         # Sample a batch from the replay buffer:
         batch = self.replay_buffer.sample(self.batch_size)
         states, actions, next_states, dones, rewards = batch
-        # rewards[dones.bool()] -= 1
+        # rewards[dones.bool()] -= 10
         # Calculate the current u values (feedforward):
         curr_u = torch.cat([online_u(states).squeeze().gather(1, actions.long())
                             for online_u in self.online_us], dim=1)
@@ -150,7 +151,6 @@ class UAgent(BaseAgent):
             next_u = next_u * (1-dones)  # + 1 * dones
 
             # "Backup" eigenvector equation:
-            # for numerical stability, first subtract a baseline:
             in_exp = rewards + self.theta
             expected_curr_u = torch.exp(self.beta * (in_exp)) * next_u
             expected_curr_u = expected_curr_u.squeeze(1)
@@ -190,12 +190,13 @@ def main():
     from hparams import nature_pong as config
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=2500,
-                   tensorboard_log='pong', num_nets=2, render=False, aggregator='max')  # , use_rawlik=True)
+                   tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
+                   beta_schedule='linear', beta_end=5)  # , use_rawlik=True)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=15_000_000)
+    agent.learn(total_timesteps=1_500_000)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
