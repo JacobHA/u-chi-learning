@@ -2,7 +2,7 @@ import time
 import numpy as np
 import torch
 from BaseAgent import BaseAgent
-from Models import SoftQNet, OnlineNets, Optimizers, TargetNets
+from Models import SoftQNet, OnlineSoftQNets, Optimizers, TargetNets
 from utils import logger_at_folder
 
 
@@ -19,19 +19,19 @@ class SoftQAgent(BaseAgent):
         self.logger = logger_at_folder(self.tensorboard_log,
                                        algo_name=f'{self.env_str}-{self.algo_name}')
         self.log_hparams(self.logger)
+        self._initialize_networks()
 
     def _initialize_networks(self):
-        self.online_softqs = OnlineNets([SoftQNet(self.env, 
-                                                  self.beta, 
+        self.online_softqs = OnlineSoftQNets([SoftQNet(self.env, 
                                                   hidden_dim=self.hidden_dim, 
                                                   device=self.device)
-                                        for _ in range(self.num_nets)],
-                                       aggregator=self.aggregator)
+                                              for _ in range(self.num_nets)],
+                                            beta=self.beta,
+                                            aggregator_fn=self.aggregator_fn)
         # alias for compatibility as self.model:
         self.model = self.online_softqs
 
         self.target_softqs = TargetNets([SoftQNet(self.env, 
-                                                  self.beta, 
                                                   hidden_dim=self.hidden_dim, 
                                                   device=self.device)
                                         for _ in range(self.num_nets)])
@@ -48,7 +48,7 @@ class SoftQAgent(BaseAgent):
         return self.online_softqs.choose_action(state), kl
 
     def evaluation_policy(self, state: np.ndarray) -> int:
-        return self.online_softqs.greedy_action(state)
+        return self.online_softqs.choose_action(state, greedy=True)
 
     def gradient_descent(self, batch, grad_step: int):
         states, actions, next_states, dones, rewards = batch

@@ -368,6 +368,31 @@ class OnlineUNets(OnlineNets):
             return action
 
 
+class OnlineSoftQNets(OnlineNets):
+    def __init__(self, list_of_nets, aggregator_fn, beta, is_vector_env=False):
+        super().__init__(list_of_nets, aggregator_fn, is_vector_env)
+        self.beta = beta
+           
+    def choose_action(self, state, greedy=False, prior=None):
+        if prior is None:
+            prior = 1 / self.nA
+        with torch.no_grad():
+            q_as = torch.stack([net.forward(state) for net in self], dim=1)
+            q_as = q_as.squeeze(0)
+            q_a, _ = self.aggregator_fn(q_as, dim=0)
+
+
+            if greedy:
+                action = torch.argmax(q_a).cpu().numpy()
+            else:
+                # pi propto e^beta Q:
+                # first subtract a baseline from q_a:
+                q_a = q_a - (torch.max(q_a) + torch.min(q_a))/2
+                pi = prior * torch.exp(self.beta * q_a)
+                pi = pi / torch.sum(pi)
+                a = Categorical(pi).sample()
+                action = a.cpu().numpy()
+        return action
 
 class LogUsa(nn.Module):
     def __init__(self, env, hidden_dim=256, device='cuda'):
@@ -623,9 +648,8 @@ class UNet(nn.Module):
 
     
 class SoftQNet(torch.nn.Module):
-    def __init__(self, env, beta, device='cuda', hidden_dim=256, activation=nn.ReLU):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(SoftQNet, self).__init__()
-        self.beta = beta
         self.env = env
         self.nA = env.action_space.n
         self.is_image_space = is_image_space(env.observation_space)
@@ -688,20 +712,3 @@ class SoftQNet(torch.nn.Module):
 
         x = self.model(x)
         return x
-        
-    def choose_action(self, state, greedy=False, prior=None):
-        if prior is None:
-            prior = 1 / self.nA
-        with torch.no_grad():
-            q_a = self.forward(state)
-            if greedy:
-                a = q_a.argmax()
-                return a.item()
-            else:
-                # pi propto e^beta Q:
-                # first subtract a baseline from q_a:
-                q_a = q_a - (torch.max(q_a) + torch.min(q_a))/2
-                pi = prior * torch.exp(self.beta * q_a)
-                pi = pi / torch.sum(pi)
-                a = Categorical(pi).sample()
-                return a.item()
