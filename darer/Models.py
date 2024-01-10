@@ -44,12 +44,13 @@ def model_initializer(is_image_space,
             nn.Flatten(start_dim=1),
         ))
         # calculate resulting shape for FC layers:
-        rand_inp = observation_space.sample()
-        x = torch.tensor(rand_inp, device=device, dtype=torch.float32)  # Convert to PyTorch tensor
-        x = x.detach()
-        x = preprocess_obs(x, observation_space, normalize_images=NORMALIZE_IMG)
-        x = x.permute([2,0,1]).unsqueeze(0)
-        flat_size = model(x).shape[1]
+        with torch.no_grad():
+            rand_inp = observation_space.sample()
+            x = torch.tensor(rand_inp, device=device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = x.detach()
+            x = preprocess_obs(x, observation_space, normalize_images=NORMALIZE_IMG)
+            x = x.permute([2,0,1]).unsqueeze(0)
+            flat_size = model(x).shape[1]
         # with torch.no_grad():
         #     n_flatten = model(torch.as_tensor(observation_space.sample()[None]).float()).shape[1]
 
