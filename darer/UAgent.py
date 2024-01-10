@@ -12,12 +12,12 @@ class UAgent(BaseAgent):
     def __init__(self,
                  *args,
                  use_rawlik=False,
-                 prior_update_freq: int = 20_000,
+                 prior_update_interval: int = 20_000,
                  prior_tau: float = 1.0,
                  **kwargs,
                  ):
         self.algo_name = 'U'
-        self.prior_update_freq = prior_update_freq
+        self.prior_update_interval = prior_update_interval
         self.prior_tau = prior_tau
         self.use_rawlik = use_rawlik
         super().__init__(*args, **kwargs)
@@ -72,7 +72,7 @@ class UAgent(BaseAgent):
     def _on_step(self):
         super()._on_step()
         if self.use_rawlik:
-            if self.env_steps % self.prior_update_freq == 0:
+            if self.env_steps % self.prior_update_interval == 0:
                 self.target_prior.polyak(self.online_prior, self.prior_tau)
 
     def gradient_descent(self, batch, grad_step: int):

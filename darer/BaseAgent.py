@@ -88,14 +88,17 @@ class BaseAgent:
                  ) -> None:
 
         # first check if Atari env or not:
-        is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
+        try:
+            is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
+        except:
+            is_atari = False
         self.env, self.eval_env = env_id_to_envs(env_id, render, is_atari=is_atari)
 
-        self.env_str = self.env.unwrapped.spec.id if hasattr(self.env.unwrapped.spec, 'id') else self.env.unwrapped.id
+        self.env_str = self.env.unwrapped.spec.id if hasattr(self.env.unwrapped.spec, 'id') else str(env_id)
         self.is_tabular = is_tabular(self.env)
         if self.is_tabular:
             # calculate the eigenvector exactly:
-            self.true_eigvec = get_true_eigvec(self).A.flatten()
+            self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
         self.beta = beta
@@ -211,11 +214,12 @@ class BaseAgent:
         #             ))
         # self.logger.record("train/max_grad", total_norm.item())
  
-    def learn(self, total_timesteps: int, early_stop: dict) -> bool:
+    def learn(self, total_timesteps: int, early_stop: dict = {}) -> bool:
         """
         Train the agent for total_timesteps
         """
-        stop_steps, stop_reward = early_stop['steps'], early_stop['reward']
+        stop_steps = early_stop.get('steps', 0)
+        stop_reward = early_stop.get('reward', -np.inf)
         self.betas = self._beta_scheduler(self.beta_schedule, total_timesteps)
 
         # Start a timer to log fps:

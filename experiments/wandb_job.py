@@ -1,9 +1,11 @@
-from UAgent import UAgent
-import wandb
-import argparse
 import sys
 
 sys.path.append("darer")
+from UAgent import UAgent
+from LogUAgent import LogUAgent
+import wandb
+import argparse
+
 
 # env_id = 'CartPole-v1'
 # env_id = 'MountainCar-v0'
@@ -42,11 +44,12 @@ def runner(config=None, run=None, device='cpu'):
 
     for _ in range(runs_per_hparam):
         print(env_id)
-        agent = UAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
+        agent = LogUAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
                        device=device, render=False, beta_end=beta_end,
                        # beta_schedule=config.pop('beta_scheduler', 'none'),
                        num_nets=2,
                        )
+        wandb.log({'agent_name': agent.algo_name})
 
         wandb.log({'env_id': agent.env_str})
         if env_id in ['LunarLander-v2', 'MountainCar-v0']:
@@ -78,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--count", type=int, default=15_000)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str, default='u-chi-learning')
-    parser.add_argument("-s", "--sweep_id", type=str, default='ived4ut9')
+    parser.add_argument("-s", "--sweep_id", type=str, default='rud90h68')
     parser.add_argument("-env", "--env_id", type=str, default='CartPole-v1')
     args = parser.parse_args()
     entity = args.entity

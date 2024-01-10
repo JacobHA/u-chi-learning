@@ -38,6 +38,26 @@ cartpole_hparams2 = {
     'train_freq': 1,
     'learning_starts': 10000
 }
+
+cartpole_rawlik = {
+    'batch_size': 16,
+    'beta': 0.8,
+    # 'beta_schedule': 'linear',
+    'buffer_size': 100_000,
+    # 'final_beta_multiplier': 6,
+    'hidden_dim': 64,
+    'learning_rate': 0.009,
+    'learning_starts': 1000,
+    'prior_tau': 0.35,
+    'prior_update_interval': 64,
+    'target_update_interval': 200,
+    'tau': 0.3,
+    'tau_theta': 0.6,
+    'theta_update_interval': 100,
+    'train_freq': 3,
+    'learning_starts': 500,
+}
+
 mcar_hparams = {
     'beta': 0.078,
     'batch_size': 950,
