@@ -34,7 +34,7 @@ def exact_solution(beta, env):
 def FA_solution(beta, env):
     # Use an agent to solve the environment
 
-    agent = LogUAgent(env, **config, log_interval=1000, tensorboard_log='pend',
+    agent = UAgent(env, **config, log_interval=1000, tensorboard_log='pend',
                         num_nets=2, device='cuda',# use_rawlik=False,
                         beta=beta, render=False, aggregator='max')
     agent.learn(total_timesteps=70_000)
