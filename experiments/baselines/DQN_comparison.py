@@ -22,11 +22,12 @@ hparams.pop('squared_gradient_momentum')
 hparams.pop('min_squared_gradient')
 train_ferq = hparams.pop("train_freq") // hparams.pop('action_repeat')
 # optimizer = torch.optim.RMSprop
-model = DQN('CnnPolicy', env, verbose=1, device='cuda',
+model = DQN('CnnPolicy', env, verbose=4, device='cuda',
             policy_kwargs={
                 'normalize_images': False,
                 # 'optimizer_class': optimizer,
                 # 'optimizer_kwargs': {"momentum": momentum},
-            }, **hparams)
+            }, **hparams,
+            tensorboard_log='pong')
 
 model.learn(total_timesteps=total_steps, log_interval=3)
