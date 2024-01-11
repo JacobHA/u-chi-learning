@@ -1,10 +1,10 @@
+import sys
+sys.path.append("darer")
+
 import argparse
 import wandb
 from LogUAgent import LogUAgent
 from UAgent import UAgent
-import sys
-
-sys.path.append("darer")
 
 
 env_id = 'CartPole-v1'
