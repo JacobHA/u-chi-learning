@@ -100,7 +100,7 @@ class UAgent(BaseAgent):
         # Sample a batch from the replay buffer:
         batch = self.replay_buffer.sample(self.batch_size)
         states, actions, next_states, dones, rewards = batch
-        # rewards[dones.bool()] -= 10
+        # rewards[dones.bool()] -= 1
         # Calculate the current u values (feedforward):
         curr_u = torch.cat([online_u(states).squeeze().gather(1, actions.long())
                             for online_u in self.online_us], dim=1)
@@ -183,7 +183,7 @@ def main():
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
@@ -192,7 +192,7 @@ def main():
     from hparams import cartpole_u2 as config
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,
-                   tensorboard_log='pong', num_nets=2, render=False, aggregator='max',
+                   tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
                    beta_schedule='none', use_rawlik=False)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
