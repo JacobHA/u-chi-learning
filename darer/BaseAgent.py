@@ -49,9 +49,9 @@ int_args = ['batch_size',
             'learning_starts']
 
 
-str_to_aggregator = {'min': torch.min,
-                     'max': torch.max,
-                     'mean': lambda x, dim: (torch.mean(x, dim=dim), None)}
+str_to_aggregator = {'min': lambda x, dim: torch.min(x, dim=dim)[0],
+                     'max': lambda x, dim: torch.max(x, dim=dim)[0],
+                     'mean': lambda x, dim: (torch.mean(x, dim=dim))}
 
 # use get_type_hints to throw errors if the user passes in an invalid type:
 
@@ -188,6 +188,8 @@ class BaseAgent:
         Sample the replay buffer and do the updates
         (gradient descent and update target networks)
         """
+        self.new_theta_pending = 0
+        self.new_theta_counter = 1
         # Increase update counter
         self._n_updates += gradient_steps
         # average self.theta over multiple gradient steps
@@ -212,13 +214,18 @@ class BaseAgent:
         # Log both theta values:
         for idx, new_theta in enumerate(self.new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
-        new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)[0]
+        new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
         if self._n_updates % self.theta_update_interval == 0:
+            # new_theta = self.new_theta_pending / self.new_theta_counter
             self.theta = self.tau_theta * self.theta + \
                 (1 - self.tau_theta) * new_theta
+        # else:
+        #     self.new_theta_pending += new_theta
+        #     self.new_theta_counter += 1
+        #     self.logger.record("train/theta_buffer", self.new_theta_pending.item() / self.new_theta_counter)
 
         # # Log info from this training cycle:
         # self.logger.record("train/avg logu", curr_logu.mean().item())
