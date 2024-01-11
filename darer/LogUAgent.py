@@ -74,9 +74,10 @@ class LogUAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_logus = torch.stack(target_next_logus, dim=1)
-            next_logus = torch.logsumexp(
-                target_next_logus, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-            next_logu, _ = self.aggregator_fn(next_logus, dim=1)
+            target_next_logu = self.aggregator_fn(target_next_logus, dim=1)[0]
+            next_logu = torch.logsumexp(
+                target_next_logu, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
+            # next_logu, _ = self.aggregator_fn(next_logus, dim=1)
 
             next_logu = next_logu.reshape(-1, 1)
             assert next_logu.shape == dones.shape
@@ -107,14 +108,14 @@ def main():
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
-    env_id = 'PongNoFrameskip-v4'
+    # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import nature_pong as config
-    agent = LogUAgent(env_id, **config, device='cuda', log_interval=5000,
-                        tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
+    from hparams import cartpole_hparams2 as config
+    agent = LogUAgent(env_id, **config, device='cuda', log_interval=500,
+                        tensorboard_log='acro', num_nets=2, render=False, aggregator='min',
                         scheduler_str='none')#, beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
