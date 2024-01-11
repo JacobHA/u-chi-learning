@@ -31,7 +31,8 @@ class UAgent(BaseAgent):
     def _initialize_networks(self):
         self.online_us = OnlineUNets([UNet(self.env, 
                                           hidden_dim=self.hidden_dim, 
-                                          device=self.device)
+                                          device=self.device,
+                                          activation=torch.nn.ReLU)
                                      for _ in range(self.num_nets)],
                                     aggregator_fn=self.aggregator_fn)
         # alias for compatibility as self.model:
@@ -182,15 +183,15 @@ def main():
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
-    env_id = 'PongNoFrameskip-v4'
+    # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import nature_pong as config
+    from hparams import cartpole_u as config
 
-    agent = UAgent(env_id, **config, device='cuda', log_interval=3500,
-                   tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
+    agent = UAgent(env_id, **config, device='cuda', log_interval=500,
+                   tensorboard_log='pong', num_nets=2, render=False, aggregator='max',
                    beta_schedule='none', use_rawlik=False)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
