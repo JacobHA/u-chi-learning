@@ -291,7 +291,7 @@ class OnlineLogUNets(OnlineNets):
             logus = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
             logus = logus.squeeze(0)
             # Aggregate over the networks:
-            logu, _ = self.aggregator_fn(logus, dim=0)
+            logu = self.aggregator_fn(logus, dim=0)
 
             if not self.is_vector_env:
                 if greedy:
@@ -341,7 +341,7 @@ class OnlineUNets(OnlineNets):
             us = torch.stack([net.forward(state) for net in self.nets], dim=1)
             us = us.squeeze(0)
             # Aggregate over the networks:
-            u, _ = self.aggregator_fn(us, dim=0)
+            u = self.aggregator_fn(us, dim=0)
             policy = prior * u
             policy /= torch.sum(policy)
 
@@ -369,7 +369,7 @@ class OnlineSoftQNets(OnlineNets):
         with torch.no_grad():
             q_as = torch.stack([net.forward(state) for net in self], dim=1)
             q_as = q_as.squeeze(0)
-            q_a, _ = self.aggregator_fn(q_as, dim=0)
+            q_a = self.aggregator_fn(q_as, dim=0)
 
 
             if greedy:

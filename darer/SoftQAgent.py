@@ -74,9 +74,10 @@ class SoftQAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_softqs = torch.stack(target_next_softqs, dim=1)
+            #TODO: put aggregation here
             next_vs = 1/self.beta * (torch.logsumexp(
                 self.beta * target_next_softqs, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device))
-            next_v, _ = self.aggregator_fn(next_vs, dim=1)
+            next_v = self.aggregator_fn(next_vs, dim=1)
 
             next_v = next_v.reshape(-1, 1)
             assert next_v.shape == dones.shape

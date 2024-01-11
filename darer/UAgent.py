@@ -32,7 +32,8 @@ class UAgent(BaseAgent):
         self.online_us = OnlineUNets([UNet(self.env, 
                                           hidden_dim=self.hidden_dim, 
                                           device=self.device,
-                                          activation=torch.nn.ReLU)
+                                          activation=torch.nn.ReLU
+                                        )
                                      for _ in range(self.num_nets)],
                                     aggregator_fn=self.aggregator_fn)
         # alias for compatibility as self.model:
@@ -67,8 +68,9 @@ class UAgent(BaseAgent):
             else:
                 pi0 = 1 / self.nA
             chosen_action = self.online_us.choose_action(state, prior=pi0, greedy=False)
-            pi_by_pi0 = self.aggregator_fn(
-                torch.stack([u(state) for u in self.online_us], dim=0), dim=0)[0]
+            pi_by_pi0 = self.aggregator_fn(torch.stack(
+                [u(state) for u in self.online_us], dim=0), 
+                dim=0)
             kl = torch.log(pi_by_pi0[0][chosen_action])
             kl = float(kl.item())
             # chosen_action = self.env.action_space.sample()
@@ -135,7 +137,7 @@ class UAgent(BaseAgent):
             online_curr_u = online_curr_u.squeeze(-1)
             in_log = online_chi / online_curr_u
             # clamp to a tolerable range:
-            batch_theta = - (torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1))
+            batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
             self.new_thetas[grad_step, :] = batch_theta
             
 
@@ -143,7 +145,7 @@ class UAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_us = torch.stack(target_next_us, dim=1)
-            target_next_u, _ = self.aggregator_fn(target_next_us, dim=1)
+            target_next_u = self.aggregator_fn(target_next_us, dim=1)
 
             next_chis = (target_next_u * target_prior_next).sum(dim=-1)
 
@@ -160,8 +162,7 @@ class UAgent(BaseAgent):
         loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in curr_u.T)
         if self.use_rawlik:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
-            pistar = self.aggregator_fn(online_curr_ua, dim=0)[
-                0] * target_priora
+            pistar = self.aggregator_fn(online_curr_ua, dim=0) * target_priora
             pistar /= pistar.sum(dim=-1, keepdim=True)
 
             prior_loss = F.kl_div(curr_priora.squeeze().log(
@@ -188,7 +189,7 @@ def main():
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_u as config
+    from hparams import cartpole_u2 as config
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,
                    tensorboard_log='pong', num_nets=2, render=False, aggregator='max',
