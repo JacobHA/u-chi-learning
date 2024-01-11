@@ -19,7 +19,7 @@ def is_image_space_simple(observation_space, is_vector_env=False):
     if is_vector_env:
         return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 4
     return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3
-NORMALIZE_IMG = True
+NORMALIZE_IMG = False
 
 
 def model_initializer(is_image_space,

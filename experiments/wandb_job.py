@@ -1,10 +1,10 @@
+import argparse
+import wandb
+from LogUAgent import LogUAgent
+from UAgent import UAgent
 import sys
 
 sys.path.append("darer")
-from UAgent import UAgent
-from LogUAgent import LogUAgent
-import wandb
-import argparse
 
 
 env_id = 'CartPole-v1'
@@ -38,6 +38,7 @@ def runner(config=None, run=None, device='cpu'):
     config['gradient_steps'] = config['train_freq']
     runs_per_hparam = 3
     auc = 0
+    learn_ratio = config.pop('learning_starts_ratio')
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
@@ -46,7 +47,6 @@ def runner(config=None, run=None, device='cpu'):
         else:
             total_timesteps = 50_000
         config['buffer_size'] = total_timesteps
-        learn_ratio = config.pop('learning_starts_ratio')
         config['learning_starts'] = total_timesteps * learn_ratio
 
         agent = UAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
@@ -56,9 +56,8 @@ def runner(config=None, run=None, device='cpu'):
                        )
         wandb.log({'agent_name': agent.algo_name})
 
-
         early_stopped = agent.learn(total_timesteps=total_timesteps,)
-                                    # early_stop=env_to_early_stop_dict[env_id])
+        # early_stop=env_to_early_stop_dict[env_id])
         if early_stopped:
             break
         auc += agent.eval_auc
@@ -76,12 +75,13 @@ def wandb_agent():
 if __name__ == "__main__":
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--device", type=str, default='cuda')
+    parser.add_argument("-d", "--device", type=str, default='cpu')
     parser.add_argument("-c", "--count", type=int, default=15_000)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
-    parser.add_argument("-p", "--project", type=str, default='u-chi-learning-darer')
+    parser.add_argument("-p", "--project", type=str,
+                        default='u-chi-learning-darer')
     parser.add_argument("-s", "--sweep_id", type=str, default='odpc2zep')
-    parser.add_argument("-env", "--env_id", type=str, default='CartPole-v1')
+    parser.add_argument("-env", "--env_id", type=str, default='Acrobot-v1')
     args = parser.parse_args()
     entity = args.entity
     project = args.project
