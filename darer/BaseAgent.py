@@ -340,7 +340,7 @@ class BaseAgent:
         self.fps = self.log_interval / \
             ((t_final - self.initial_time + 1e-16) / 1e9)
 
-        if self.env_steps > self.learning_starts: # skip untrained agent
+        if self.env_steps > 0:
             self.avg_eval_rwd = self.evaluate()
             self.eval_auc += self.avg_eval_rwd
         if self.save_checkpoints:
