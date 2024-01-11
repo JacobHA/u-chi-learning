@@ -338,19 +338,19 @@ class OnlineUNets(OnlineNets):
             if prior is None:
                 prior = 1 / self.nA
             # Get a sample from each net, then sample uniformly over them:
-            us = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
+            us = torch.stack([net.forward(state) for net in self.nets], dim=1)
             us = us.squeeze(0)
             # Aggregate over the networks:
             u, _ = self.aggregator_fn(us, dim=0)
+            policy = prior * u
+            policy /= torch.sum(policy)
 
             if not self.is_vector_env:
                 if greedy:
-                    action_net_idx = torch.argmax(prior * u, dim=0)
+                    action_net_idx = torch.argmax(policy, dim=0)
                     action = action_net_idx.cpu().numpy()
                 else:
-                    dist = prior * u
-                    dist /= torch.sum(dist)
-                    c = Categorical(dist)
+                    c = Categorical(policy)
                     action = c.sample().cpu().numpy()
             else:
                 raise NotImplementedError
@@ -579,32 +579,6 @@ class UNet(nn.Module):
         return x + eps
         # return x
         
-    def choose_action(self, state, greedy=False, prior=None):
-        if prior is None:
-            prior = 1 / self.nA
-        with torch.no_grad():
-            # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-            u = self.forward(state)
-            # prior = torch.tensor(prior.clone().detach(), device=self.device, dtype=torch.float32)
-            # ensure prior is normalized:
-            prior = prior / prior.sum()
-            if greedy:
-                # not worth exponentiating since it is monotonic
-                a = (u * prior).argmax(dim=-1)
-                return a.item()
-
-            # First subtract a baseline:
-            u = u / (torch.max(u) + torch.min(u))/2
-            # clamp to avoid overflow:
-            u = torch.clamp(u, min=1e-8, max=200)
-            dist = u * prior
-            dist = dist / torch.sum(dist)
-            c = Categorical(dist)#, validate_args=True)
-            # c = Categorical(logits=logu*prior)
-            a = c.sample()
-
-        return a.item()
-
     
 class SoftQNet(torch.nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
