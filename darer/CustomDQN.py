@@ -5,7 +5,7 @@ from stable_baselines3.common.utils import polyak_update
 from stable_baselines3.common.utils import safe_mean, should_collect_more_steps
 
 class CustomDQN(DQN):
-    def __init__(self, *args, log_interval=500, hidden_dim=64, log_dir='', **kwargs):
+    def __init__(self, *args, log_interval=500, hidden_dim=64, **kwargs):
         super().__init__('MlpPolicy', *args, verbose=4, **kwargs)
         self.eval_auc = 0
         self.eval_rwd = 0
@@ -14,9 +14,6 @@ class CustomDQN(DQN):
 
         # Translate hidden dim to policy_kwargs:
         self.policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
-
-        # Set up logging:
-        self.tensorboard_log = log_dir
 
     def _on_step(self) -> None:
         # Evaluate the agent and log it if step % log_interval == 0:

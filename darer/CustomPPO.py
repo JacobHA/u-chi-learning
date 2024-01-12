@@ -4,7 +4,7 @@ from utils import logger_at_folder
 
 
 class CustomPPO(PPO):
-    def __init__(self, *args, log_interval=1000, hidden_dim=64, log_dir=None, **kwargs):
+    def __init__(self, *args, log_interval=1000, hidden_dim=64, **kwargs):
         super().__init__('MlpPolicy', *args, verbose=4, **kwargs)
         self.eval_auc = 0
         self.eval_rwd = 0
@@ -13,10 +13,6 @@ class CustomPPO(PPO):
 
         # Translate hidden dim to policy_kwargs:
         self.policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
-
-        # Set up logging:
-        # self.logger = logger_at_folder(log_dir, 'ppo')
-        self.tensorboard_log = log_dir
 
     def train(self):
         if self.num_timesteps % (self.eval_interval//5) == 0:
