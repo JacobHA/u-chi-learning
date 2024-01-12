@@ -288,7 +288,7 @@ class OnlineLogUNets(OnlineNets):
                 prior = 1 / self.nA
             logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
             # Get a sample from each net, then sample uniformly over them:
-            logus = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
+            logus = torch.stack([net.forward(state) for net in self.nets], dim=1)
             logus = logus.squeeze(0)
             # Aggregate over the networks:
             logu = self.aggregator_fn(logus, dim=0)
