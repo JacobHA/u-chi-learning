@@ -4,10 +4,18 @@ import sys
 sys.path.append('darer')
 sys.path.append('../darer')
 import gymnasium as gym
+import sys
+sys.path.append('darer')
+sys.path.append('../darer')
 from Models import OnlineLogUNets, LogUNet
 
 num_actions = 5
 num_nets = 3
+
+str_to_aggregator = {'min': lambda x, dim: torch.min(x, dim=dim)[0],
+                     'max': lambda x, dim: torch.max(x, dim=dim)[0],
+                     'mean': lambda x, dim: (torch.mean(x, dim=dim))}
+
 
 class DummyEnv:
     def __init__(self):
@@ -21,7 +29,7 @@ def online_nets():
     # Set the torch random seed:
     torch.manual_seed(0)
     list_of_nets = [LogUNet(dummy_env, device='cpu', hidden_dim=8) for _ in range(num_nets)]
-    return OnlineLogUNets(list_of_nets, torch.min)
+    return OnlineLogUNets(list_of_nets, str_to_aggregator['min'])
 
 def test_greedy_action(online_nets):
     state = DummyEnv().observation_space.sample()

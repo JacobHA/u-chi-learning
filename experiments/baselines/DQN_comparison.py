@@ -30,4 +30,4 @@ model = DQN('CnnPolicy', env, verbose=4, device='cuda',
             }, **hparams,
             tensorboard_log='pong')
 
-model.learn(total_timesteps=total_steps, log_interval=3)
+model.learn(total_timesteps=total_steps, log_interval=10)

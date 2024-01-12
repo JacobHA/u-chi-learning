@@ -520,7 +520,10 @@ class DiscreteEnv(gymnasium.Env):
 
 
 def get_dynamics_and_rewards(env):
-
+    if not hasattr(env, 'nA'):
+        env.nA = env.action_space.n
+    if not hasattr(env, 'nS'):
+        env.nS = env.observation_space.n
     ncol = env.nS * env.nA
     nrow = env.nS
 

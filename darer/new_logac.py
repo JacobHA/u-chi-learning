@@ -198,7 +198,7 @@ class LogUActor:
                 target_next_logu = torch.stack([target_logu(next_states, sampled_action)
                                                 for target_logu in self.target_logus], dim=-1)
 
-                next_logu, _ = self.aggregator_fn(target_next_logu, dim=-1)
+                next_logu = self.aggregator_fn(target_next_logu, dim=-1)
                 next_logu = next_logu * (1 - dones) #+ self.theta * dones
 
                 expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
@@ -254,7 +254,7 @@ class LogUActor:
         # TODO: Take the mean, then aggregate:
         # new_theta = new_theta
         grad_avgd_new_thetas = new_thetas.mean(dim=0) 
-        new_theta = self.aggregator_fn(grad_avgd_new_thetas, dim=0)[0]
+        new_theta = self.aggregator_fn(grad_avgd_new_thetas, dim=0)
         # record both thetas:
         for idx, theta in enumerate(grad_avgd_new_thetas):
             self.logger.record(f"train/theta_{idx}", theta.item())

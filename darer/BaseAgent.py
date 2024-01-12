@@ -49,9 +49,9 @@ int_args = ['batch_size',
             'learning_starts']
 
 
-str_to_aggregator = {'min': torch.min,
-                     'max': torch.max,
-                     'mean': lambda x, dim: (torch.mean(x, dim=dim), None)}
+str_to_aggregator = {'min': lambda x, dim: torch.min(x, dim=dim)[0],
+                     'max': lambda x, dim: torch.max(x, dim=dim)[0],
+                     'mean': lambda x, dim: (torch.mean(x, dim=dim))}
 
 # use get_type_hints to throw errors if the user passes in an invalid type:
 
@@ -188,6 +188,8 @@ class BaseAgent:
         Sample the replay buffer and do the updates
         (gradient descent and update target networks)
         """
+        self.new_theta_pending = 0
+        self.new_theta_counter = 1
         # Increase update counter
         self._n_updates += gradient_steps
         # average self.theta over multiple gradient steps
@@ -212,13 +214,20 @@ class BaseAgent:
         # Log both theta values:
         for idx, new_theta in enumerate(self.new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
-        new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)[0]
+        new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)
+        # new_theta = torch.max(self.new_thetas.mean(dim=0), dim=0)[0]
+
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
         if self._n_updates % self.theta_update_interval == 0:
+            # new_theta = self.new_theta_pending / self.new_theta_counter
             self.theta = self.tau_theta * self.theta + \
                 (1 - self.tau_theta) * new_theta
+        # else:
+        #     self.new_theta_pending += new_theta
+        #     self.new_theta_counter += 1
+        #     self.logger.record("train/theta_buffer", self.new_theta_pending.item() / self.new_theta_counter)
 
         # # Log info from this training cycle:
         # self.logger.record("train/avg logu", curr_logu.mean().item())
@@ -237,6 +246,9 @@ class BaseAgent:
         Train the agent for total_timesteps
         """
         stop_steps = early_stop.get('steps', 0)
+        if stop_steps > 0:
+            assert stop_steps % self.log_interval == 0, \
+                "early_stop['steps'] must be a multiple of log_interval, or will never be checked"
         stop_reward = early_stop.get('reward', -np.inf)
         self.betas = self._beta_scheduler(self.beta_schedule, total_timesteps)
 
@@ -282,10 +294,10 @@ class BaseAgent:
                     self._log_stats()
                     # if (self.env_steps > stop_steps):
                     # this was too strict. trying this:
-                    # if self.env_steps == stop_steps:
-                    #     if (self.avg_eval_rwd < stop_reward):
-                    #         wandb.log({'early_stop': True})
-                    #         return True
+                    if self.env_steps == stop_steps:
+                        if (self.avg_eval_rwd < stop_reward):
+                            wandb.log({'early_stop': True})
+                            return True
                 
             if terminated:
                 # self.rollout_reward += 0
@@ -338,7 +350,7 @@ class BaseAgent:
         self.fps = self.log_interval / \
             ((t_final - self.initial_time + 1e-16) / 1e9)
 
-        if self.env_steps > self.learning_starts: # skip untrained agent
+        if self.env_steps > 0:
             self.avg_eval_rwd = self.evaluate()
             self.eval_auc += self.avg_eval_rwd
         if self.save_checkpoints:

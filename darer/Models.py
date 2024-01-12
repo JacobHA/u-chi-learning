@@ -19,7 +19,7 @@ def is_image_space_simple(observation_space, is_vector_env=False):
     if is_vector_env:
         return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 4
     return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3
-NORMALIZE_IMG = True
+NORMALIZE_IMG = False
 
 
 def model_initializer(is_image_space,
@@ -66,10 +66,10 @@ def model_initializer(is_image_space,
         if isinstance(observation_space, spaces.Discrete):
             nS = observation_space.n
             input_dim = nS
-        else:
+        else:    
             nS = observation_space.shape
             input_dim = nS[0]
-
+        
         # Use a simple MLP:
         model.extend(nn.Sequential(
             nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
@@ -112,7 +112,7 @@ class LogUNet(nn.Module):
         model.to(self.device)
         self.model = model
         self.nS = nS
-
+        
         self.to(device)
      
     def forward(self, x):
@@ -281,15 +281,15 @@ class OnlineLogUNets(OnlineNets):
 
     def choose_action(self, state, greedy=False, prior=None):
         with torch.no_grad():
-
+            
             if prior is None:
                 prior = 1 / self.nA
             logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
             # Get a sample from each net, then sample uniformly over them:
-            logus = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
+            logus = torch.stack([net.forward(state) for net in self.nets], dim=1)
             logus = logus.squeeze(0)
             # Aggregate over the networks:
-            logu, _ = self.aggregator_fn(logus, dim=0)
+            logu = self.aggregator_fn(logus, dim=0)
 
             if not self.is_vector_env:
                 if greedy:
@@ -332,23 +332,23 @@ class OnlineUNets(OnlineNets):
 
     def choose_action(self, state, greedy=False, prior=None):
         with torch.no_grad():
-
+            
             if prior is None:
                 prior = 1 / self.nA
             # Get a sample from each net, then sample uniformly over them:
-            us = torch.stack([net.forward(state) * prior for net in self.nets], dim=1)
+            us = torch.stack([net.forward(state) for net in self.nets], dim=1)
             us = us.squeeze(0)
             # Aggregate over the networks:
-            u, _ = self.aggregator_fn(us, dim=0)
+            u = self.aggregator_fn(us, dim=0)
+            policy = prior * u
+            policy /= torch.sum(policy)
 
             if not self.is_vector_env:
                 if greedy:
-                    action_net_idx = torch.argmax(prior * u, dim=0)
+                    action_net_idx = torch.argmax(policy, dim=0)
                     action = action_net_idx.cpu().numpy()
                 else:
-                    dist = prior * u
-                    dist /= torch.sum(dist)
-                    c = Categorical(dist)
+                    c = Categorical(policy)
                     action = c.sample().cpu().numpy()
             else:
                 raise NotImplementedError
@@ -360,14 +360,14 @@ class OnlineSoftQNets(OnlineNets):
     def __init__(self, list_of_nets, aggregator_fn, beta, is_vector_env=False):
         super().__init__(list_of_nets, aggregator_fn, is_vector_env)
         self.beta = beta
-
+           
     def choose_action(self, state, greedy=False, prior=None):
         if prior is None:
             prior = 1 / self.nA
         with torch.no_grad():
             q_as = torch.stack([net.forward(state) for net in self], dim=1)
             q_as = q_as.squeeze(0)
-            q_a, _ = self.aggregator_fn(q_as, dim=0)
+            q_a = self.aggregator_fn(q_as, dim=0)
 
 
             if greedy:
@@ -531,13 +531,13 @@ class UNet(nn.Module):
         model.to(self.device)
         self.model = model
         self.nS = nS
-
+        
         self.to(device)
-
+     
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-
+        
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space)
         assert x.dtype == torch.float32, "Input must be a float tensor."
@@ -555,7 +555,7 @@ class UNet(nn.Module):
             # Single state
             if x.shape[0] == self.nS:
                 x = x.unsqueeze(0)
-            else:
+            else: 
                 x = x.squeeze(1)
                 pass
         else:
@@ -570,38 +570,13 @@ class UNet(nn.Module):
                 else:
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
-
+                                
         x = self.model(x)
         # get machine epsilon:
         eps = torch.finfo(torch.float32).eps
         return x + eps
-
-    def choose_action(self, state, greedy=False, prior=None):
-        if prior is None:
-            prior = 1 / self.nA
-        with torch.no_grad():
-            # state = torch.tensor(state, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-            u = self.forward(state)
-            # prior = torch.tensor(prior.clone().detach(), device=self.device, dtype=torch.float32)
-            # ensure prior is normalized:
-            prior = prior / prior.sum()
-            if greedy:
-                # not worth exponentiating since it is monotonic
-                a = (u * prior).argmax(dim=-1)
-                return a.item()
-
-            # First subtract a baseline:
-            u = u / (torch.max(u) + torch.min(u))/2
-            # clamp to avoid overflow:
-            u = torch.clamp(u, min=1e-8, max=200)
-            dist = u * prior
-            dist = dist / torch.sum(dist)
-            c = Categorical(dist)#, validate_args=True)
-            # c = Categorical(logits=logu*prior)
-            a = c.sample()
-
-        return a.item()
-
+        # return x
+        
 
 class SoftQNet(torch.nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
@@ -623,16 +598,16 @@ class SoftQNet(torch.nn.Module):
                 activation(),
                 nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
                 activation(),
-                nn.Linear(hidden_dim, self.nA, dtype=torch.float32),
+                nn.Linear(hidden_dim, self.nA, dtype=torch.float32),    
             ))
 
         model.to(self.device)
         self.model = model
-
+    
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-
+        
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
         assert x.dtype == torch.float32, "Input must be a float tensor."
@@ -650,7 +625,7 @@ class SoftQNet(torch.nn.Module):
             # Single state
             if x.shape[0] == self.nS:
                 x = x.unsqueeze(0)
-            else:
+            else: 
                 x = x.squeeze(1)
                 pass
         else:
