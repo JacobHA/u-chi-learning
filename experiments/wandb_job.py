@@ -81,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--project", type=str,
                         default='u-chi-learning-darer')
     parser.add_argument("-s", "--sweep_id", type=str, default='odpc2zep')
-    parser.add_argument("-env", "--env_id", type=str, default='Acrobot-v1')
+    parser.add_argument("-env", "--env_id", type=str, default='CartPole-v1')
     args = parser.parse_args()
     entity = args.entity
     project = args.project
