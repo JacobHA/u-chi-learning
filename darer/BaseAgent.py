@@ -215,6 +215,8 @@ class BaseAgent:
         for idx, new_theta in enumerate(self.new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
         new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)
+        # new_theta = torch.max(self.new_thetas.mean(dim=0), dim=0)[0]
+
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
@@ -244,6 +246,9 @@ class BaseAgent:
         Train the agent for total_timesteps
         """
         stop_steps = early_stop.get('steps', 0)
+        if stop_steps > 0:
+            assert stop_steps % self.log_interval == 0, \
+                "early_stop['steps'] must be a multiple of log_interval, or will never be checked"
         stop_reward = early_stop.get('reward', -np.inf)
         self.betas = self._beta_scheduler(self.beta_schedule, total_timesteps)
 
@@ -291,10 +296,10 @@ class BaseAgent:
                     self._log_stats()
                     # if (self.env_steps > stop_steps):
                     # this was too strict. trying this:
-                    # if self.env_steps == stop_steps:
-                    #     if (self.avg_eval_rwd < stop_reward):
-                    #         wandb.log({'early_stop': True})
-                    #         return True
+                    if self.env_steps == stop_steps:
+                        if (self.avg_eval_rwd < stop_reward):
+                            wandb.log({'early_stop': True})
+                            return True
                 
             if terminated:
                 # self.rollout_reward += 0
