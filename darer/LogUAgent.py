@@ -74,7 +74,7 @@ class LogUAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_logus = torch.stack(target_next_logus, dim=1)
-            target_next_logu = self.aggregator_fn(target_next_logus, dim=1)[0]
+            target_next_logu = self.aggregator_fn(target_next_logus, dim=1)
             next_logu = torch.logsumexp(
                 target_next_logu, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
             # next_logu, _ = self.aggregator_fn(next_logus, dim=1)

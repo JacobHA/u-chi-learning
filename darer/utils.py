@@ -190,7 +190,7 @@ def log_class_vars(self, logger, params, use_wandb=False):
 
 def get_eigvec_values(fa, save_name=None):
     env = fa.env
-    nS = env.unwrapped.nS
+    nS = env.observation_space.n
     nA = fa.nA
     eigvec = np.zeros((nS, nA))
     for i in range(nS):

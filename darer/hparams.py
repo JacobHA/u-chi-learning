@@ -225,6 +225,20 @@ cartpole_u = {
     'hidden_dim': 128,
 }
 
+cartpole_u2 = {
+    'batch_size': 16,
+    'beta': 0.2,
+    'buffer_size': 100_000,
+    'hidden_dim': 64,
+    'learning_rate': 0.009,
+    'learning_starts': 0.03*50_000,
+    'target_update_interval': 200,
+    'tau': 0.02,
+    'tau_theta': 0.9,
+    'theta_update_interval': 1,#750,
+    'train_freq': 7,
+}
+
 acrobot_logu = {
     'beta': 0.35/7,
     'batch_size': 1200//2,
