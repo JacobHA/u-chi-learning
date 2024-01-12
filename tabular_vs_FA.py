@@ -12,7 +12,7 @@ from darer.utils import get_eigvec_values
 from tabular.tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 from tabular.frozen_lake_env import ModifiedFrozenLake, MAPS
 
-config = cartpole_hparams2
+config = maze
 config.pop('beta')
 map_name = '5x12ridge'
 def exact_solution(beta, env):
@@ -37,7 +37,7 @@ def FA_solution(beta, env):
     agent = UAgent(env, **config, log_interval=1000, tensorboard_log='pend',
                         num_nets=2, device='cuda',# use_rawlik=False,
                         beta=beta, render=False, aggregator='max')
-    agent.learn(total_timesteps=70_000)
+    agent.learn(total_timesteps=300_000)
     get_eigvec_values(agent, save_name=f'tabular/tabular_expt/data/{map_name}eigvec')
     # convert agent.theta to float
     theta = agent.theta.item()
@@ -61,7 +61,7 @@ def main():
     betas = np.logspace(1, 1, 4)
     betas = [14,19,24,30,37]
     betas = np.linspace(1, 50, 50)
-    betas = [3]
+    # betas = [3.]
 
     exact = [exact_solution(beta, env) for beta in betas]
     print(exact)
