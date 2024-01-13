@@ -13,11 +13,12 @@ class SimpleEnv(gym.Env):
     def step(self, action):
         # Goal is to stay near center: reward = -|x|
         # transition to state + action with periodic? BCs:
-        new_state = 1.2*action + self.state
-        new_state = np.clip(new_state, -1, 1)
-
+        # new_state = 1.2*action + self.state
+        # new_state = np.clip(new_state, -1, 1)
+        new_state = self.state
         self.state = new_state
-        reward = -np.abs(self.state)**2
+        # reward = -np.abs(self.state)**2
+        reward = -np.abs(action)**2
 
         return new_state, reward[0], False, False, {}
     
