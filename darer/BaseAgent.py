@@ -76,7 +76,7 @@ class BaseAgent:
                  max_grad_norm: float = 10,
                  learning_starts=5_000,
                  aggregator: str = 'max',
-                 loss_fn: torch.nn.modules.loss = torch.nn.HuberLoss(),
+                 loss_fn: torch.nn.modules.loss = torch.nn.MSELoss(),#torch.nn.HuberLoss(),
                  device: Union[torch.device, str] = "auto",
                  render: bool = False,
                  tensorboard_log: Optional[str] = None,
@@ -150,9 +150,10 @@ class BaseAgent:
                                           n_envs=1,
                                           handle_timeout_termination=True,
                                           device=device)
-        assert isinstance(self.env.action_space, gym.spaces.Discrete), \
-            "Only discrete action spaces are supported."
-        self.nA = self.env.action_space.n
+        # assert isinstance(self.env.action_space, gym.spaces.Discrete), \
+        #     "Only discrete action spaces are supported."
+        if isinstance(self.env.action_space, gym.spaces.Discrete):
+            self.nA = self.env.action_space.n
 
         self.theta = torch.Tensor([0]).to(self.device)
         self.eval_auc = 0
@@ -257,7 +258,8 @@ class BaseAgent:
 
         while self.env_steps < total_timesteps:
             state, _ = self.env.reset()
-            action_freqs = torch.zeros(self.nA)
+            if isinstance(self.env.action_space, gym.spaces.Discrete):
+                action_freqs = torch.zeros(self.nA)
 
             done = False
             self.num_episodes += 1
@@ -270,7 +272,8 @@ class BaseAgent:
                 #     action = self.env.action_space.sample()
                 # else:
                 action, kl = self.exploration_policy(state)
-                action_freqs[action] += 1
+                if isinstance(self.env.action_space, gym.spaces.Discrete):
+                    action_freqs[action] += 1
                 # Add KL divergence bw the current policy and the prior:
                 entropy += float(kl)
                 # action = self.online_logus.greedy_action(state)
@@ -319,11 +322,12 @@ class BaseAgent:
                 self.logger.record("rollout/avg_reward_rate", self.rollout_reward / avg_ep_len)
                 if self.use_wandb:
                     wandb.log({'rollout/reward': self.rollout_reward})
-                action_freqs /= action_freqs.sum()
-                for i, freq in enumerate(action_freqs):
-                    # As percentage:
-                    self.logger.record(
-                        f'rollout/action {i} (%)', freq.item() * 100)
+                if isinstance(self.env.action_space, gym.spaces.Discrete):
+                    action_freqs /= action_freqs.sum()
+                    for i, freq in enumerate(action_freqs):
+                        # As percentage:
+                        self.logger.record(
+                            f'rollout/action {i} (%)', freq.item() * 100)
 
         return False
 
@@ -388,8 +392,9 @@ class BaseAgent:
             while not done:
                 action = self.evaluation_policy(state)
                 # action = self.online_logus.choose_action(state)
-                action_freqs[action] += 1
-                action = action.item()
+                if isinstance(self.env.action_space, gym.spaces.Discrete):
+                    action_freqs[action] += 1
+                # action = action.item()
                 # action = self.online_logus.choose_action(state)
                 n_steps += 1
 
@@ -400,12 +405,13 @@ class BaseAgent:
                 done = terminated or truncated
 
         avg_reward /= n_episodes
-        # log the action frequencies:
-        action_freqs /= n_episodes
-        action_freqs /= action_freqs.sum()
-        for i, freq in enumerate(action_freqs):
-            # As percentage:
-            self.logger.record(f'eval/action {i} (%)', freq.item() * 100)
+        if isinstance(self.env.action_space, gym.spaces.Discrete):
+            # log the action frequencies:
+            action_freqs /= n_episodes
+            action_freqs /= action_freqs.sum()
+            for i, freq in enumerate(action_freqs):
+                # As percentage:
+                self.logger.record(f'eval/action {i} (%)', freq.item() * 100)
         self.logger.record('eval/avg_episode_length', n_steps / n_episodes)
         final_time = time.process_time_ns()
         eval_time = (final_time - self.initial_time + 1e-12) / 1e9
