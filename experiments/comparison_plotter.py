@@ -32,7 +32,8 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
         algo_name = os.path.basename(subfolder).split('_')[0]
         if algo_name in exclude_algos:
             print(f"Skipping {algo_name}, in exclude_algos.")
-
+            continue
+        
         log_files = glob(os.path.join(subfolder, '*.tfevents.*'))
         if not log_files:
             print(f"No log files found in {subfolder}")
@@ -84,9 +85,9 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 
 if __name__ == "__main__":
     # folder = 'experiments/ft/Acrobot-v1'
-    folder = 'experiments/ft/LunarLander-v2'
+    folder = 'experiments/ft/CartPole-v1'
 
-    plotter(folder=folder, metrics=['eval/avg_reward', 'train/theta'], ylim=(-300, 300))
-    # plotter(folder=folder, metrics=['step', 'rollout/reward'])
+    plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Umean'])
+    # plotter(folder=folder, metrics=['rollout/ep_reward_mean'])
     # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
     # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])
