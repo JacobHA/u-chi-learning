@@ -1,10 +1,11 @@
 
 import time
+from typing import Optional
 import numpy as np
 import torch
 from torch.nn import functional as F
 from BaseAgent import BaseAgent
-from Models import OnlineUNets, Optimizers, TargetNets, UNet
+from Models import OnlineUNets, Optimizers, TargetNets, UNet, PiNet
 from utils import logger_at_folder
 
 
@@ -12,11 +13,12 @@ class UAgent(BaseAgent):
     def __init__(self,
                  *args,
                  use_rawlik=False,
-                 prior_update_interval: int = 20_000,
-                 prior_tau: float = 1.0,
+                 prior_update_interval: int = 1_000,
+                 prior_tau: float = 0.1,
+                 name: Optional[str] = None,
                  **kwargs,
                  ):
-        self.algo_name = 'U'
+        self.algo_name = 'U' if name is None else name
         self.prior_update_interval = prior_update_interval
         self.prior_tau = prior_tau
         self.use_rawlik = use_rawlik
@@ -47,14 +49,14 @@ class UAgent(BaseAgent):
                 for u in self.online_us]
         if self.use_rawlik:
             self.online_prior = OnlineUNets(
-                [UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)],
+                [PiNet(self.env, hidden_dim=self.hidden_dim, device=self.device)],
                 aggregator_fn=self.aggregator_fn)
             self.target_prior = TargetNets(
-                [UNet(self.env, hidden_dim=self.hidden_dim, device=self.device)])
+                [PiNet(self.env, hidden_dim=self.hidden_dim, device=self.device)])
             self.target_prior.load_state_dicts(
                 [u.state_dict() for u in self.online_prior])
             opts.append(torch.optim.Adam(
-                self.online_prior.nets[0].parameters(), lr=self.learning_rate))
+                self.online_prior.parameters(), lr=self.learning_rate))
 
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
@@ -106,9 +108,9 @@ class UAgent(BaseAgent):
                             for online_u in self.online_us], dim=1)
         if self.use_rawlik:
             curr_priora = self.online_prior.nets[0](
-                states).squeeze()  # .gather(1, actions.long())
+                states).squeeze()
             # normalize the prior:
-            curr_priora /= curr_priora.sum(dim=-1, keepdim=True)
+            # curr_priora /= curr_priora.sum(dim=-1, keepdim=True)
 
 
         with torch.no_grad():
@@ -120,7 +122,7 @@ class UAgent(BaseAgent):
                                           for u in self.online_us], dim=0)
             if self.use_rawlik:
                 target_priora = self.target_prior.nets[0](states).squeeze()
-                target_priora /= target_priora.sum(dim=-1, keepdim=True)
+                # target_priora /= target_priora.sum(dim=-1, keepdim=True)
 
                 target_prior_next = self.target_prior.nets[0](
                     next_states).squeeze()
@@ -169,7 +171,9 @@ class UAgent(BaseAgent):
             ), pistar, reduction='batchmean', log_target=False)
 
             self.logger.record("train/prior_loss", prior_loss.item())
-            prior_loss.backward()
+            # prior_loss.backward()
+
+            return loss, prior_loss
 
         return loss
 
@@ -183,7 +187,7 @@ def main():
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     # env_id = 'Acrobot-v1'
-    env_id = 'LunarLander-v2'
+    # env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
@@ -191,9 +195,10 @@ def main():
 
     from hparams import cartpole_u2 as config
 
-    agent = UAgent(env_id, **config, device='cuda', log_interval=500,
-                   tensorboard_log='pong', num_nets=2, render=False, aggregator='min',
-                   beta_schedule='none', use_rawlik=False)
+    agent = UAgent(env_id, **config, device='cpu', log_interval=1000,
+                   tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
+                   beta_schedule='none', use_rawlik=True,
+                   loss_fn=torch.nn.MSELoss(), beta_end=5)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
     # Measure the time it takes to learn:

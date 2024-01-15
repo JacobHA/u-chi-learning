@@ -527,9 +527,10 @@ class UNet(nn.Module):
                                   activation,
                                   hidden_dim,
                                   self.device)
+        weights_init_(model)
 
         # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softplus())
+        model = nn.Sequential(model, nn.Softplus())#beta=0.2))
         model.to(self.device)
         self.model = model
         self.nS = nS
@@ -573,12 +574,95 @@ class UNet(nn.Module):
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
                                 
-        x = self.model(x)
+        y = self.model(x)
         # get machine epsilon:
         eps = torch.finfo(torch.float32).eps
-        return x + eps
+        assert (y >= 0).all(), f"u must be non-negative. u={y}"
+        return y
         # return x
         
+    
+class PiNet(nn.Module):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+        super(PiNet, self).__init__()
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
+        self.env = env
+        if self.using_vector_env:
+            self.observation_space = self.env.single_observation_space
+            self.action_space = self.env.single_action_space
+        else:
+            self.observation_space = self.env.observation_space
+            self.action_space = self.env.action_space
+        self.nA = self.action_space.n
+        # do the check on an env before wrapping it
+        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
+        self.is_tabular = is_tabular(env)
+        self.device = device
+        model, nS = model_initializer(self.is_image_space,
+                                  self.observation_space,
+                                  self.nA,
+                                  activation,
+                                  hidden_dim,
+                                  self.device)
+        # weights_init_(model)
+        # initialize the net to have zero bias and identical weights:
+        for m in model:
+            if isinstance(m, nn.Linear):
+                nn.init.uniform_(m.weight, a=0, b=1/10)
+                nn.init.constant_(m.bias, 0)
+
+        # Add a softplus layer:
+        model = nn.Sequential(model, nn.Softmax(dim=-1))
+        model.to(self.device)
+        self.model = model
+        self.nS = nS
+        
+        self.to(device)
+     
+    def forward(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+        
+        # x = x.detach()
+        x = preprocess_obs(x, self.env.observation_space)
+        assert x.dtype == torch.float32, "Input must be a float tensor."
+
+        # Reshape the image:
+        if self.is_image_space:
+            if len(x.shape) == 3:
+                # Single image
+                x = x.permute([2,0,1])
+                x = x.unsqueeze(0)
+            else:
+                # Batch of images
+                x = x.permute([0,3,1,2])
+        elif self.is_tabular:
+            # Single state
+            if x.shape[0] == self.nS:
+                x = x.unsqueeze(0)
+            else: 
+                x = x.squeeze(1)
+                pass
+        else:
+            if len(x.shape) > len(self.nS):
+                # in batch mode:
+                pass
+            else:
+                # is a single state
+                if isinstance(x.shape, torch.Size):
+                    if x.shape == self.nS:
+                        x = x.unsqueeze(0)
+                else:
+                    if (x.shape == self.nS).all():
+                        x = x.unsqueeze(0)
+                                
+        y = self.model(x)
+        # get machine epsilon:
+        eps = torch.finfo(torch.float32).eps
+        assert (y >= 0).all(), f"u must be non-negative. u={y}"
+        return y
+        # return x
+    
     
 class SoftQNet(torch.nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
