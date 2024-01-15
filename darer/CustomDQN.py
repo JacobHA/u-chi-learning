@@ -11,6 +11,7 @@ class CustomDQN(DQN):
         self.eval_rwd = 0
         self.eval_interval = log_interval
         self.eval_env = self.env
+        self.step_to_avg_eval_rwd = {}
 
         # Translate hidden dim to policy_kwargs:
         self.policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
@@ -20,6 +21,7 @@ class CustomDQN(DQN):
         if self._n_calls % self.eval_interval == 0:
             self.eval_rwd = self.evaluate_agent(5)
             self.eval_auc += self.eval_rwd
+            self.step_to_avg_eval_rwd[self.num_timesteps] = self.eval_rwd
             self.logger.record("eval/auc", self.eval_auc)
             self.logger.record("eval/avg_reward", self.eval_rwd)
             # self._dump_logs()#step=self.num_timesteps)
