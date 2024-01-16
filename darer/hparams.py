@@ -76,18 +76,21 @@ cartpole_rawlik = {
 }
 
 mcar_hparams = {
-    'beta': 0.078,
-    'batch_size': 950,
-    'buffer_size': 150000,
-    'gradient_steps': 25,
-    'learning_rate': 3e-4,
-    'target_update_interval': 2700,
-    'tau': 0.28,
-    'tau_theta': 0.95,
-    'hidden_dim': 128,
-    'train_freq': 25,
-    'learning_starts': 50000
+    'beta': 1.7/10,
+    'batch_size': 64,
+    'buffer_size': 500_000,
+    'gradient_steps': 6,
+    'learning_rate': 2e-4,
+    'target_update_interval': 2300,
+    'tau': 0.3,
+    'tau_theta': 0.67,
+    'theta_update_interval': 1000,
+    'hidden_dim': 64,
+    'train_freq': 6,
+    'learning_starts': 0.05*500_000,
+    'aggregator': 'max'
 }
+
 
 lunar_logu = {
     'beta': 10/40,
@@ -103,7 +106,6 @@ lunar_logu = {
     'train_freq': 1,
     'learning_starts': 5_000
 }
-
 sac_hparams2 = {
     'beta': 80,
     'batch_size': 32,
@@ -154,7 +156,7 @@ cartpole_dqn = {
     'batch_size': 64,
     'buffer_size': 100000,
     'exploration_final_eps': 0.04,
-    'exploration_fraction': 0.12,
+    'exploration_fraction': 0.16,
     'gamma': 0.99,
     'gradient_steps': 128,
     'hidden_dim': 256,
@@ -194,49 +196,67 @@ pong_logu0 = {
 }
 
 nature_pong = {
-  "batch_size": 32,
+  "batch_size": 128,
   "beta": 0.1,
   "buffer_size": 300_000,
-  "tau": 1.0,
+  "tau": 0.95,
   "train_freq": 4,
   "learning_starts": 50000 ,
-  "learning_rate": 0.00025 ,
+  "learning_rate": 0.0003,#00025 ,
 #   "gradient_momentum": 0.95 ,
 #   "squared_gradient_momentum": 0.95 ,
 #   "min_squared_gradient": 0.01 ,
 #   "action_history_len": 4 ,
 #   "action_repeat": 4 ,
 #   "discount_factor": 0.99 ,
-  "target_update_interval": 10000
+  "target_update_interval": 10000,
+  'aggregator': 'max'
 }
 
 cartpole_u = {
-    'beta': 1.2,
-    'batch_size': 64,#1150,
+    'beta': 0.01,
+    'batch_size': 32,#1150,
     'buffer_size': 100_000,
     'gradient_steps': 4,
-    'learning_rate': 8e-4,
-    'target_update_interval': 500,
-    'learning_starts': 0,
+    'learning_rate': 3e-4,
+    'target_update_interval': 1500,
+    'learning_starts': 10000,
     'tau': 0.04,
-    'tau_theta': 0.85,
+    'tau_theta': 0.15,
     'theta_update_interval': 875,
     'train_freq': 10,
     'hidden_dim': 128,
+    'aggregator': 'max'
 }
 
 cartpole_u2 = {
-    'batch_size': 16,
+    'batch_size': 32,
     'beta': 0.2,
+    'buffer_size': 50_000,
+    'hidden_dim': 64,
+    'learning_rate': 0.0005,
+    'learning_starts': 0.05*50_000,
+    'target_update_interval': 100,
+    'tau': 0.5,
+    'tau_theta': 0.63,
+    'theta_update_interval': 400,#750,
+    'train_freq': 5,
+    'gradient_steps': 5,
+    'aggregator': 'min'
+}
+maze = {
+    'batch_size': 256,
+    'beta': 0.5,
     'buffer_size': 100_000,
     'hidden_dim': 64,
-    'learning_rate': 0.009,
-    'learning_starts': 0.03*50_000,
-    'target_update_interval': 200,
-    'tau': 0.02,
+    'learning_rate': 8e-4,
+    'learning_starts': 0.2*50_000,
+    'target_update_interval': 500,
+    'tau': 0.9,
     'tau_theta': 0.9,
-    'theta_update_interval': 1,#750,
-    'train_freq': 7,
+    'theta_update_interval': 100,#750,
+    'train_freq': 1,
+    'aggregator': 'max'
 }
 
 acrobot_logu = {
@@ -255,22 +275,22 @@ acrobot_logu = {
 }
 
 pendulum_logu = {
-    'aggregator': 'min',
+    'aggregator': 'max',
     'batch_size': 64,#0,
     'beta': 0.4,
-    # 'beta_scheduler': 'none',
+    'beta_schedule': 'linear',
     'buffer_size': 100_000,
     # 'final_beta_multiplier': 6,
-    'beta_end': 0.4,
+    'beta_end': 4.4,
     'gradient_steps': 1,
     'hidden_dim': 256,
-    'learning_rate': 1e-3,
+    'learning_rate': 5e-4,
     'learning_starts': 15_000,
     'target_update_interval': 325,
     'tau': 0.3,
     'tau_theta': 0.96,
     'theta_update_interval': 500,
-    'train_freq': 1,
+    'train_freq': 4,
 }
 
 cheetah_hparams = {
@@ -334,6 +354,7 @@ mcar_dqn = {
 
 # Set up a table of algos/envs to configs:
 cartpoles = {
+    'u': cartpole_u2,
     'logu': cartpole_hparams2,
     'dqn': cartpole_dqn,
     'ppo': cartpole_ppo
@@ -355,4 +376,11 @@ lunars = {
     'logu': lunar_logu,
     'ppo': lunar_ppo,
     'dqn': lunar_dqn
+}
+
+id_to_hparam_dicts = {
+    'CartPole-v1': cartpoles,
+    'Acrobot-v1': acrobots,
+    'MountainCar-v0': mcars,
+    'LunarLander-v2': lunars,
 }

@@ -14,9 +14,10 @@ from tabular.frozen_lake_env import ModifiedFrozenLake, MAPS
 
 config = maze
 config.pop('beta')
-map_name = '5x12ridge'
-def exact_solution(beta, env):
+map_name = '3x5uturn'
+# map_name = 'hallway1'
 
+def exact_solution(beta, env):
     dynamics, rewards = get_dynamics_and_rewards(env.unwrapped)
     n_states, SA = dynamics.shape
     n_actions = int(SA / n_states)
@@ -34,10 +35,10 @@ def exact_solution(beta, env):
 def FA_solution(beta, env):
     # Use an agent to solve the environment
 
-    agent = UAgent(env, **config, log_interval=1000, tensorboard_log='pend',
-                        num_nets=2, device='cuda',# use_rawlik=False,
-                        beta=beta, render=False, aggregator='max')
-    agent.learn(total_timesteps=300_000)
+    agent = UAgent(env, **config, log_interval=1000, tensorboard_log='pong',
+                        num_nets=2, device='cpu',# use_rawlik=False,
+                        beta=beta, render=False)#, aggregator='min')
+    agent.learn(total_timesteps=50_000)
     get_eigvec_values(agent, save_name=f'tabular/tabular_expt/data/{map_name}eigvec')
     # convert agent.theta to float
     theta = agent.theta.item()
@@ -45,7 +46,7 @@ def FA_solution(beta, env):
 
 def main():
     # initialize the environment
-    n_action = 5
+    n_action = 4
     max_steps = 200
     desc = np.array(MAPS[map_name], dtype='c')
     env_src = ModifiedFrozenLake(
@@ -61,7 +62,7 @@ def main():
     betas = np.logspace(1, 1, 4)
     betas = [14,19,24,30,37]
     betas = np.linspace(1, 50, 50)
-    # betas = [3.]
+    betas = [10.]
 
     exact = [exact_solution(beta, env) for beta in betas]
     print(exact)
@@ -104,8 +105,10 @@ def plot():
 
     # Plot the eigenvectors:
     true_eigvec = np.load(f'tabular/tabular_expt/data/{map_name}u_true.npy')
-    fa_logeigvec = np.load(f'tabular/tabular_expt/data/{map_name}eigvec.npy')
-    fa_u = np.exp(fa_logeigvec.flatten())
+    # fa_logeigvec = np.load(f'tabular/tabular_expt/data/{map_name}eigvec.npy')
+    fa_eigvec = np.load(f'tabular/tabular_expt/data/{map_name}eigvec.npy')
+    fa_u = fa_eigvec.flatten()
+    # fa_u = np.exp(fa_logeigvec.flatten())
     true_u = true_eigvec.flatten()
     # normalize them to have the same norm:
     true_u /= np.linalg.norm(true_u)

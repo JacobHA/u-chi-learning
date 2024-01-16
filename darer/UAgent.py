@@ -13,8 +13,8 @@ class UAgent(BaseAgent):
     def __init__(self,
                  *args,
                  use_rawlik=False,
-                 prior_update_interval: int = 1_000,
-                 prior_tau: float = 0.1,
+                 prior_update_interval: int = 5_000,
+                 prior_tau: float = 0.25,
                  name: Optional[str] = None,
                  **kwargs,
                  ):
@@ -56,7 +56,7 @@ class UAgent(BaseAgent):
             self.target_prior.load_state_dicts(
                 [u.state_dict() for u in self.online_prior])
             opts.append(torch.optim.Adam(
-                self.online_prior.parameters(), lr=self.learning_rate))
+                self.online_prior.nets[0].parameters(), lr=self.learning_rate))
 
         self.optimizers = Optimizers(opts, self.scheduler_str)
 
@@ -66,14 +66,15 @@ class UAgent(BaseAgent):
             # return self.env.action_space.sample()
             if self.use_rawlik:
                 pi0 = self.target_prior.nets[0](state).squeeze()
-                pi0 /= pi0.sum()
+                # pi0 /= pi0.sum()
             else:
-                pi0 = 1 / self.nA
+                pi0 = torch.ones(self.nA, device=self.device) * (1/self.nA)
             chosen_action = self.online_us.choose_action(state, prior=pi0, greedy=False)
             pi_by_pi0 = self.aggregator_fn(torch.stack(
-                [u(state) for u in self.online_us], dim=0), 
-                dim=0)
-            kl = torch.log(pi_by_pi0[0][chosen_action])
+                [u(state) for u in self.online_us], dim=0), dim=0)
+            # kl = pi_by_pi0[0][chosen_action] * pi0[chosen_action] * torch.log(pi_by_pi0[0][chosen_action])
+            kl = (pi_by_pi0[0] * pi0* torch.log(pi_by_pi0[0])).sum()
+
             kl = float(kl.item())
             # chosen_action = self.env.action_space.sample()
             return chosen_action, kl
@@ -82,7 +83,7 @@ class UAgent(BaseAgent):
         with torch.no_grad():
             if self.use_rawlik:
                 pi0 = self.target_prior.nets[0](state).squeeze()
-                pi0 /= pi0.sum()
+                # pi0 /= pi0.sum()
             else:
                 pi0 = None
 
@@ -94,30 +95,28 @@ class UAgent(BaseAgent):
 
     def _on_step(self):
         super()._on_step()
+        #TODO: put this in _update_target
         if self.use_rawlik:
             if self.env_steps % self.prior_update_interval == 0:
                 self.target_prior.polyak(self.online_prior, self.prior_tau)
 
     def gradient_descent(self, batch, grad_step: int):
-        # Sample a batch from the replay buffer:
-        batch = self.replay_buffer.sample(self.batch_size)
         states, actions, next_states, dones, rewards = batch
         # rewards[dones.bool()] -= 1
         # Calculate the current u values (feedforward):
-        curr_u = torch.cat([online_u(states).squeeze().gather(1, actions.long())
+        # curr_ua = torch.stack([online_u(states).squeeze()
+        #                     for online_u in self.online_us], dim=1)
+        curr_u = torch.stack([online_u(states).squeeze().gather(1, actions.long())
                             for online_u in self.online_us], dim=1)
         if self.use_rawlik:
-            curr_priora = self.online_prior.nets[0](
-                states).squeeze()
-            # normalize the prior:
-            # curr_priora /= curr_priora.sum(dim=-1, keepdim=True)
-
+            curr_priora = self.online_prior.nets[0](states).squeeze()
 
         with torch.no_grad():
             online_u_next = torch.stack([u(next_states)
                                          for u in self.online_us], dim=0)
             online_curr_u = torch.stack([u(states).gather(1, actions)
                                          for u in self.online_us], dim=0)
+            #TODO: collapse these into one call
             online_curr_ua = torch.stack([u(states)
                                           for u in self.online_us], dim=0)
             if self.use_rawlik:
@@ -138,11 +137,12 @@ class UAgent(BaseAgent):
                 online_u_next * target_prior_next.repeat(self.num_nets, 1, 1)).sum(dim=-1)
             online_curr_u = online_curr_u.squeeze(-1)
             in_log = online_chi / online_curr_u
+            # in_log = torch.clamp(in_log, min=1e-6, max=1e6)
             # clamp to a tolerable range:
             batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
+            # batch_theta = torch.clamp(batch_theta, min=-30, max=30)
             self.new_thetas[grad_step, :] = batch_theta
             
-
             target_next_us = [target_u(next_states) for target_u in self.target_us]
 
             # logsumexp over actions:
@@ -151,17 +151,21 @@ class UAgent(BaseAgent):
 
             next_chis = (target_next_u * target_prior_next).sum(dim=-1)
 
-            next_chis = next_chis.unsqueeze(-1)
+            next_chis = next_chis.reshape(-1,1)
             assert next_chis.shape == dones.shape
             next_chis = next_chis * (1-dones)  # + 1 * dones
 
             # "Backup" eigenvector equation:
             in_exp = rewards + self.theta
+            in_exp = torch.clamp(in_exp, max=30)
             expected_curr_u = torch.exp(self.beta * (in_exp)) * next_chis
-            expected_curr_u = expected_curr_u.squeeze(1)
+            expected_curr_u = expected_curr_u
+
+        # self.logger.record("train/u-avg", torch.mean(curr_u, dim=0))
 
         # Calculate the u ("critic") loss:
-        loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in curr_u.T)
+        loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in curr_u.permute(1, 0, 2))
+        self.logger.record("train/loss", loss.item())
         if self.use_rawlik:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
             pistar = self.aggregator_fn(online_curr_ua, dim=0) * target_priora
@@ -172,10 +176,14 @@ class UAgent(BaseAgent):
 
             self.logger.record("train/prior_loss", prior_loss.item())
             # prior_loss.backward()
+            loss += prior_loss
 
-            return loss, prior_loss
-
-        return loss
+        # weight = 1e-1
+        # Mean across actions:
+        # curr_umean = torch.mean(curr_ua, dim=-1, keepdim=True).repeat(1, 1, self.nA)
+        # regularize_loss = weight * torch.nn.functional.l1_loss(curr_ua, curr_umean)
+        # self.logger.record("train/regularize_loss", regularize_loss.item())
+        return loss #+ regularize_loss
 
 
 def main():
@@ -189,16 +197,17 @@ def main():
     # env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
+    env_id = 'BreakoutNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_u2 as config
+    from hparams import nature_pong as config
 
-    agent = UAgent(env_id, **config, device='cpu', log_interval=1000,
+    agent = UAgent(env_id, **config, device='cuda', log_interval=5000,
                    tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
-                   beta_schedule='none', use_rawlik=True,
-                   loss_fn=torch.nn.MSELoss(), beta_end=5)
+                   beta_schedule='none', use_rawlik=False,
+                   beta_end=5)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
     # Measure the time it takes to learn:

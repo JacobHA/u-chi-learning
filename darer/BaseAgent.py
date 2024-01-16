@@ -76,7 +76,7 @@ class BaseAgent:
                  max_grad_norm: float = 10,
                  learning_starts=5_000,
                  aggregator: str = 'max',
-                 loss_fn: torch.nn.modules.loss = torch.nn.MSELoss(),#torch.nn.HuberLoss(),
+                 loss_fn: torch.nn.modules.loss = torch.nn.functional.mse_loss,#torch.nn.functional.HuberLoss(),
                  device: Union[torch.device, str] = "auto",
                  render: bool = False,
                  tensorboard_log: Optional[str] = None,
@@ -143,6 +143,8 @@ class BaseAgent:
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
         self.train_this_step = False
+        # Track the rewards over time:
+        self.step_to_avg_eval_rwd = {}
 
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
                                           observation_space=self.env.observation_space,
@@ -162,7 +164,7 @@ class BaseAgent:
         self._n_updates = 0
         self.env_steps = 0
         # self._initialize_networks()
-        self.loss_fn = F.smooth_l1_loss if loss_fn is None else loss_fn
+        self.loss_fn = loss_fn
 
     def log_hparams(self, logger):
         # Log the hparams:
@@ -202,7 +204,6 @@ class BaseAgent:
 
             loss = self.gradient_descent(batch, grad_step)
 
-            self.logger.record("train/loss", loss.item())
             self.optimizers.zero_grad()
 
             # Clip gradient norm
@@ -212,6 +213,7 @@ class BaseAgent:
 
         # TODO: Clamp based on reward range
         # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
+        self.new_thetas = torch.clamp(self.new_thetas, min=-50, max=50)
         # Log both theta values:
         for idx, new_theta in enumerate(self.new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
@@ -369,7 +371,13 @@ class BaseAgent:
 
         if self.is_tabular:
             # Record the error in the eigenvector:
-            fa_eigvec = get_eigvec_values(self).flatten()
+            if self.algo_name == 'LogU':
+                log=True
+            elif self.algo_name =='U':
+                log=False
+            else:
+                raise ValueError(f"Unknown agent name: {self.name}. Use U/LogU (defaults).")
+            fa_eigvec = get_eigvec_values(self, logu=log).flatten()
             err = np.abs(self.true_eigvec - fa_eigvec).max()
             self.logger.record('train/eigvec_err', err.item())
 
@@ -421,6 +429,7 @@ class BaseAgent:
         self.eval_time = eval_time
         self.eval_fps = eval_fps
         self.avg_eval_rwd = avg_reward
+        self.step_to_avg_eval_rwd[self.env_steps] = avg_reward
         return avg_reward
 
     def _beta_scheduler(self, beta_schedule, total_timesteps):

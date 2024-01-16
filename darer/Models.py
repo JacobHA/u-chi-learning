@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical
 import numpy as np
-from stable_baselines3.common.utils import zip_strict
+from stable_baselines3.common.utils import polyak_update, zip_strict
 from gymnasium import spaces
 import gymnasium as gym
 from torch.optim.lr_scheduler import StepLR, MultiplicativeLR, LinearLR, ExponentialLR, LRScheduler
@@ -233,8 +233,10 @@ class TargetNets():
         with torch.no_grad():
             # zip does not raise an exception if length of parameters does not match.
             for new_params, target_params in zip(online_nets.parameters(), self.parameters()):
-                for new_param, target_param in zip_strict(new_params, target_params):
-                    target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
+                # for new_param, target_param in zip_strict(new_params, target_params):
+                #     target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
+                #TODO: 
+                polyak_update(new_params, target_params, tau)
 
     def parameters(self):
         """
@@ -434,7 +436,7 @@ class Usa(nn.Module):
         x = self.fc2(x)
         x = self.relu(x)
         x = self.fc3(x)
-        return nn.Softplus()(x)
+        return nn.functional.softplus(x)
 
 
 # Initialize Policy weights
@@ -527,7 +529,7 @@ class UNet(nn.Module):
                                   activation,
                                   hidden_dim,
                                   self.device)
-        weights_init_(model)
+        # weights_init_(model)
 
         # Add a softplus layer:
         model = nn.Sequential(model, nn.Softplus())#beta=0.2))
@@ -578,6 +580,8 @@ class UNet(nn.Module):
         # get machine epsilon:
         eps = torch.finfo(torch.float32).eps
         assert (y >= 0).all(), f"u must be non-negative. u={y}"
+        # Clamp above eps:
+        y = torch.clamp(y, min=eps)
         return y
         # return x
         
@@ -606,13 +610,13 @@ class PiNet(nn.Module):
                                   self.device)
         # weights_init_(model)
         # initialize the net to have zero bias and identical weights:
-        for m in model:
-            if isinstance(m, nn.Linear):
-                nn.init.uniform_(m.weight, a=0, b=1/10)
-                nn.init.constant_(m.bias, 0)
+        # for m in model:
+        #     if isinstance(m, nn.Linear):
+        #         nn.init.uniform_(m.weight, a=0, b=1/10)
+        #         nn.init.constant_(m.bias, 0)
 
         # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softmax(dim=-1))
+        # model = nn.Sequential(model, nn.Softmax(dim=-1))
         model.to(self.device)
         self.model = model
         self.nS = nS
@@ -656,7 +660,10 @@ class PiNet(nn.Module):
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
                                 
-        y = self.model(x)
+        y = self.model(x) / 10
+        y = torch.nn.functional.softmax(y, dim=-1)
+        
+        
         # get machine epsilon:
         eps = torch.finfo(torch.float32).eps
         assert (y >= 0).all(), f"u must be non-negative. u={y}"

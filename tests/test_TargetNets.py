@@ -11,7 +11,7 @@ def target_nets():
     return TargetNets(list_of_nets)
 
 @pytest.fixture
-def target_mixture_nets():
+def online_nets():
     # Create a list of nets for polyak testing
     num_nets = 3
     list_of_nets = [torch.nn.Linear(10, 5) for _ in range(num_nets)]
@@ -38,41 +38,49 @@ def test_load_state_dict(target_nets):
 
 import copy
 
-def test_polyak(target_nets, target_mixture_nets):
+def test_polyak(target_nets, online_nets):
     # Create some dummy parameters
 
     # Perform polyak update
-    tau = 0.5
+    tau = 0.25
     with torch.no_grad():
         # deep copy the original nets:
         original_nets = copy.deepcopy(target_nets)
-        target_nets.polyak(target_mixture_nets, tau)
+        # SB3 Polyak update:
+        target_nets.polyak(online_nets, tau)
 
         # Check if the nets have been updated
-        for updated_net, mixture_net, original_net in zip(target_nets, target_mixture_nets, original_nets):
+        for updated_net, mixture_net, original_net in zip(target_nets, online_nets, original_nets):
             for updated_param, mix_param, original_param in zip(updated_net.parameters(), mixture_net.parameters(), original_net.parameters()):
                 # Ensure each parameter is updated correctly
-                mix_param.data.mul_(1 - tau)
-                original_param.data.mul_(tau)
+                mix_param.data.mul_(tau)
+                original_param.data.mul_(1 - tau)
                 result = torch.add(mix_param.data, original_param.data)
                 assert torch.allclose(updated_param.data, result)
 
-def test_zero_polyak(target_nets, target_mixture_nets):
+def test_zero_polyak(target_nets, online_nets):
     # Perform polyak update
-    tau = 1.0
+    tau = 0.0
     with torch.no_grad():
         # deep copy the original nets:
         original_nets = copy.deepcopy(target_nets)
-        target_nets.polyak(target_mixture_nets, tau)
+        target_nets.polyak(online_nets, tau)
 
-        # Check if the nets have been updated
-        for updated_net, mixture_net, original_net in zip(target_nets, target_mixture_nets, original_nets):
-            for updated_param, mix_param, original_param in zip(updated_net.parameters(), mixture_net.parameters(), original_net.parameters()):
-                # Ensure each parameter is updated correctly
-                mix_param.data.mul_(1 - tau)
-                original_param.data.mul_(tau)
-                result = torch.add(mix_param.data, original_param.data)
-                assert torch.allclose(original_param.data, result)
+        # Check the target nets params haven't changed:
+        for original_target, updated_target in zip(original_nets, target_nets):
+            for original_param, updated_param in zip(original_target.parameters(), updated_target.parameters()):
+                assert torch.allclose(original_param, updated_param)
+        
+def test_one_polyak(target_nets, online_nets):
+    # Perform polyak update
+    tau = 1.0
+    with torch.no_grad():
+        target_nets.polyak(online_nets, tau)
+
+        # Check the target nets params haven't changed:
+        for online_net, updated_target in zip(online_nets, target_nets):
+            for online_param, updated_param in zip(online_net.parameters(), updated_target.parameters()):
+                assert torch.equal(online_param, updated_param)
 
 
 def test_parameters(target_nets):
