@@ -45,7 +45,7 @@ def runner(config=None, run=None, device='cpu'):
     # else:
     #     total_timesteps = 50_000
 
-    total_timesteps = 10_000_000
+    total_timesteps = 100_000
 
     # check if learning starts ratio is a config key:
     if 'learning_starts_ratio' in config:
@@ -61,7 +61,7 @@ def runner(config=None, run=None, device='cpu'):
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
 
-        agent = UAgent(**config, log_interval=5000, use_wandb=True,
+        agent = UAgent(env_id, **config, log_interval=500, use_wandb=True,
                        render=False,
                        # beta_schedule=config.pop('beta_scheduler', 'none'),
                        use_rawlik=False,
@@ -87,14 +87,14 @@ def wandb_agent():
 if __name__ == "__main__":
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--device", type=str, default='cuda')
+    parser.add_argument("-d", "--device", type=str, default='cpu')
     parser.add_argument("-c", "--count", type=int, default=15_000)
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str,
                         default='u-chi-learning-darer')
-    parser.add_argument("-s", "--sweep_id", type=str, default='5gwi5rfx')
+    parser.add_argument("-s", "--sweep_id", type=str, default='27ojzk9g')
     parser.add_argument("-env", "--env_id", type=str,
-                        default='BreakoutNoFrameskip-v1')
+                        default='Acrobot-v1')
     args = parser.parse_args()
     entity = args.entity
     project = args.project
