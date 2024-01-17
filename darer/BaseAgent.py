@@ -69,14 +69,15 @@ class BaseAgent:
                  tau: float = 1.0,
                  theta_update_interval: int = 1,
                  hidden_dim: int = 64,
-                 num_nets: int = 1,
+                 num_nets: int = 2,
                  tau_theta: float = 0.995,
                  gradient_steps: int = 1,
-                 train_freq: Union[int, Tuple[int, str]] = 4,
+                 train_freq: Union[int, Tuple[int, str]] = 1,
                  max_grad_norm: float = 10,
                  learning_starts=5_000,
                  aggregator: str = 'max',
-                 loss_fn: torch.nn.modules.loss = torch.nn.functional.mse_loss,#torch.nn.functional.HuberLoss(),
+                 # torch.nn.functional.HuberLoss(),
+                 loss_fn: torch.nn.modules.loss = torch.nn.functional.mse_loss,
                  device: Union[torch.device, str] = "auto",
                  render: bool = False,
                  tensorboard_log: Optional[str] = None,
@@ -97,7 +98,7 @@ class BaseAgent:
             env_id, render, is_atari=is_atari)
 
         if hasattr(self.env.unwrapped.spec, 'id'):
-            self.env_str = self.env.unwrapped.spec.id 
+            self.env_str = self.env.unwrapped.spec.id
         elif hasattr(self.env.unwrapped, 'id'):
             self.env_str = self.env.unwrapped.id
         else:
@@ -220,7 +221,6 @@ class BaseAgent:
         new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)
         # new_theta = torch.max(self.new_thetas.mean(dim=0), dim=0)[0]
 
-
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
         if self._n_updates % self.theta_update_interval == 0:
@@ -243,7 +243,7 @@ class BaseAgent:
         #                 for p in self.online_logus.parameters() for px in p]
         #             ))
         # self.logger.record("train/max_grad", total_norm.item())
- 
+
     def learn(self, total_timesteps: int, early_stop: dict = {}) -> bool:
         """
         Train the agent for total_timesteps
@@ -292,7 +292,6 @@ class BaseAgent:
                     (self.train_freq != -1 and self.env_steps %
                      self.train_freq == 0)
 
-
                 # Add the transition to the replay buffer:
                 sarsa = (state, next_state, action, reward, terminated)
                 self.replay_buffer.add(*sarsa, [infos])
@@ -305,23 +304,25 @@ class BaseAgent:
                         if (self.avg_eval_rwd < stop_reward):
                             wandb.log({'early_stop': True})
                             return True
-                
+
             if terminated:
                 # self.rollout_reward += 0
                 avg_ep_len += 1
             if done:
                 self.rollout_reward
                 self.logger.record("rollout/ep_reward", self.rollout_reward)
-                free_energy = (self.rollout_reward + 1/self.beta * entropy) 
+                free_energy = (self.rollout_reward + 1/self.beta * entropy)
                 try:
                     free_energy = free_energy.item()
                 except:
                     pass
                 # entropy = 0
-                self.logger.record("rollout/neg_free_energy", free_energy / avg_ep_len)
+                self.logger.record("rollout/neg_free_energy",
+                                   free_energy / avg_ep_len)
                 self.logger.record("rollout/avg_entropy", entropy / avg_ep_len)
                 self.logger.record("rollout/avg_episode_length", avg_ep_len)
-                self.logger.record("rollout/avg_reward_rate", self.rollout_reward / avg_ep_len)
+                self.logger.record("rollout/avg_reward_rate",
+                                   self.rollout_reward / avg_ep_len)
                 if self.use_wandb:
                     wandb.log({'rollout/reward': self.rollout_reward})
                 if isinstance(self.env.action_space, gym.spaces.Discrete):
@@ -372,11 +373,12 @@ class BaseAgent:
         if self.is_tabular:
             # Record the error in the eigenvector:
             if self.algo_name == 'LogU':
-                log=True
-            elif self.algo_name =='U':
-                log=False
+                log = True
+            elif self.algo_name == 'U':
+                log = False
             else:
-                raise ValueError(f"Unknown agent name: {self.name}. Use U/LogU (defaults).")
+                raise ValueError(
+                    f"Unknown agent name: {self.name}. Use U/LogU (defaults).")
             fa_eigvec = get_eigvec_values(self, logu=log).flatten()
             err = np.abs(self.true_eigvec - fa_eigvec).max()
             self.logger.record('train/eigvec_err', err.item())
