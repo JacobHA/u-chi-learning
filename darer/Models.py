@@ -46,7 +46,7 @@ def model_initializer(is_image_space,
         # calculate resulting shape for FC layers:
         with torch.no_grad():
             rand_inp = observation_space.sample()
-            x = torch.tensor(rand_inp, device=device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(rand_inp, device=device)  # Convert to PyTorch tensor
             x = x.detach()
             x = preprocess_obs(x, observation_space, normalize_images=NORMALIZE_IMG)
             x = x.permute([2,0,1]).unsqueeze(0)
@@ -72,11 +72,11 @@ def model_initializer(is_image_space,
         
         # Use a simple MLP:
         model.extend(nn.Sequential(
-            nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
+            nn.Linear(input_dim, hidden_dim),
             activation(),
-            nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
+            nn.Linear(hidden_dim, hidden_dim),
             activation(),
-            nn.Linear(hidden_dim, nA, dtype=torch.float32),
+            nn.Linear(hidden_dim, nA),
         ))
         # intialize weights with xavier:
         # for m in model:
@@ -117,7 +117,7 @@ class LogUNet(nn.Module):
      
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
         
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
@@ -288,7 +288,7 @@ class OnlineLogUNets(OnlineNets):
             
             if prior is None:
                 prior = 1 / self.nA
-            logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
+            logprior = torch.log(torch.tensor(prior, device=self.device))
             # Get a sample from each net, then sample uniformly over them:
             logus = torch.stack([net.forward(state) for net in self.nets], dim=1)
             logus = logus.squeeze(0)
@@ -523,6 +523,7 @@ class UNet(nn.Module):
         self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
         self.is_tabular = is_tabular(env)
         self.device = device
+        # use a sinusoidal activation:
         model, nS = model_initializer(self.is_image_space,
                                   self.observation_space,
                                   self.nA,
@@ -532,16 +533,18 @@ class UNet(nn.Module):
         # weights_init_(model)
 
         # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softplus())#beta=0.2))
+        model = nn.Sequential(model, nn.Softplus())
         model.to(self.device)
         self.model = model
         self.nS = nS
         
         self.to(device)
+        self.eps = torch.finfo(torch.float32).eps
+
      
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
         
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space)
@@ -578,10 +581,9 @@ class UNet(nn.Module):
                                 
         y = self.model(x)
         # get machine epsilon:
-        eps = torch.finfo(torch.float32).eps
-        assert (y >= 0).all(), f"u must be non-negative. u={y}"
+        # assert (y >= 0).all(), f"u must be non-negative. u={y}"
         # Clamp above eps:
-        y = torch.clamp(y, min=eps)
+        y = torch.clamp(y, min=self.eps)
         return y
         # return x
         
@@ -625,7 +627,7 @@ class PiNet(nn.Module):
      
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
         
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space)
@@ -663,7 +665,6 @@ class PiNet(nn.Module):
         y = self.model(x) / 10
         y = torch.nn.functional.softmax(y, dim=-1)
         
-        
         # get machine epsilon:
         eps = torch.finfo(torch.float32).eps
         assert (y >= 0).all(), f"u must be non-negative. u={y}"
@@ -687,11 +688,11 @@ class SoftQNet(torch.nn.Module):
             self.nS = env.observation_space.shape
             input_dim = self.nS[0]
             model.extend(nn.Sequential(
-                nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
+                nn.Linear(input_dim, hidden_dim),
                 activation(),
-                nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
+                nn.Linear(hidden_dim, hidden_dim),
                 activation(),
-                nn.Linear(hidden_dim, self.nA, dtype=torch.float32),    
+                nn.Linear(hidden_dim, self.nA),    
             ))
 
         model.to(self.device)
@@ -699,7 +700,7 @@ class SoftQNet(torch.nn.Module):
     
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
         
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
