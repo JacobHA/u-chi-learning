@@ -13,7 +13,7 @@ class UAgent(BaseAgent):
     def __init__(self,
                  *args,
                  use_rawlik=False,
-                 prior_update_interval: int = 250_000,
+                 prior_update_interval: int = 1_000,
                  prior_tau: float = 0.9,
                  name: Optional[str] = None,
                  **kwargs,
@@ -198,19 +198,19 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
+    env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
-    env_id = 'BreakoutNoFrameskip-v4'
+    # env_id = 'BreakoutNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import nature_pong as config
+    from hparams import acrobot_u as config
 
-    agent = UAgent(env_id, **config, device='cuda', log_interval=2500,
+    agent = UAgent(env_id, **config, device='cuda', log_interval=500,
                    tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
-                   beta_schedule='none', use_rawlik=False,
+                   beta_schedule='none', use_rawlik=True,
                    beta_end=5)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
