@@ -105,17 +105,17 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
+    env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'ALE/Pong-v5'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
-    env_id = 'MountainCar-v0'
+    # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import cartpole_u as config
+    from hparams import cartpole_u2 as config
     agent = LogUAgent(env_id, **config, device='cpu', log_interval=1500,
-                        tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
+                        tensorboard_log='acro', num_nets=2, render=False,# aggregator='max',
                         scheduler_str='none')#, beta_schedule = 'linear', beta_end=2.4)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()

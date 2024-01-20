@@ -128,6 +128,7 @@ if __name__ == '__main__':
     #looks like levels off around beta=100, beta=0.1
     alphas = np.linspace(1/50, 10, 10)[::-1]
     betas = 1 / alphas
+    betas = np.linspace(1,30,10)
     # pool.map(main, betas)
     # pool.close()
     # pool.join()

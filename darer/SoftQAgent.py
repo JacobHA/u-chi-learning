@@ -110,7 +110,7 @@ def main():
     # env_id = 'ALE/Pong-v5'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
-    # env_id = 'MountainCar-v0'
+    env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
     from hparams import cartpole_hparams2 as config

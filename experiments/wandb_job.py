@@ -1,9 +1,10 @@
+import sys
+sys.path.append("darer")
 from UAgent import UAgent
 from LogUAgent import LogUAgent
 import wandb
 import argparse
-import sys
-sys.path.append("darer")
+
 
 
 env_id = 'CartPole-v1'
@@ -45,7 +46,7 @@ def runner(config=None, run=None, device='cpu'):
     # else:
     #     total_timesteps = 50_000
 
-    total_timesteps = 100_000
+    total_timesteps = 50_000
 
     # check if learning starts ratio is a config key:
     if 'learning_starts_ratio' in config:
@@ -65,6 +66,7 @@ def runner(config=None, run=None, device='cpu'):
                        render=False,
                        # beta_schedule=config.pop('beta_scheduler', 'none'),
                        use_rawlik=False,
+                       device=device,
                        )
         wandb.log({'agent_name': agent.algo_name})
 
@@ -100,6 +102,7 @@ if __name__ == "__main__":
     project = args.project
     sweep_id = args.sweep_id
     env_id = args.env_id
+    device = args.device
     # from disc_envs import get_environment
     # env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 

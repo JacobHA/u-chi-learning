@@ -199,18 +199,19 @@ nature_pong = {
   "batch_size": 128,
   "beta": 0.1,
   "buffer_size": 300_000,
-  "tau": 0.95,
+  "tau": 0.9,
   "train_freq": 4,
   "learning_starts": 50000 ,
-  "learning_rate": 0.0003,#00025 ,
+  "learning_rate": 0.001,#00025 ,
 #   "gradient_momentum": 0.95 ,
 #   "squared_gradient_momentum": 0.95 ,
 #   "min_squared_gradient": 0.01 ,
 #   "action_history_len": 4 ,
 #   "action_repeat": 4 ,
 #   "discount_factor": 0.99 ,
-  "target_update_interval": 10000,
-  'aggregator': 'max'
+  "target_update_interval": 20000,
+  'aggregator': 'max',
+  'hidden_dim': 512,
 }
 
 cartpole_u = {
@@ -230,18 +231,18 @@ cartpole_u = {
 }
 
 cartpole_u2 = {
-    'batch_size': 32,
-    'beta': 0.2,
+    'batch_size': 128,
+    'beta': 0.7,
     'buffer_size': 50_000,
     'hidden_dim': 64,
-    'learning_rate': 0.0005,
-    'learning_starts': 0.05*50_000,
+    'learning_rate': 0.03,
+    'learning_starts': 0.005*50_000,
     'target_update_interval': 100,
-    'tau': 0.5,
-    'tau_theta': 0.63,
-    'theta_update_interval': 400,#750,
-    'train_freq': 5,
-    'gradient_steps': 5,
+    'tau': 0.65,
+    'tau_theta': 0.71,
+    'theta_update_interval': 415,#750,
+    'train_freq': 1,
+    'gradient_steps': 1,
     'aggregator': 'min'
 }
 maze = {
@@ -272,6 +273,22 @@ acrobot_logu = {
     'hidden_dim': 64,
     'theta_update_interval': 4*2,
     'learning_starts': 1_000
+}
+
+acrobot_u = {
+    'beta': 1.4,
+    'batch_size': 32,
+    'buffer_size': 50_000,
+    'gradient_steps': 7,
+    'learning_rate': 1.5e-3,
+    'learning_starts': 0,
+    'target_update_interval': 100,
+    'tau': 0.78,
+    'tau_theta': 0.7,
+    'train_freq': 7,
+    'hidden_dim': 64,
+    'theta_update_interval': 6,
+    'aggregator': 'max'
 }
 
 pendulum_logu = {
@@ -352,6 +369,21 @@ mcar_dqn = {
 
 }
 
+mcar_u = {
+    'batch_size': 128,
+    'beta': 1.05,
+    'buffer_size': 100_000,
+    'gradient_steps': 8,
+    'learning_rate': 0.02,
+    'learning_starts': 0.12*100_000,
+    'target_update_interval': 100,
+    'tau': 0.95,
+    'tau_theta': 0.75,
+    'theta_update_interval': 50,#750,
+    'train_freq': 8,
+    'hidden_dim': 32,
+    'aggregator': 'max'
+}
 # Set up a table of algos/envs to configs:
 cartpoles = {
     'u': cartpole_u2,
@@ -362,6 +394,7 @@ cartpoles = {
 
 acrobots = {
     'logu': acrobot_logu,
+    'u': acrobot_u,
     'ppo': acrobot_ppo,
     'dqn': acrobot_dqn
 }

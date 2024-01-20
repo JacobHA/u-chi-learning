@@ -279,6 +279,7 @@ class OnlineNets():
             torch.nn.utils.clip_grad_norm_(net.parameters(), max_grad_norm)
 
 
+
 class OnlineLogUNets(OnlineNets):
     def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
         super().__init__(list_of_nets, aggregator_fn, is_vector_env)
@@ -336,17 +337,11 @@ class OnlineUNets(OnlineNets):
 
     def choose_action(self, state, greedy=False, prior=None):
         with torch.no_grad():
-            
-            if prior is None:
-                prior = 1 / self.nA
-            # Get a sample from each net, then sample uniformly over them:
-            us = torch.stack([net.forward(state) for net in self.nets], dim=1)
-            us = us.squeeze(0)
-            # Aggregate over the networks:
-            u = self.aggregator_fn(us, dim=0)
-            policy = prior * u
+            u, prior = self.forward(state)
+            policy = (prior * u).squeeze()
             policy /= torch.sum(policy)
-
+            # print(policy)
+            # exit()
             if not self.is_vector_env:
                 if greedy:
                     action_net_idx = torch.argmax(policy, dim=0)
@@ -358,6 +353,19 @@ class OnlineUNets(OnlineNets):
                 raise NotImplementedError
 
             return action
+
+    def forward(self, state):
+        # with torch.no_grad():
+        us, pi0s = torch.stack([net.forward(state) for net in self.nets], dim=-1)
+        us = us.squeeze(0)
+        u = self.aggregator_fn(us, dim=-1)
+        pi0s = pi0s.squeeze(0)
+        # print(pi0s.shape)
+        # print(pi0s)
+        pi0 = torch.mean(pi0s, dim=-1)#, keepdim=True)
+        # print(pi0)
+        
+        return torch.stack([u, pi0])
 
 
 class OnlineSoftQNets(OnlineNets):
@@ -508,10 +516,11 @@ class GaussianPolicy(nn.Module):
     
 
 class UNet(nn.Module):
-    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU, use_rawlik=True):
         super(UNet, self).__init__()
         self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
         self.env = env
+        self.use_rawlik = use_rawlik
         if self.using_vector_env:
             self.observation_space = self.env.single_observation_space
             self.action_space = self.env.single_action_space
@@ -533,9 +542,30 @@ class UNet(nn.Module):
         # weights_init_(model)
 
         # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softplus())
-        model.to(self.device)
-        self.model = model
+        # model = nn.Sequential(model, nn.Softplus())
+        # model.to(self.device)
+        # self.model = model
+        # print(nS)
+        self.features = nn.Sequential(
+            nn.Linear(nS[0], hidden_dim),
+            activation(),
+        )
+
+        self.u_stream = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            activation(),
+            nn.Linear(hidden_dim, self.nA),
+            nn.Softplus()
+        )
+        if self.use_rawlik:
+                
+            self.pi0_stream = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                activation(),
+                nn.Linear(hidden_dim, self.nA),
+                nn.Softmax(dim=-1)
+            )
+
         self.nS = nS
         
         self.to(device)
@@ -579,13 +609,17 @@ class UNet(nn.Module):
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
                                 
-        y = self.model(x)
+        features = self.features(x)
+        u = self.u_stream(features)
+        if self.use_rawlik:
+            pi0 = self.pi0_stream(features)
+        else:
+            pi0 = torch.ones_like(u) / self.nA
         # get machine epsilon:
         # assert (y >= 0).all(), f"u must be non-negative. u={y}"
         # Clamp above eps:
-        y = torch.clamp(y, min=self.eps)
-        return y
-        # return x
+        u = torch.clamp(u, min=self.eps)
+        return torch.stack([u, pi0])
         
     
 class PiNet(nn.Module):
