@@ -1,10 +1,10 @@
 import sys
 sys.path.append("darer")
-
-import argparse
-import wandb
-from LogUAgent import LogUAgent
 from UAgent import UAgent
+from LogUAgent import LogUAgent
+import wandb
+import argparse
+
 
 
 env_id = 'CartPole-v1'
@@ -38,21 +38,35 @@ def runner(config=None, run=None, device='cpu'):
     config['gradient_steps'] = config['train_freq']
     runs_per_hparam = 3
     auc = 0
-    learn_ratio = config.pop('learning_starts_ratio')
+
+    # if env_id in ['LunarLander-v2', 'MountainCar-v0']:
+    #     total_timesteps = 500_000
+    # elif 'NoFrameskip-v4' in env_id:
+    #     total_timesteps = 10_000_000
+    # else:
+    #     total_timesteps = 50_000
+
+    total_timesteps = 50_000
+
+    # check if learning starts ratio is a config key:
+    if 'learning_starts_ratio' in config:
+        learn_ratio = config.pop('learning_starts_ratio')
+        config['learning_starts'] = total_timesteps * learn_ratio
+
+    else:
+        pass
+
+    if 'buffer_size' not in config:
+        config['buffer_size'] = total_timesteps
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
-        if env_id in ['LunarLander-v2', 'MountainCar-v0', 'PongNoFrameskip-v4']:
-            total_timesteps = 500_000
-        else:
-            total_timesteps = 50_000
-        config['buffer_size'] = total_timesteps
-        config['learning_starts'] = total_timesteps * learn_ratio
 
-        agent = UAgent(env_id=env_id, **config, log_interval=500, use_wandb=True,
-                       device=device, render=False,
+        agent = UAgent(env_id, **config, log_interval=500, use_wandb=True,
+                       render=False,
                        # beta_schedule=config.pop('beta_scheduler', 'none'),
-                       num_nets=2, use_rawlik=False,
+                       use_rawlik=False,
+                       device=device,
                        )
         wandb.log({'agent_name': agent.algo_name})
 
@@ -80,13 +94,15 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--entity", type=str, default='jacobhadamczyk')
     parser.add_argument("-p", "--project", type=str,
                         default='u-chi-learning-darer')
-    parser.add_argument("-s", "--sweep_id", type=str, default='odpc2zep')
-    parser.add_argument("-env", "--env_id", type=str, default='CartPole-v1')
+    parser.add_argument("-s", "--sweep_id", type=str, default='27ojzk9g')
+    parser.add_argument("-env", "--env_id", type=str,
+                        default='Acrobot-v1')
     args = parser.parse_args()
     entity = args.entity
     project = args.project
     sweep_id = args.sweep_id
     env_id = args.env_id
+    device = args.device
     # from disc_envs import get_environment
     # env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 

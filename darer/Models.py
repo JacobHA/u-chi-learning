@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical
 import numpy as np
-from stable_baselines3.common.utils import zip_strict
+from stable_baselines3.common.utils import polyak_update, zip_strict
 from gymnasium import spaces
 import gymnasium as gym
 from torch.optim.lr_scheduler import StepLR, MultiplicativeLR, LinearLR, ExponentialLR, LRScheduler
@@ -46,7 +46,7 @@ def model_initializer(is_image_space,
         # calculate resulting shape for FC layers:
         with torch.no_grad():
             rand_inp = observation_space.sample()
-            x = torch.tensor(rand_inp, device=device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(rand_inp, device=device)  # Convert to PyTorch tensor
             x = x.detach()
             x = preprocess_obs(x, observation_space, normalize_images=NORMALIZE_IMG)
             x = x.permute([2,0,1]).unsqueeze(0)
@@ -72,11 +72,11 @@ def model_initializer(is_image_space,
         
         # Use a simple MLP:
         model.extend(nn.Sequential(
-            nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
+            nn.Linear(input_dim, hidden_dim),
             activation(),
-            nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
+            nn.Linear(hidden_dim, hidden_dim),
             activation(),
-            nn.Linear(hidden_dim, nA, dtype=torch.float32),
+            nn.Linear(hidden_dim, nA),
         ))
         # intialize weights with xavier:
         # for m in model:
@@ -117,7 +117,7 @@ class LogUNet(nn.Module):
      
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
         
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
@@ -154,6 +154,8 @@ class LogUNet(nn.Module):
 
         x = self.model(x)
         return x
+        
+   
 
 class EmptyScheduler(LRScheduler):
     def __init__(self, *args, **kwargs):
@@ -231,8 +233,10 @@ class TargetNets():
         with torch.no_grad():
             # zip does not raise an exception if length of parameters does not match.
             for new_params, target_params in zip(online_nets.parameters(), self.parameters()):
-                for new_param, target_param in zip_strict(new_params, target_params):
-                    target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
+                # for new_param, target_param in zip_strict(new_params, target_params):
+                #     target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
+                #TODO: 
+                polyak_update(new_params, target_params, tau)
 
     def parameters(self):
         """
@@ -284,7 +288,7 @@ class OnlineLogUNets(OnlineNets):
             
             if prior is None:
                 prior = 1 / self.nA
-            logprior = torch.log(torch.tensor(prior, device=self.device, dtype=torch.float32))
+            logprior = torch.log(torch.tensor(prior, device=self.device))
             # Get a sample from each net, then sample uniformly over them:
             logus = torch.stack([net.forward(state) for net in self.nets], dim=1)
             logus = logus.squeeze(0)
@@ -432,7 +436,7 @@ class Usa(nn.Module):
         x = self.fc2(x)
         x = self.relu(x)
         x = self.fc3(x)
-        return nn.Softplus()(x)
+        return nn.functional.softplus(x)
 
 
 # Initialize Policy weights
@@ -519,83 +523,7 @@ class UNet(nn.Module):
         self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
         self.is_tabular = is_tabular(env)
         self.device = device
-        model, nS = model_initializer(self.is_image_space,
-                                  self.observation_space,
-                                  self.nA,
-                                  activation,
-                                  hidden_dim,
-                                  self.device)
-        weights_init_(model)
-
-        # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softplus())#beta=0.2))
-        model.to(self.device)
-        self.model = model
-        self.nS = nS
-
-        self.to(device)
-
-    def forward(self, x):
-        if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-
-        # x = x.detach()
-        x = preprocess_obs(x, self.env.observation_space)
-        assert x.dtype == torch.float32, "Input must be a float tensor."
-
-        # Reshape the image:
-        if self.is_image_space:
-            if len(x.shape) == 3:
-                # Single image
-                x = x.permute([2,0,1])
-                x = x.unsqueeze(0)
-            else:
-                # Batch of images
-                x = x.permute([0,3,1,2])
-        elif self.is_tabular:
-            # Single state
-            if x.shape[0] == self.nS:
-                x = x.unsqueeze(0)
-            else:
-                x = x.squeeze(1)
-                pass
-        else:
-            if len(x.shape) > len(self.nS):
-                # in batch mode:
-                pass
-            else:
-                # is a single state
-                if isinstance(x.shape, torch.Size):
-                    if x.shape == self.nS:
-                        x = x.unsqueeze(0)
-                else:
-                    if (x.shape == self.nS).all():
-                        x = x.unsqueeze(0)
-
-        y = self.model(x)
-        # get machine epsilon:
-        eps = torch.finfo(torch.float32).eps
-        assert (y >= 0).all(), f"u must be non-negative. u={y}"
-        return y
-        # return x
-
-
-class PiNet(nn.Module):
-    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
-        super(PiNet, self).__init__()
-        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
-        self.env = env
-        if self.using_vector_env:
-            self.observation_space = self.env.single_observation_space
-            self.action_space = self.env.single_action_space
-        else:
-            self.observation_space = self.env.observation_space
-            self.action_space = self.env.action_space
-        self.nA = self.action_space.n
-        # do the check on an env before wrapping it
-        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
-        self.is_tabular = is_tabular(env)
-        self.device = device
+        # use a sinusoidal activation:
         model, nS = model_initializer(self.is_image_space,
                                   self.observation_space,
                                   self.nA,
@@ -603,23 +531,20 @@ class PiNet(nn.Module):
                                   hidden_dim,
                                   self.device)
         # weights_init_(model)
-        # initialize the net to have zero bias and identical weights:
-        for m in model:
-            if isinstance(m, nn.Linear):
-                nn.init.uniform_(m.weight, a=0, b=1/10)
-                nn.init.constant_(m.bias, 0)
 
         # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softmax(dim=-1))
+        model = nn.Sequential(model, nn.Softplus())
         model.to(self.device)
         self.model = model
         self.nS = nS
         
         self.to(device)
+        self.eps = torch.finfo(torch.float32).eps
+
      
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
         
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space)
@@ -656,11 +581,96 @@ class PiNet(nn.Module):
                                 
         y = self.model(x)
         # get machine epsilon:
+        # assert (y >= 0).all(), f"u must be non-negative. u={y}"
+        # Clamp above eps:
+        y = torch.clamp(y, min=self.eps)
+        return y
+        # return x
+        
+    
+class PiNet(nn.Module):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+        super(PiNet, self).__init__()
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
+        self.env = env
+        if self.using_vector_env:
+            self.observation_space = self.env.single_observation_space
+            self.action_space = self.env.single_action_space
+        else:
+            self.observation_space = self.env.observation_space
+            self.action_space = self.env.action_space
+        self.nA = self.action_space.n
+        # do the check on an env before wrapping it
+        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
+        self.is_tabular = is_tabular(env)
+        self.device = device
+        model, nS = model_initializer(self.is_image_space,
+                                  self.observation_space,
+                                  self.nA,
+                                  activation,
+                                  hidden_dim,
+                                  self.device)
+        # weights_init_(model)
+        # initialize the net to have zero bias and identical weights:
+        # for m in model:
+        #     if isinstance(m, nn.Linear):
+        #         nn.init.uniform_(m.weight, a=0, b=1/10)
+        #         nn.init.constant_(m.bias, 0)
+
+        # Add a softplus layer:
+        # model = nn.Sequential(model, nn.Softmax(dim=-1))
+        model.to(self.device)
+        self.model = model
+        self.nS = nS
+        
+        self.to(device)
+     
+    def forward(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
+        
+        # x = x.detach()
+        x = preprocess_obs(x, self.env.observation_space)
+        assert x.dtype == torch.float32, "Input must be a float tensor."
+
+        # Reshape the image:
+        if self.is_image_space:
+            if len(x.shape) == 3:
+                # Single image
+                x = x.permute([2,0,1])
+                x = x.unsqueeze(0)
+            else:
+                # Batch of images
+                x = x.permute([0,3,1,2])
+        elif self.is_tabular:
+            # Single state
+            if x.shape[0] == self.nS:
+                x = x.unsqueeze(0)
+            else: 
+                x = x.squeeze(1)
+                pass
+        else:
+            if len(x.shape) > len(self.nS):
+                # in batch mode:
+                pass
+            else:
+                # is a single state
+                if isinstance(x.shape, torch.Size):
+                    if x.shape == self.nS:
+                        x = x.unsqueeze(0)
+                else:
+                    if (x.shape == self.nS).all():
+                        x = x.unsqueeze(0)
+                                
+        y = self.model(x) / 10
+        y = torch.nn.functional.softmax(y, dim=-1)
+        
+        # get machine epsilon:
         eps = torch.finfo(torch.float32).eps
         assert (y >= 0).all(), f"u must be non-negative. u={y}"
         return y
         # return x
-
+    
     
 class SoftQNet(torch.nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
@@ -678,11 +688,11 @@ class SoftQNet(torch.nn.Module):
             self.nS = env.observation_space.shape
             input_dim = self.nS[0]
             model.extend(nn.Sequential(
-                nn.Linear(input_dim, hidden_dim, dtype=torch.float32),
+                nn.Linear(input_dim, hidden_dim),
                 activation(),
-                nn.Linear(hidden_dim, hidden_dim, dtype=torch.float32),
+                nn.Linear(hidden_dim, hidden_dim),
                 activation(),
-                nn.Linear(hidden_dim, self.nA, dtype=torch.float32),    
+                nn.Linear(hidden_dim, self.nA),    
             ))
 
         model.to(self.device)
@@ -690,7 +700,7 @@ class SoftQNet(torch.nn.Module):
     
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
         
         # x = x.detach()
         x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)

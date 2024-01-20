@@ -148,6 +148,8 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
             # eval_env = AtariAdapter(eval_env)
             # if render:
             #     eval_env = RecordVideo(eval_env, video_folder='videos')
+            env = FireResetEnv(env)
+            eval_env = FireResetEnv(eval_env)
         else:
             env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
@@ -177,6 +179,24 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
 
     return env, eval_env
 
+# Fire on reset env wrapper:
+class FireResetEnv(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
+        assert len(env.unwrapped.get_action_meanings()) >= 3
+
+    def reset(self):
+        self.env.reset()
+        obs, _, done, _, _ = self.env.step(1)
+        if done:
+            self.env.reset()
+        obs, _, done, _, _ = self.env.step(2)
+        if done:
+            self.env.reset()
+        return obs, {}
+
+
 def log_class_vars(self, logger, params, use_wandb=False):
     # logger = self.logger
     for key, value in params.items():
@@ -188,14 +208,18 @@ def log_class_vars(self, logger, params, use_wandb=False):
         if use_wandb:
             wandb.log({key: value})
 
-def get_eigvec_values(fa, save_name=None):
+def get_eigvec_values(fa, save_name=None, logu=False):
     env = fa.env
     nS = env.observation_space.n
     nA = fa.nA
     eigvec = np.zeros((nS, nA))
     for i in range(nS):
-
-        eigvec[i, :] = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.model.nets],axis=0)
+        if logu:
+            eig_val = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.model.nets], axis=0)
+            eig_val = np.exp(eig_val)
+        else:
+            eig_val = np.mean([logu.forward(i).cpu().detach().numpy() for logu in fa.model.nets], axis=0)
+        eigvec[i, :] = eig_val
 
     if save_name is not None:
         np.save(f'{save_name}.npy', eigvec)

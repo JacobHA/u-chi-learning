@@ -69,14 +69,15 @@ class BaseAgent:
                  tau: float = 1.0,
                  theta_update_interval: int = 1,
                  hidden_dim: int = 64,
-                 num_nets: int = 1,
+                 num_nets: int = 2,
                  tau_theta: float = 0.995,
                  gradient_steps: int = 1,
-                 train_freq: Union[int, Tuple[int, str]] = 4,
+                 train_freq: Union[int, Tuple[int, str]] = 1,
                  max_grad_norm: float = 10,
                  learning_starts=5_000,
                  aggregator: str = 'max',
-                 loss_fn: torch.nn.modules.loss = torch.nn.MSELoss(),#torch.nn.HuberLoss(),
+                 # torch.nn.functional.HuberLoss(),
+                 loss_fn: torch.nn.modules.loss = torch.nn.functional.mse_loss,
                  device: Union[torch.device, str] = "auto",
                  render: bool = False,
                  tensorboard_log: Optional[str] = None,
@@ -143,6 +144,8 @@ class BaseAgent:
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
         self.train_this_step = False
+        # Track the rewards over time:
+        self.step_to_avg_eval_rwd = {}
 
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
                                           observation_space=self.env.observation_space,
@@ -162,7 +165,7 @@ class BaseAgent:
         self._n_updates = 0
         self.env_steps = 0
         # self._initialize_networks()
-        self.loss_fn = F.smooth_l1_loss if loss_fn is None else loss_fn
+        self.loss_fn = loss_fn
 
     def log_hparams(self, logger):
         # Log the hparams:
@@ -202,7 +205,6 @@ class BaseAgent:
 
             loss = self.gradient_descent(batch, grad_step)
 
-            self.logger.record("train/loss", loss.item())
             self.optimizers.zero_grad()
 
             # Clip gradient norm
@@ -212,12 +214,12 @@ class BaseAgent:
 
         # TODO: Clamp based on reward range
         # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
+        self.new_thetas = torch.clamp(self.new_thetas, min=-50, max=50)
         # Log both theta values:
         for idx, new_theta in enumerate(self.new_thetas.T):
             self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
         new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)
         # new_theta = torch.max(self.new_thetas.mean(dim=0), dim=0)[0]
-
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
@@ -288,7 +290,6 @@ class BaseAgent:
                     (self.train_freq != -1 and self.env_steps %
                      self.train_freq == 0)
 
-
                 # Add the transition to the replay buffer:
                 sarsa = (state, next_state, action, reward, terminated)
                 self.replay_buffer.add(*sarsa, [infos])
@@ -301,23 +302,25 @@ class BaseAgent:
                         if (self.avg_eval_rwd < stop_reward):
                             wandb.log({'early_stop': True})
                             return True
-                
+
             if terminated:
                 # self.rollout_reward += 0
                 avg_ep_len += 1
             if done:
                 self.rollout_reward
                 self.logger.record("rollout/ep_reward", self.rollout_reward)
-                free_energy = (self.rollout_reward + 1/self.beta * entropy) 
+                free_energy = (self.rollout_reward + 1/self.beta * entropy)
                 try:
                     free_energy = free_energy.item()
                 except:
                     pass
                 # entropy = 0
-                self.logger.record("rollout/neg_free_energy", free_energy / avg_ep_len)
+                self.logger.record("rollout/neg_free_energy",
+                                   free_energy / avg_ep_len)
                 self.logger.record("rollout/avg_entropy", entropy / avg_ep_len)
                 self.logger.record("rollout/avg_episode_length", avg_ep_len)
-                self.logger.record("rollout/avg_reward_rate", self.rollout_reward / avg_ep_len)
+                self.logger.record("rollout/avg_reward_rate",
+                                   self.rollout_reward / avg_ep_len)
                 if self.use_wandb:
                     wandb.log({'rollout/reward': self.rollout_reward})
                 if isinstance(self.env.action_space, gym.spaces.Discrete):
@@ -367,7 +370,14 @@ class BaseAgent:
 
         if self.is_tabular:
             # Record the error in the eigenvector:
-            fa_eigvec = get_eigvec_values(self).flatten()
+            if self.algo_name == 'LogU':
+                log = True
+            elif self.algo_name == 'U':
+                log = False
+            else:
+                raise ValueError(
+                    f"Unknown agent name: {self.name}. Use U/LogU (defaults).")
+            fa_eigvec = get_eigvec_values(self, logu=log).flatten()
             err = np.abs(self.true_eigvec - fa_eigvec).max()
             self.logger.record('train/eigvec_err', err.item())
 
@@ -419,6 +429,7 @@ class BaseAgent:
         self.eval_time = eval_time
         self.eval_fps = eval_fps
         self.avg_eval_rwd = avg_reward
+        self.step_to_avg_eval_rwd[self.env_steps] = avg_reward
         return avg_reward
 
     def _beta_scheduler(self, beta_schedule, total_timesteps):
