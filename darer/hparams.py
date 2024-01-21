@@ -196,13 +196,13 @@ pong_logu0 = {
 }
 
 nature_pong = {
-  "batch_size": 128,
-  "beta": 0.1,
+  "batch_size": 64,
+  "beta": 0.05,
   "buffer_size": 300_000,
-  "tau": 0.9,
+  "tau": 0.95,
   "train_freq": 4,
   "learning_starts": 50000 ,
-  "learning_rate": 0.001,#00025 ,
+  "learning_rate": 0.0005,#00025 ,
 #   "gradient_momentum": 0.95 ,
 #   "squared_gradient_momentum": 0.95 ,
 #   "min_squared_gradient": 0.01 ,
@@ -210,6 +210,7 @@ nature_pong = {
 #   "action_repeat": 4 ,
 #   "discount_factor": 0.99 ,
   "target_update_interval": 20000,
+  "theta_update_interval": 100,
   'aggregator': 'max',
   'hidden_dim': 512,
 }

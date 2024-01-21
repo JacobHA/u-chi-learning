@@ -59,7 +59,7 @@ def model_initializer(is_image_space,
         model.extend(nn.Sequential(
             nn.Linear(flat_size, hidden_dim),
             activation(),
-            nn.Linear(hidden_dim, nA),
+            nn.Linear(hidden_dim, hidden_dim),
         ))
 
     else:
@@ -75,8 +75,8 @@ def model_initializer(is_image_space,
             nn.Linear(input_dim, hidden_dim),
             activation(),
             nn.Linear(hidden_dim, hidden_dim),
-            activation(),
-            nn.Linear(hidden_dim, nA),
+            # activation(),
+            # nn.Linear(hidden_dim, nA),
         ))
         # intialize weights with xavier:
         # for m in model:
@@ -523,19 +523,35 @@ class UNet(nn.Module):
         self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
         self.is_tabular = is_tabular(env)
         self.device = device
+        self.activation = activation
+        self.hidden_dim = hidden_dim
         # use a sinusoidal activation:
-        model, nS = model_initializer(self.is_image_space,
+        features, nS = model_initializer(self.is_image_space,
                                   self.observation_space,
                                   self.nA,
-                                  activation,
-                                  hidden_dim,
+                                  self.activation,
+                                  self.hidden_dim,
                                   self.device)
         # weights_init_(model)
 
         # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softplus())
-        model.to(self.device)
-        self.model = model
+        # model = nn.Sequential(model, nn.Softplus())
+        self.state_value = nn.Sequential(
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            self.activation(),
+            nn.Linear(self.hidden_dim, 1),
+            nn.Softplus(),
+        )
+
+        self.action_value = nn.Sequential(
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            self.activation(),
+            nn.Linear(self.hidden_dim, self.nA),
+            nn.Softplus(),
+        )
+
+        features.to(self.device)
+        self.features = features
         self.nS = nS
         
         self.to(device)
@@ -579,7 +595,19 @@ class UNet(nn.Module):
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
                                 
-        y = self.model(x)
+        # print(x)
+        # print(x.shape)
+        features = self.features(x)
+        # print(features.shape)
+        # print(features.shape)
+        # features = features.view(features.size(0), -1)
+        # print(features.shape)
+        state_value = self.state_value(features)
+        action_value = self.action_value(features)
+        # print(action_value.shape)
+        y = action_value * state_value
+        # y = y.T
+        # print(y.shape)
         # get machine epsilon:
         # assert (y >= 0).all(), f"u must be non-negative. u={y}"
         # Clamp above eps:
@@ -618,7 +646,10 @@ class PiNet(nn.Module):
         #         nn.init.constant_(m.bias, 0)
 
         # Add a softplus layer:
-        # model = nn.Sequential(model, nn.Softmax(dim=-1))
+        model = nn.Sequential(model, 
+                    activation(),
+                    nn.Linear(hidden_dim, self.nA),
+                    nn.Softmax(dim=-1))
         model.to(self.device)
         self.model = model
         self.nS = nS
