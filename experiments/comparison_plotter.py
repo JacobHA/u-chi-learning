@@ -8,7 +8,7 @@ from tbparse import SummaryReader
 
 metrics_to_ylabel = {
     'eval/avg_reward': 'Average Evaluation Reward',
-    'rollout/reward': 'Average Rollout Reward',
+    'rollout/ep_reward': 'Average Rollout Reward',
     'train/theta': r'Reward-rate, $\theta$',
     'train/avg logu': r'Average of $\log u(s,a)$',
 }
@@ -69,7 +69,10 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             for algo, runs in algo_runs.items():
                 metric_data.loc[metric_data['algo'] == algo, 'algo'] = f"{algo} ({runs} runs)"
             sns.lineplot(data=metric_data, x='step', y='value', hue='algo')
-            name = metrics_to_ylabel[metric]
+            try:
+                name = metrics_to_ylabel[metric]
+            except KeyError:
+                print("Add metric to metrics_to_ylabel dict.")
             
             plt.legend()
 
@@ -84,10 +87,14 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             print("No data to plot.")
 
 if __name__ == "__main__":
-    # folder = 'experiments/ft/Acrobot-v1'
-    folder = 'experiments/ft/CartPole-v1'
+    folder = 'experiments/ft/Acrobot-v1'
+    # folder = 'experiments/ft/CartPole-v1'
 
-    plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Umean'])
-    # plotter(folder=folder, metrics=['rollout/ep_reward_mean'])
+    # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
+    # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
+
+    plotter(folder=folder, metrics=['eval/avg_reward'])
+    plotter(folder=folder, metrics=['rollout/ep_reward'])
+
     # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
     # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])

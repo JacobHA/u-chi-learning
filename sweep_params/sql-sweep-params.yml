@@ -35,8 +35,10 @@ parameters:
     distribution: uniform
     max: 0.1
     min: 0.0
-  aggregator:
-    values: [min, max, mean]
   hidden_dim:
     values: [32, 64, 128]
+  gamma:
+    distribution: uniform
+    max: 1
+    min: 0.95
 program: wandb_job.py
