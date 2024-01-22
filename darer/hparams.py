@@ -7,7 +7,7 @@ lunar_ppo = {
     # 'learning_rate': 0.001,
     'n_epochs': 4,
     'n_steps': 1024,
-    'hidden_dim': 256, # this value might be wrong
+    'hidden_dim': 256, # this value might be
 }
 
 lunar_dqn = {

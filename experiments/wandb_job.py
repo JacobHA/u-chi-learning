@@ -100,7 +100,7 @@ def wandb_agent():
 
 
 if __name__ == "__main__":
-    algo_to_sweep_id = {'u': '27ojzk9g',
+    algo_to_sweep_id = {'u': '6301y2oc',
                          'sql': 'frb1998p'}
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
