@@ -154,13 +154,14 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
             env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
                 wrappers=[
-                    lambda e: AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
+                    lambda e: FrameStack(AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, frame_skip=1, noop_max=30), framestack_k),
+                    lambda e: PermuteAtariObs(e) if permute_dims else e
                 ])
 
             eval_env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
                 wrappers=[
-                    lambda e: AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
+                    lambda e: PermuteAtariObs(FrameStack(AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, frame_skip=1, noop_max=30), framestack_k))
                 ])
 
     elif isinstance(env_id, gym.Env):

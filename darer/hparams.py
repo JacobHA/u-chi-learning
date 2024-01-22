@@ -106,6 +106,22 @@ lunar_logu = {
     'train_freq': 1,
     'learning_starts': 5_000
 }
+
+lunar_u = {
+    'beta': 10/40,
+    'batch_size': 512,
+    'buffer_size': 100_000,
+    'gradient_steps': 1,
+    'learning_rate': 5.5e-4,
+    'target_update_interval': 2000,
+    'theta_update_interval': 1,
+    'tau': 0.25,
+    'tau_theta': 0.7,
+    'hidden_dim': 256,
+    'train_freq': 1,
+    'learning_starts': 5_000
+}
+
 sac_hparams2 = {
     'beta': 80,
     'batch_size': 32,
@@ -364,7 +380,6 @@ mcar_dqn = {
     'learning_rate': 0.004,
     'learning_starts': 1000,
     'target_update_interval': 600,
-    'learning_starts': 1000,
     'train_freq': 16,
 
 }
@@ -407,6 +422,7 @@ mcars = {
 
 lunars = {
     'logu': lunar_logu,
+    'u': lunar_u,
     'ppo': lunar_ppo,
     'dqn': lunar_dqn
 }

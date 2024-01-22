@@ -81,13 +81,16 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             plt.xlabel('Environment Steps')
             plt.ylabel(name)
 
-            plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}.png"))
+            save_path = os.path.join(folder, f"{metric.split('/')[-1]}.png")
+            plt.savefig(save_path)
+            print(f"saved to {save_path}")
             plt.close()
         else:
             print("No data to plot.")
 
 if __name__ == "__main__":
-    folder = 'experiments/ft/Acrobot-v1'
+    exp = "LunarLander-v2"
+    folder = f'experiments/ft/{exp}'
     # folder = 'experiments/ft/CartPole-v1'
 
     # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
