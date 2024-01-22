@@ -13,12 +13,14 @@ class UAgent(BaseAgent):
     def __init__(self,
                  *args,
                  use_rawlik=False,
-                 prior_update_interval: int = 5_000,
-                 prior_tau: float = 0.25,
+                 prior_update_interval: int = 1_000,
+                 prior_tau: float = 0.9,
                  name: Optional[str] = None,
                  **kwargs,
                  ):
         self.algo_name = 'U' if name is None else name
+        if use_rawlik:
+            self.algo_name += '-rawlik'
         self.prior_update_interval = prior_update_interval
         self.prior_tau = prior_tau
         self.use_rawlik = use_rawlik
@@ -139,9 +141,11 @@ class UAgent(BaseAgent):
             in_log = online_chi / online_curr_u
             # in_log = torch.clamp(in_log, min=1e-6, max=1e6)
             # clamp to a tolerable range:
-            batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
+            # batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
+            batch_rho = torch.mean(torch.exp(self.beta * rewards.squeeze(-1)) * in_log, dim=1)
+
             # batch_theta = torch.clamp(batch_theta, min=-30, max=30)
-            self.new_thetas[grad_step, :] = batch_theta
+            self.new_thetas[grad_step, :] = -torch.log(batch_rho) / self.beta
             
             target_next_us = [target_u(next_states) for target_u in self.target_us]
 
@@ -194,25 +198,25 @@ def main():
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
-    # env_id = 'Acrobot-v1'
+    env_id = 'Acrobot-v1'
     # env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
-    env_id = 'BreakoutNoFrameskip-v4'
+    # env_id = 'BreakoutNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import nature_pong as config
+    from hparams import acrobot_u as config
 
-    agent = UAgent(env_id, **config, device='cuda', log_interval=5000,
+    agent = UAgent(env_id, **config, device='cuda', log_interval=500,
                    tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
-                   beta_schedule='none', use_rawlik=False,
+                   beta_schedule='none', use_rawlik=True,
                    beta_end=5)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=1_500_000)
+    agent.learn(total_timesteps=10_000_000)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 

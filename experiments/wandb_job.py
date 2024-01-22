@@ -1,10 +1,10 @@
+import sys
+sys.path.append("darer")
 from UAgent import UAgent
 from LogUAgent import LogUAgent
 from SoftQAgent import SoftQAgent
 import wandb
 import argparse
-import sys
-sys.path.append("darer")
 
 LOG_INTERVAL = 500
 

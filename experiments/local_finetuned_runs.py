@@ -37,9 +37,14 @@ def runner(algo, device):
     config = configs[algo]
     algo = str_to_algo[algo]
 
+    rawlik_hparams = {'use_rawlik': True,
+                    'prior_update_interval': 1_000,
+                    'prior_tau': 0.90,
+                        }
+
     model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=1000)#, name='Ured')#, aggregator='max')
-    model.learn(total_timesteps=50_000)
+                 device=device, log_interval=1000, **rawlik_hparams)#, aggregator='max')
+    model.learn(total_timesteps=250_000)
 
 
 if __name__ == '__main__':
