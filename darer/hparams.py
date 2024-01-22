@@ -249,12 +249,12 @@ maze = {
     'beta': 0.5,
     'buffer_size': 100_000,
     'hidden_dim': 64,
-    'learning_rate': 8e-4,
-    'learning_starts': 0.2*50_000,
+    'learning_rate': 0.005,
+    'learning_starts': 0.4*50_000,
     'target_update_interval': 500,
     'tau': 0.9,
     'tau_theta': 0.9,
-    'theta_update_interval': 100,#750,
+    'theta_update_interval': 200,#750,
     'train_freq': 1,
     'aggregator': 'max'
 }
