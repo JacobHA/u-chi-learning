@@ -16,9 +16,11 @@ all_metrics = [
     'rollout/reward', 'eval/avg_reward', 'train/theta', 'train/avg logu'
 ]
 sns.set_theme(style="darkgrid")
+# use poster settings:
+sns.set_context("poster")
 
 def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
-            xlim=None, ylim=None):
+            xlim=None, ylim=None, title=None):
 
     algo_data = pd.DataFrame()
     subfolders = glob(os.path.join(folder, '*'))
@@ -59,7 +61,8 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 
     # Now, loop over all the metrics and plot them individually:
     for metric in metrics:
-        plt.figure()
+        plt.figure(figsize=(12, 8))
+        plt.title(title)
         # Filter the data to only include this metric:
         metric_data = algo_data[algo_data['tag'] == metric]
         if not metric_data.empty:
@@ -74,13 +77,19 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             except KeyError:
                 print("Add metric to metrics_to_ylabel dict.")
             
-            plt.legend()
-
+            # Put legend under the plot outside:
+            plt.legend(loc='lower right', ncol=1, borderaxespad=0.)
+            # strip the title from the values in legend:
+            handles, labels = plt.gca().get_legend_handles_labels()
+            labels = [label.split(title+'-')[-1] for label in labels]
+            plt.gca().legend(handles=handles, labels=labels)
+                
             plt.xlim(xlim)
             plt.ylim(ylim)
             plt.xlabel('Environment Steps')
             plt.ylabel(name)
 
+            plt.tight_layout()
             plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}.png"))
             plt.close()
         else:
@@ -89,12 +98,12 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 if __name__ == "__main__":
     folder = 'experiments/ft/Acrobot-v1'
     # folder = 'experiments/ft/CartPole-v1'
-    folder = 'experiments/ft/MountainCar-v0'
+    # folder = 'experiments/ft/MountainCar-v0'
 
     # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
     # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
-    plotter(folder=folder, metrics=['eval/avg_reward'])
+    plotter(folder=folder, metrics=['eval/avg_reward'], title=folder.split('/')[-1])
     plotter(folder=folder, metrics=['rollout/ep_reward'])
 
     # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
