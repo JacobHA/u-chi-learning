@@ -89,6 +89,7 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 if __name__ == "__main__":
     folder = 'experiments/ft/Acrobot-v1'
     # folder = 'experiments/ft/CartPole-v1'
+    folder = 'experiments/ft/MountainCar-v0'
 
     # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
     # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
