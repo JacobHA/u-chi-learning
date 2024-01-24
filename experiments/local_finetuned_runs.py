@@ -38,8 +38,8 @@ def runner(algo, device):
     algo = str_to_algo[algo]
 
     rawlik_hparams = {'use_rawlik': False,
-                    'prior_update_interval': 5_000,
-                    'prior_tau': 0.99,
+                    'prior_update_interval': 1_000,
+                    'prior_tau': 0.90,
                         }
 
     model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',

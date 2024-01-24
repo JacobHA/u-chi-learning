@@ -75,7 +75,7 @@ class UAgent(BaseAgent):
             pi_by_pi0 = self.aggregator_fn(torch.stack(
                 [u(state) for u in self.online_us], dim=0), dim=0)
             # kl = pi_by_pi0[0][chosen_action] * pi0[chosen_action] * torch.log(pi_by_pi0[0][chosen_action])
-            kl = (pi_by_pi0[0] * pi0* torch.log(pi_by_pi0[0])).sum()
+            kl = (pi_by_pi0[0] * pi0 * torch.log(pi_by_pi0[0])).sum()
 
             kl = float(kl.item())
             # chosen_action = self.env.action_space.sample()
