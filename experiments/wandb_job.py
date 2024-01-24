@@ -28,7 +28,7 @@ env_to_early_stop_dict = {
 env_id_to_timesteps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 50_000,
-    'LunarLander': 500_000,
+    'LunarLander-v2': 500_000,
     'PongNoFrameskip-v4': 1_000_000,
     'MountainCar-v0': 100_000,
 
