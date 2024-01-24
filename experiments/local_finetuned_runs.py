@@ -11,7 +11,7 @@ import time
 env = 'CartPole-v1'
 # env = 'LunarLander-v2'
 # env = 'Acrobot-v1'
-# env = 'MountainCar-v0'
+env = 'MountainCar-v0'
 
 str_to_algo = {
     'u': UAgent,
@@ -44,7 +44,7 @@ def runner(algo, device):
 
     model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
                  device=device, log_interval=1000, **rawlik_hparams)#, aggregator='max')
-    model.learn(total_timesteps=250_000)
+    model.learn(total_timesteps=100_000)
 
 
 if __name__ == '__main__':

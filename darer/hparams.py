@@ -196,13 +196,13 @@ pong_logu0 = {
 }
 
 nature_pong = {
-  "batch_size": 128,
+  "batch_size": 32,
   "beta": 0.1,
   "buffer_size": 300_000,
-  "tau": 0.9,
+  "tau": 0.95,
   "train_freq": 4,
   "learning_starts": 50000 ,
-  "learning_rate": 0.001,#00025 ,
+  "learning_rate": 0.0001,#00025 ,
 #   "gradient_momentum": 0.95 ,
 #   "squared_gradient_momentum": 0.95 ,
 #   "min_squared_gradient": 0.01 ,
@@ -369,16 +369,32 @@ mcar_dqn = {
 
 }
 
-mcar_u = {
+mcar_u0 = {
     'batch_size': 128,
-    'beta': 1.05,
+    'beta': 1.75,
     'buffer_size': 100_000,
     'gradient_steps': 8,
-    'learning_rate': 0.02,
-    'learning_starts': 0.12*100_000,
-    'target_update_interval': 100,
-    'tau': 0.95,
-    'tau_theta': 0.75,
+    'learning_rate': 0.0003,
+    'learning_starts': 0.06*100_000,
+    'target_update_interval': 50,
+    'tau': 0.67,
+    'tau_theta': 0.65,
+    'theta_update_interval': 50,#750,
+    'train_freq': 8,
+    'hidden_dim': 32,
+    'aggregator': 'max'
+}
+
+mcar_u = {
+    'batch_size': 32,
+    'beta': 1.13,
+    'buffer_size': 100_000,
+    'gradient_steps': 8,
+    'learning_rate': 0.0033,
+    'learning_starts': 0.09*100_000,
+    'target_update_interval': 10,
+    'tau': 0.78,
+    'tau_theta': 0.52,
     'theta_update_interval': 50,#750,
     'train_freq': 8,
     'hidden_dim': 32,
@@ -400,6 +416,7 @@ acrobots = {
 }
 
 mcars = {
+    'u': mcar_u,
     'logu': mcar_hparams,
     # 'ppo': mcar_ppo,
     'dqn': mcar_dqn,
