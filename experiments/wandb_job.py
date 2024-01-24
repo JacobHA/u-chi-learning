@@ -71,7 +71,9 @@ def runner(config=None, run=None):
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
         if algo == 'u':
-
+            # config.pop('device')
+            # config.pop('env_id')
+            # config['buffer_size'] = 300_000
             agent = UAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
                         render=False,
                         use_rawlik=False,
@@ -116,6 +118,8 @@ if __name__ == "__main__":
     project = args.project
     algo = args.algo
     sweep_id = algo_to_sweep_id[algo]
+    if 'NoFrameskip' in args.env_id:
+        sweep_id = '5gwi5rfx'
     env_id = args.env_id
     device = args.device
     # from disc_envs import get_environment
