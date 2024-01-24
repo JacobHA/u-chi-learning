@@ -134,7 +134,7 @@ class UAgent(BaseAgent):
                 target_priora = torch.ones(self.batch_size, self.nA, device=self.device) * (1/self.nA)
                 target_prior_next = torch.ones(self.batch_size, self.nA, device=self.device) * (1/self.nA)
 
-
+            # TODO: Test target vs online nets for this calculation:
             online_chi = (
                 online_u_next * target_prior_next.repeat(self.num_nets, 1, 1)).sum(dim=-1)
             online_curr_u = online_curr_u.squeeze(-1)
