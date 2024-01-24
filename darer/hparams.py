@@ -369,9 +369,9 @@ mcar_dqn = {
 
 }
 
-mcar_u0 = {
+mcar_u = {
     'batch_size': 128,
-    'beta': 1.75,
+    'beta': 1.75 / 10,
     'buffer_size': 100_000,
     'gradient_steps': 8,
     'learning_rate': 0.0003,
@@ -385,24 +385,41 @@ mcar_u0 = {
     'aggregator': 'max'
 }
 
-mcar_u = {
-    'batch_size': 32,
-    'beta': 1.13,
+# mcar_u1 = {
+#     'batch_size': 32,
+#     'beta': 1.13,
+#     'buffer_size': 100_000,
+#     'gradient_steps': 8,
+#     'learning_rate': 0.0033,
+#     'learning_starts': 0.09*100_000,
+#     'target_update_interval': 10,
+#     'tau': 0.78,
+#     'tau_theta': 0.52,
+#     'theta_update_interval': 50,#750,
+#     'train_freq': 8,
+#     'hidden_dim': 32,
+#     'aggregator': 'max'
+# }
+
+mcar_u2 = {
+    'batch_size': 64,
+    'beta': 0.46,
     'buffer_size': 100_000,
-    'gradient_steps': 8,
-    'learning_rate': 0.0033,
-    'learning_starts': 0.09*100_000,
+    'gradient_steps': 4,
+    'learning_rate': 0.002,
+    'learning_starts': 0.008*100_000,
     'target_update_interval': 10,
-    'tau': 0.78,
-    'tau_theta': 0.52,
-    'theta_update_interval': 50,#750,
-    'train_freq': 8,
-    'hidden_dim': 32,
+    'tau': 0.68,
+    'tau_theta': 0.76,
+    'theta_update_interval': 500,#750,
+    'train_freq': 4,
+    'hidden_dim': 64,
     'aggregator': 'max'
 }
+
 # Set up a table of algos/envs to configs:
 cartpoles = {
-    'u': cartpole_u2,
+    'u': mcar_u, #cartpole_u2,
     'logu': cartpole_hparams2,
     'dqn': cartpole_dqn,
     'ppo': cartpole_ppo
