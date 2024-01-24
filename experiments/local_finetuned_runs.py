@@ -37,7 +37,7 @@ def runner(algo, device):
     config = configs[algo]
     algo = str_to_algo[algo]
 
-    rawlik_hparams = {'use_rawlik': True,
+    rawlik_hparams = {'use_rawlik': False,
                     'prior_update_interval': 1_000,
                     'prior_tau': 0.90,
                         }
