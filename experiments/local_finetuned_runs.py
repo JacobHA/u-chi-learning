@@ -8,10 +8,10 @@ from UAgent import UAgent
 from hparams import *
 import time
 
-env = 'CartPole-v1'
+# env = 'CartPole-v1'
 # env = 'LunarLander-v2'
-# env = 'Acrobot-v1'
-env = 'MountainCar-v0'
+env = 'Acrobot-v1'
+# env = 'MountainCar-v0'
 
 str_to_algo = {
     'u': UAgent,
@@ -37,14 +37,14 @@ def runner(algo, device):
     config = configs[algo]
     algo = str_to_algo[algo]
 
-    rawlik_hparams = {'use_rawlik': True,
-                    'prior_update_interval': 1_000,
-                    'prior_tau': 0.90,
+    rawlik_hparams = {'use_rawlik': False,
+                    'prior_update_interval': 5_000,
+                    'prior_tau': 0.99,
                         }
 
     model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=1000, **rawlik_hparams)#, aggregator='max')
-    model.learn(total_timesteps=100_000)
+                 device=device, log_interval=1000, **rawlik_hparams, name='irred')#, aggregator='max')
+    model.learn(total_timesteps=50_000)
 
 
 if __name__ == '__main__':
