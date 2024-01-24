@@ -18,6 +18,8 @@ all_metrics = [
 sns.set_theme(style="darkgrid")
 # use poster settings:
 sns.set_context("poster")
+# Make font color black:
+plt.rcParams['text.color'] = 'black'
 
 def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             xlim=None, ylim=None, title=None):
@@ -32,7 +34,7 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             continue
 
         algo_name = os.path.basename(subfolder).split('_')[0]
-        if algo_name in exclude_algos:
+        if algo_name in exclude_algos or 'red' not in algo_name:
             print(f"Skipping {algo_name}, in exclude_algos.")
             continue
         
@@ -90,7 +92,7 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             plt.ylabel(name)
 
             plt.tight_layout()
-            plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}.png"))
+            plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}{folder}.png"), dpi=300)
             plt.close()
         else:
             print("No data to plot.")
@@ -98,13 +100,14 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 if __name__ == "__main__":
     folder = 'experiments/ft/Acrobot-v1'
     # folder = 'experiments/ft/CartPole-v1'
-    # folder = 'experiments/ft/MountainCar-v0'
+    folder = 'experiments/ft/MountainCar-v0'
+    folder = 'experiments/ablations/Acrobot-v1'
 
     # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
     # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
     plotter(folder=folder, metrics=['eval/avg_reward'], title=folder.split('/')[-1])
-    plotter(folder=folder, metrics=['rollout/ep_reward'])
+    # plotter(folder=folder, metrics=['rollout/ep_reward'])
 
     # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
     # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])
