@@ -96,6 +96,9 @@ if __name__ == "__main__":
     # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
     # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
+    # import cProfile
+    # cProfile.run("plotter(folder=folder, metrics=['eval/avg_reward'])", sort="cumtime")
+
     plotter(folder=folder, metrics=['eval/avg_reward'])
     plotter(folder=folder, metrics=['rollout/ep_reward'])
 

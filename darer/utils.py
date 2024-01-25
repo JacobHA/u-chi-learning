@@ -264,9 +264,9 @@ def sample_wandb_hyperparams(params, int_hparams=None):
                 sample = np.exp(random.uniform(emin, emax))
                 sampled[k] = sample
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"Distribution sampling not implemented for {v['distribution']}, required by {k}")
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Unsupported hparam sampling range format in {k}")
         if k in int_hparams:
             sampled[k] = int(sampled[k])
     return sampled

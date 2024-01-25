@@ -1,27 +1,26 @@
 import argparse
 import wandb
 import yaml
-import numpy as np
-import random
 import copy
 import sys
+import traceback as tb
 sys.path.append('darer')
-from LogUAgent import main
 
 from utils import sample_wandb_hyperparams
+from local_finetuned_runs import runner
 
 
-exp_to_config = {
-    # all of the 106 atari environments + hyperparameters. This will take a long time to train.
-    "atari-v0": "logu-atari-full-sweep.yml",
-    # three of the atari environments
-    "atari-mini": "logu-atari-mini-sweep.yml",
-    # pong only:
-    "atari-pong": "logu-atari-pong-sweep.yml"
+algo_to_config = {
+    "ppo": "ppo-classic.yml",
+    "u": "u-classic.yml",
+    "u-norwl": "u-classic-norwl.yml",  # rawlik disabled
 }
+
 int_hparams = {'batch_size', 'buffer_size', 'gradient_steps',
                'target_update_interval', 'theta_update_interval'}
 device = None
+experiment_name = None
+algo_str = None
 
 
 def get_sweep_config(sweepcfg, default_config, project_name):
@@ -34,7 +33,7 @@ def get_sweep_config(sweepcfg, default_config, project_name):
     return cfg
 
 
-def wandb_train(local_cfg=None):
+def wandb_train(local_cfg=None, env_id=None, n_hparam_runs=None):
     """:param local_cfg: pass config sweep if running locally to sample without wandb"""
     wandb_kwargs = {"project": project, "group": experiment_name}
     if local_cfg:
@@ -43,10 +42,12 @@ def wandb_train(local_cfg=None):
         local_cfg["parameters"] = sampled_params
         print(f"locally sampled params: {sampled_params}")
         wandb_kwargs['config'] = local_cfg
-    with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
-        config = wandb.config.as_dict()
-        main(config['parameters'], total_timesteps=1_200_000, n_envs=1, log_dir='local-pong',
-             device=device, render=False)
+    for i in range(n_hparam_runs):
+        with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
+            config = wandb.config.as_dict()
+            if not env_id:
+                env_id = config['parameters'].pop('env_id')
+            runner(env_id, algo_str, device, tensorboard_log=f'local-{algo_str}-{env_id}', config=config['parameters'])
 
 
 if __name__ == "__main__":
@@ -55,20 +56,22 @@ if __name__ == "__main__":
     args.add_argument("--n_runs", type=int, default=100)
     args.add_argument("--proj", type=str, default="u-chi-learning-test")
     args.add_argument("--local-wandb", type=bool, default=True)
-    args.add_argument("--exp-name", type=str, default="atari-pong")
+    args.add_argument("--exp-name", type=str, default="classic-bench")
+    args.add_argument("--algo", type=str, default="u-norwl")
     args.add_argument("--device", type=str, default='cuda')
+    args.add_argument("--n-hparam-runs", type=int, default=5, help="number of times to re-train with a single set of hyperparameters")
+    args.add_argument("--env_id", type=str, default=None, help="env id to run. If none, will sweep over envs in the experiment config")
     args = args.parse_args()
     project = args.proj
+    algo_str = args.algo
     experiment_name = args.exp_name
+    n_hparam_runs = args.n_hparam_runs
+    env_id = args.env_id
     device = args.device
-    # load the default config
-    with open("sweep_params/logu-atari-default.yml", "r") as f:
-        default_config = yaml.load(f, yaml.SafeLoader)
-    # load the experiment config
-    with open(f"sweep_params/{exp_to_config[experiment_name]}", "r") as f:
+    with open(f"sweep_params/{algo_to_config[algo_str]}", "r") as f:
         expsweepcfg = yaml.load(f, yaml.SafeLoader)
     # combine the two
-    sweepcfg = get_sweep_config(expsweepcfg, default_config, project)
+    sweepcfg = get_sweep_config(expsweepcfg, expsweepcfg, project)
     # generate a new sweep if one was not passed as an argument
     if args.sweep is None and not args.local_wandb:
         sweep_id = wandb.sweep(sweepcfg, project=project)
@@ -79,10 +82,10 @@ if __name__ == "__main__":
         for i in range(args.n_runs):
             try:
                 print(f"running local sweep {i}")
-                wandb_train(local_cfg=copy.deepcopy(sweepcfg))
+                wandb_train(local_cfg=copy.deepcopy(sweepcfg), env_id=env_id, n_hparam_runs=n_hparam_runs)
             except Exception as e:
                 print(f"failed to run local sweep {i}")
-                print(e)
+                tb.print_tb(e.__traceback__)
     else:
         print(f"continuing sweep {args.sweep}")
         wandb.agent(args.sweep, project=args.proj,

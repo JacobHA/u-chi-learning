@@ -6,7 +6,18 @@ lunar_ppo = {
     'gamma': 0.999,
     # 'learning_rate': 0.001,
     'n_epochs': 4,
-    'n_steps': 32,
+    'n_steps': 1024,
+    'hidden_dim': 256,
+}
+lunar_ppo2 = {
+    'batch_size': 64,
+    'clip_range': 0.2,
+    'ent_coef': 0.01,
+    'gae_lambda': 0.98,
+    'gamma': 0.999,
+    # 'learning_rate': 0.001,
+    'n_epochs': 4,
+    'n_steps': 1024,
     'hidden_dim': 256,
 }
 

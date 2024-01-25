@@ -190,7 +190,21 @@ class UAgent(BaseAgent):
         return loss #+ regularize_loss
 
 
-def main():
+def main(env_id, config, total_timesteps):
+    agent = UAgent(env_id, **config, device='cuda', log_interval=500,
+                   tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
+                   beta_schedule='none', use_rawlik=True,
+                   beta_end=5)
+    #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
+    # use_rawlik=True)
+    # Measure the time it takes to learn:
+    t0 = time.thread_time_ns()
+    agent.learn(total_timesteps=total_timesteps)
+    t1 = time.thread_time_ns()
+    print(f"Time to learn: {(t1-t0)/1e9} seconds")
+
+
+if __name__ == '__main__':
     from disc_envs import get_environment
     env_id = get_environment('Pendulum21', nbins=3,
                              max_episode_steps=200, reward_offset=0)
@@ -205,23 +219,6 @@ def main():
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-
     from hparams import acrobot_u as config
-
-    agent = UAgent(env_id, **config, device='cuda', log_interval=500,
-                   tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
-                   beta_schedule='none', use_rawlik=True,
-                   beta_end=5)
-    #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
-    # use_rawlik=True)
-    # Measure the time it takes to learn:
-    t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000_000)
-    t1 = time.thread_time_ns()
-    print(f"Time to learn: {(t1-t0)/1e9} seconds")
-
-
-if __name__ == '__main__':
-
     for _ in range(1):
-        main()
+        main(env_id, config, total_timesteps=10_000_000)

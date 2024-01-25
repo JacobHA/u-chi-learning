@@ -102,11 +102,21 @@ env_to_hparams = {
     'CartPole-v1': cartpole_hparams2,
 }
 
-def main():
+def main(env_id, config, total_timesteps):
+    agent = LogUAgent(env_id, **config, device='cpu', log_interval=1500,
+                        tensorboard_log=f'tf-{env_id}', num_nets=2, render=False, aggregator='max',
+                        scheduler_str='none')
+    # Measure the time it takes to learn:
+    t0 = time.thread_time_ns()
+    agent.learn(total_timesteps=total_timesteps)
+    t1 = time.thread_time_ns()
+    print(f"Time to learn: {(t1-t0)/1e9} seconds")
+
+
+if __name__ == '__main__':
     from disc_envs import get_environment
     env_id = get_environment('Pendulum21', nbins=3,
                              max_episode_steps=200, reward_offset=0)
-
     env_id = 'CartPole-v1'
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
@@ -117,18 +127,6 @@ def main():
     # env_id = 'FrozenLake-v1'
     env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
-
     from hparams import cartpole_u as config
-    agent = LogUAgent(env_id, **config, device='cpu', log_interval=1500,
-                        tensorboard_log='acro', num_nets=2, render=False, aggregator='max',
-                        scheduler_str='none')#, beta_schedule = 'linear', beta_end=2.4)
-    # Measure the time it takes to learn:
-    t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=1_500_000)
-    t1 = time.thread_time_ns()
-    print(f"Time to learn: {(t1-t0)/1e9} seconds")
-
-
-if __name__ == '__main__':
     for _ in range(1):
-        main()
+        main(env_id, config, total_timesteps=1_500_000)

@@ -8,7 +8,6 @@ import argparse
 
 sys.path.append('darer')
 from stable_baselines3 import DQN
-sys.path.append("darer")
 from utils import env_id_to_envs, rllib_env_id_to_envs
 
 
