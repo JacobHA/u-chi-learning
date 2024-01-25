@@ -10,8 +10,8 @@ import time
 
 # env = 'CartPole-v1'
 # env = 'LunarLander-v2'
-env = 'Acrobot-v1'
-# env = 'MountainCar-v0'
+# env = 'Acrobot-v1'
+env = 'MountainCar-v0'
 
 str_to_algo = {
     'u': UAgent,
@@ -43,8 +43,8 @@ def runner(algo, device):
                         }
 
     model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=1000, **rawlik_hparams, name='irred')#, aggregator='max')
-    model.learn(total_timesteps=50_000)
+                 device=device, log_interval=1000, **rawlik_hparams)#, name='irred')#, 
+    model.learn(total_timesteps=100_000)
 
 
 if __name__ == '__main__':
@@ -52,6 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--count', type=int, default=5)
     parser.add_argument('-a', '--algo', type=str, default='u')
     parser.add_argument('-d', '--device', type=str, default='cpu')
+    parser.add_argument('-e', '--env', type=str, default='MountainCar-v0')
 
     args = parser.parse_args()
 
