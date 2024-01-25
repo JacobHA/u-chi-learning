@@ -77,7 +77,7 @@ class UActor(BaseAgent):
         # actor_actions, curr_log_prob, means = self.actor.sample(states)
         actor_actions, curr_log_prob = self.actor.action_log_prob(states)
 
-        curr_u = torch.stack([online_u(states, actions)
+        online_curr_u = torch.stack([online_u(states, actions)
                                 for online_u in self.online_us], dim=-1).squeeze(1)
         with torch.no_grad():
             # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
@@ -94,25 +94,33 @@ class UActor(BaseAgent):
             # repeat the sampled action for each state in batch:
             # sampled_action = sampled_action.repeat(self.batch_size, 1)
 
-            # tile next states across the batch:
-            next_states = next_states.unsqueeze(-1)
-            next_states = next_states.repeat(1,1, self.batch_size)
-            # tile sampled actions across the batch:
-            sampled_action = sampled_action.repeat(1, self.batch_size).T
-            sampled_action = sampled_action.unsqueeze(-1)
+            # tile next states across the sampling amount (batch size):
+            next_states = next_states.unsqueeze(0)
+            next_states = next_states.repeat(self.batch_size,1,1)
+            # tile sampled actions across the amount of states (batch size), in 2nd slot:
+            sampled_action = sampled_action.unsqueeze(1)
+            sampled_action = sampled_action.repeat(1, self.batch_size, 1)
             # permute randomly:
             # sampled_action = sampled_action[torch.randperm(sel.shape[0])]
-            ref_u_next = torch.stack([u(next_states.permute(0,2,1), sampled_action).sum(dim=1)/self.batch_size
-                        for u in self.online_us], dim=0)
-            ref_curr_u = torch.stack([u(states, actions) for u in self.online_us], dim=0)  
+            ref_u_next = torch.stack([u(next_states, sampled_action)
+                                  for u in self.online_us], dim=0)
+            # Aggregate over networks
+            ref_u_next = self.aggregator_fn(ref_u_next, dim=0)
+            # Calculate chi by summing over actions:
+            # Which dimensions should I be summing over for actions?? (2nd slot, dim=1)
+            next_chi = ref_u_next.sum(dim=1) / self.batch_size
 
-            next_chi = ref_u_next
-            self.new_thetas[grad_step, :] = -torch.mean(rewards + torch.log(next_chi / ref_curr_u) / self.beta, dim=1).T
+            curr_u = torch.stack([u(states, actions) for u in self.online_us], dim=0)
+            curr_u = self.aggregator_fn(curr_u, dim=0)
 
-            target_next_u = torch.stack([target_u(next_states.permute(0,2,1), sampled_action).sum(dim=1)/self.batch_size
+            batch_rho = torch.mean(torch.exp(self.beta * rewards) * next_chi / curr_u)
+            self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
+
+            target_next_u = torch.stack([target_u(next_states, sampled_action)
                                             for target_u in self.target_us], dim=-1)
 
             next_u = self.aggregator_fn(target_next_u, dim=-1)
+            next_u = next_u.sum(dim=1) / self.batch_size
             next_u = next_u * (1 - dones) #+ self.theta * dones
 
             expected_curr_u = torch.exp(self.beta * (rewards + self.theta)) * next_u
@@ -121,14 +129,13 @@ class UActor(BaseAgent):
         self.logger.record("train/theta", self.theta.item())
         self.logger.record("train/avg u", curr_u.mean().item())
         # Huber loss:
-        loss = 0.5*sum(F.smooth_l1_loss(u, expected_curr_u)
-                        for u in curr_u.T)
+        loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in online_curr_u.T)
         # MSE loss:
         actor_curr_u = torch.stack([online_u(states, actor_actions)
                                         for online_u in self.online_us], dim=-1)
 
         log_u_prob = torch.log(self.aggregator_fn(actor_curr_u, dim=-1).squeeze())
-        actor_loss = F.smooth_l1_loss(curr_log_prob, log_u_prob)
+        actor_loss = self.loss_fn(curr_log_prob, log_u_prob)
             # curr_log_prob - self.aggregator_fn(actor_curr_u)).mse()
         self.logger.record("train/log_prob", curr_log_prob.mean().item())
         self.logger.record("train/loss", loss.item())
@@ -138,92 +145,14 @@ class UActor(BaseAgent):
         self._n_updates += self.gradient_steps
 
         # if self._n_updates % 100 == 0:
-        actor_loss.backward()
+        # actor_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
         
         # Clip gradient norm
         # loss.backward()
         # self.online_us.clip_grad_norm(self.max_grad_norm)
 
-        return loss
-
-    # def learn(self, total_timesteps, beta_schedule='none'):
-    #     # Start a timer to log fps:
-    #     self.t0 = time.thread_time_ns()
-    #     # setup beta scheduling
-    #     self.betas = self._setup_beta_schedule(total_timesteps, beta_schedule)
-    #     while self.env_steps < total_timesteps:
-    #         state, _ = self.env.reset()
-    #         episode_reward = 0
-    #         done = False
-    #         self.num_episodes += 1
-    #         self.rollout_reward = 0
-
-    #         while not done and self.env_steps < total_timesteps:
-    #             self.actor.set_training_mode(False)
-    #             if self.env_steps < self.learning_starts:
-    #                 # take a random action:
-    #                 noisy_action = self.env.action_space.sample()
-    #             else:
-    #                 with torch.no_grad():
-    #                     # noisy_action, logprob, _ = self.actor.sample(state)
-    #                     noisy_action, _ = self.actor.predict(state)
-    #                     # log the logprob:
-    #                     # self.logger.record("rollout/log_prob", logprob.mean().item())
-    #                     # noisy_action = noisy_action.cpu().numpy()
-    #             next_state, reward, terminated, truncated, infos = self.env.step(
-    #                 noisy_action)
-    #             done = terminated or truncated
-    #             self.rollout_reward += reward
-
-    #             if (self.train_freq == -1 and done) or (self.train_freq != -1 and self.env_steps % self.train_freq == 0):
-    #                 if self.replay_buffer.size() > self.batch_size:
-    #                     self.train()
-
-    #             if self.env_steps % self.target_update_interval == 0:
-    #                 # Do a Polyak update of parameters:
-    #                 self.target_us.polyak(self.online_us, self.tau)
-                    
-    #             self.env_steps += 1
-    #             self.beta = self.betas[self.env_steps]
-    #             episode_reward += reward
-    #             infos = [infos]
-    #             self.replay_buffer.add(
-    #                 state, next_state, noisy_action, reward, terminated, infos)
-    #             state = next_state
-                
-    #             self._log_stats()
-    #         if done:
-    #             self.logger.record("rollout/reward", self.rollout_reward)
-
-    # def _log_stats(self):
-    #     if self.env_steps % self.log_interval == 0:
-    #     # end timer:
-    #         t_final = time.thread_time_ns()
-    #         # fps averaged over log_interval steps:
-    #         self.fps = self.log_interval / ((t_final - self.t0) / 1e9)
-
-    #         avg_eval_rwd = self.evaluate()
-    #         self.avg_eval_rwd = avg_eval_rwd
-    #         self.eval_auc += avg_eval_rwd
-    #         if self.save_checkpoints:
-    #             torch.save(self.online_u.state_dict(),
-    #                         'sql-policy.para')
-    #         # log_class_vars(self, LOG_PARAMS)
-
-    #         # Log network params:
-    #         # for idx, u in enumerate(self.online_us.nets):
-    #         #     for name, param in u.named_parameters():
-    #         #         self.logger.record(f"params/u_{idx}/{name}",
-    #         #                            param.data.mean().item())
-    #         # for name, param in self.actor.named_parameters():
-    #         #     self.logger.record(f"params/actor/{name}",
-    #         #                        param.data.mean().item())
-
-    #         self.logger.dump(step=self.env_steps)
-    #         # if self.use_wandb:
-    #             # wandb.log({'env step': self.env_steps, 'avg_eval_rwd': avg_eval_rwd})
-    #         self.t0 = time.thread_time_ns()
+        return loss + actor_loss
 
     def exploration_policy(self, state: np.ndarray) -> (float, float):
         noisy_action, _ = self.actor.predict(state)
@@ -231,11 +160,9 @@ class UActor(BaseAgent):
         return noisy_action, kl
 
     def evaluation_policy(self, state: np.ndarray) -> float:
-        with torch.no_grad():
-            self.actor.set_training_mode(False)
-            # noisyaction, logprob, action = self.actor.sample(state)  # , deterministic=True)
-            action,_ = self.actor.predict(state, deterministic=True)
-            # action = action.cpu().numpy()
+        # noisyaction, logprob, action = self.actor.sample(state)  # , deterministic=True)
+        action, _ = self.actor.predict(state)#, deterministic=True)
+        # action = action.cpu().numpy()
         return action
     
     def _update_target(self):
@@ -253,13 +180,13 @@ def main():
     # env_id = 'Ant-v4'
     env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
-    agent = UActor(env_id, **config, device='cpu',
+    agent = UActor(env_id, **config, device='cuda',
                       num_nets=2, tensorboard_log='pend', 
                       actor_learning_rate=1e-4, 
-                      render=False, max_grad_norm=10, log_interval=1000,
+                      render=False, max_grad_norm=10, log_interval=500,
                       )
                       
-    agent.learn(total_timesteps=500_000)
+    agent.learn(total_timesteps=50_000)
 
 
 if __name__ == '__main__':
