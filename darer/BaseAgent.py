@@ -197,14 +197,12 @@ class BaseAgent:
         # Increase update counter
         self._n_updates += gradient_steps
         # average self.theta over multiple gradient steps
-        self.new_thetas = torch.zeros(
-            gradient_steps, self.num_nets).to(self.device)
+        self.new_thetas = torch.zeros(gradient_steps).to(self.device)
         for grad_step in range(gradient_steps):
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(batch_size)
 
             loss = self.gradient_descent(batch, grad_step)
-
             self.optimizers.zero_grad()
 
             # Clip gradient norm
@@ -215,11 +213,8 @@ class BaseAgent:
         # TODO: Clamp based on reward range
         # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
         self.new_thetas = torch.clamp(self.new_thetas, min=-50, max=50)
-        # Log both theta values:
-        for idx, new_theta in enumerate(self.new_thetas.T):
-            self.logger.record(f"train/theta_{idx}", new_theta.mean().item())
-        new_theta = self.aggregator_fn(self.new_thetas.mean(dim=0), dim=0)
-        # new_theta = torch.max(self.new_thetas.mean(dim=0), dim=0)[0]
+        new_theta = self.new_thetas.mean(dim=0)
+        self.logger.record(f"train/new_theta", new_theta.item())
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
@@ -389,7 +384,7 @@ class BaseAgent:
         self.logger.dump(step=self.env_steps)
         self.initial_time = time.thread_time_ns()
 
-    def evaluate(self, n_episodes=3) -> float:
+    def evaluate(self, n_episodes=5) -> float:
         # run the current policy and return the average reward
         self.initial_time = time.process_time_ns()
         avg_reward = 0.
