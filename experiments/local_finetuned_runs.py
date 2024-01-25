@@ -18,7 +18,7 @@ str_to_algo = {
     'dqn': CustomDQN
 }
 
-def runner(env_id, algo_str, device, tensorboard_log, config=None):
+def runner(env_id, algo_str, device, tensorboard_log, config=None, total_timesteps=None):
     # for local run debugging
     if not config:
         if env_id == 'MountainCar-v0':
@@ -46,7 +46,7 @@ def runner(env_id, algo_str, device, tensorboard_log, config=None):
 
     model = algo(env_id, **config, tensorboard_log=tensorboard_log,
                  device=device, log_interval=1000)#, aggregator='max')
-    model.learn(total_timesteps=250_000)
+    model.learn(total_timesteps=total_timesteps)
 
 
 if __name__ == '__main__':
@@ -64,11 +64,12 @@ if __name__ == '__main__':
 
     start = time.time()
     tensorboard_log = f'experiments/ft/{args.env}'
+    total_timesteps = 250_000
     for i in range(args.count):
         if args.algo == '*':
             for algo in str_to_algo.keys():
-                runner(args.env, algo, args.device, tensorboard_log)
+                runner(args.env, algo, args.device, tensorboard_log, total_timesteps=total_timesteps)
         else:
-            runner(args.env, args.algo, args.device, tensorboard_log)
+            runner(args.env, args.algo, args.device, tensorboard_log, total_timesteps=total_timesteps)
         print(f"Finished run {i+1}/{args.count}")
     print(f"trained in {time.time() - start}")

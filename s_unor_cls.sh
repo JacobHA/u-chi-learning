@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=logu-bppo-%A_%a
-#SBATCH --output=logu-bppo-%A_%a.out
-#SBATCH --error=logu-bppo-%A_%a.err
+#SBATCH --job-name=logu-unor-cls-%A_%a
+#SBATCH --output=logu-unor-cls-%A_%a.out
+#SBATCH --error=logu-unor-cls-%A_%a.err
 #SBATCH --time=48:00:00
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=4
@@ -19,4 +19,4 @@ export WANDB_MODE=offline
 wandb offline
 
 # Start the evaluations
-python experiments/classic_sweep.py --n_runs=1 --proj=u-chi-learning --algo=ppo --exp-name="classic-bench"
+python experiments/classic_sweep.py --n_runs=1 --proj=u-chi-learning --algo="u-norwl" --exp-name="classic-bench" --env_id="LunarLander-v2"

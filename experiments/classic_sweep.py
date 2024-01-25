@@ -15,6 +15,12 @@ algo_to_config = {
     "u": "u-classic.yml",
     "u-norwl": "u-classic-norwl.yml",  # rawlik disabled
 }
+env_to_total_timesteps = {
+    "CartPole-v1": 1_000_000,
+    "MountainCar-v0": 1_000_000,
+    "LunarLander-v2": 250_000,
+    "Acrobot-v1": 1_000_000,
+}
 
 int_hparams = {'batch_size', 'buffer_size', 'gradient_steps',
                'target_update_interval', 'theta_update_interval'}
@@ -47,7 +53,13 @@ def wandb_train(local_cfg=None, env_id=None, n_hparam_runs=None):
             config = wandb.config.as_dict()
             if not env_id:
                 env_id = config['parameters'].pop('env_id')
-            runner(env_id, algo_str, device, tensorboard_log=f'local-{algo_str}-{env_id}', config=config['parameters'])
+            learn_ratio = config['parameters'].pop('learning_starts_ratio')
+            total_timesteps = env_to_total_timesteps[env_id]
+            config['parameters']['learning_starts'] = total_timesteps * learn_ratio
+            runner(env_id, algo_str, device,
+                   tensorboard_log=f'local-{algo_str}-{env_id}',
+                   config=config['parameters'],
+                   total_timesteps=total_timesteps)
 
 
 if __name__ == "__main__":

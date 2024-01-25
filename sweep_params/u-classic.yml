@@ -7,50 +7,34 @@ parameters:
     values: [16, 32, 64, 128]
   beta:
     distribution: uniform
-    max: 3
+    max: 2
     min: 0.01
-  final_beta_multiplier:
-    distribution: uniform
-    max: 10
-    min: 1
-  beta_schedule:
-    values: [linear, none]
-  buffer_size:
-    distribution: uniform
-    max: 200000
-    min: 10000
   train_freq:
-    distribution: uniform
-    max: 10
-    min: 1
+    values: [1, 4, 8, 16]
   learning_rate:
     distribution: uniform
-    max: 0.01
+    max: 0.005
     min: 0.0001
   target_update_interval:
-    distribution: uniform
-    max: 10000
-    min: 1
+    values: [10, 50, 100, 500]
   tau:
     distribution: uniform
     max: 1
-    min: 0.01
+    min: 0.5
   theta_update_interval:
-    distribution: uniform
-    max: 100
-    min: 1
+    values: [10, 50, 100, 500]
   tau_theta:
     distribution: uniform
     max: 1
     min: 0.5
-  learning_starts:
+  learning_starts_ratio:
     distribution: uniform
-    max: 10000
-    min: 1
+    max: 0.1
+    min: 0.0
   aggregator:
-    values: [min, max, mean]
+    values: [max]
   hidden_dim:
-    values: [64, 128, 256]
+    values: [32, 64, 128, 256]
   prior_tau:
     distribution: uniform
     max: 1
