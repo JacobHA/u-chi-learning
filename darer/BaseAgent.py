@@ -158,7 +158,7 @@ class BaseAgent:
         if isinstance(self.env.action_space, gym.spaces.Discrete):
             self.nA = self.env.action_space.n
 
-        self.theta = torch.Tensor([0]).to(self.device)
+        self.theta = torch.Tensor([0.0]).to(self.device)
         self.eval_auc = 0
         self.num_episodes = 0
 

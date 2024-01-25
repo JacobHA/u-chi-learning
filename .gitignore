@@ -8,4 +8,4 @@ comparison/
 multinasium/
 pend/
 *.tfevents.*
-/tabular/tabular_expt/
+tabular/
