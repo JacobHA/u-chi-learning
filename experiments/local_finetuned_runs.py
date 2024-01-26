@@ -11,7 +11,7 @@ import time
 # env = 'CartPole-v1'
 # env = 'LunarLander-v2'
 # env = 'Acrobot-v1'
-env = 'MountainCar-v0'
+# env = 'MountainCar-v0'
 
 str_to_algo = {
     'u': UAgent,
@@ -19,6 +19,14 @@ str_to_algo = {
     'dqn': CustomDQN
 }
 
+
+env_id_to_timesteps = {
+    'CartPole-v1': 50_000,
+    'Acrobot-v1': 50_000,
+    'LunarLander': 250_000,
+    'PongNoFrameskip-v4': 1_000_000,
+    'MountainCar-v0': 100_000,
+}
 
 
 def runner(algo, device):
@@ -37,14 +45,15 @@ def runner(algo, device):
     config = configs[algo]
     algo = str_to_algo[algo]
 
-    rawlik_hparams = {'use_rawlik': False,
-                    'prior_update_interval': 1_000,
-                    'prior_tau': 0.90,
+    rawlik_hparams = {'use_rawlik': True,
+                    'prior_update_interval': 5000,
+                    'prior_tau': 0.995,
                         }
 
     model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
                  device=device, log_interval=1000, **rawlik_hparams)#, name='irred')#, 
-    model.learn(total_timesteps=100_000)
+    total_timesteps = env_id_to_timesteps[env]
+    model.learn(total_timesteps=total_timesteps)
 
 
 if __name__ == '__main__':
@@ -55,6 +64,8 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--env', type=str, default='MountainCar-v0')
 
     args = parser.parse_args()
+    env = args.env
+
 
     start = time.time()
     for i in range(args.count):
