@@ -31,7 +31,6 @@ env_id_to_timesteps = {
     'LunarLander': 250_000,
     'PongNoFrameskip-v4': 1_000_000,
     'MountainCar-v0': 100_000,
-
 }
 
 int_hparams = ['batch_size',
@@ -67,6 +66,10 @@ def runner(config=None, run=None):
 
     if 'buffer_size' not in config:
         config['buffer_size'] = total_timesteps
+
+    if 'NoFrameskip' in env_id:
+        config.pop('device', '')
+        device = 'cuda'
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
