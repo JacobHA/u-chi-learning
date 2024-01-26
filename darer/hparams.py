@@ -129,19 +129,19 @@ nature_pong = {
 }
 
 cartpole_u = {
-    'batch_size': 128,
+    'batch_size': 64,
     'beta': 0.7,
     'buffer_size': 50_000,
-    'hidden_dim': 64,
-    'learning_rate': 0.03,
-    'learning_starts': 0.005*50_000,
-    'target_update_interval': 100,
-    'tau': 0.65,
-    'tau_theta': 0.71,
-    'theta_update_interval': 415,#750,
+    'hidden_dim': 128,
+    'learning_rate': 0.0035,
+    'learning_starts': 0,#0.0025*50_000,
+    'target_update_interval': 50,
+    'tau': 0.73,
+    'tau_theta': 0.76,
+    'theta_update_interval': 10,#750,
     'train_freq': 1,
     'gradient_steps': 1,
-    'aggregator': 'min'
+    'aggregator': 'max'
 }
 
 maze = {
@@ -197,11 +197,11 @@ pendulum_logu = {
     'beta_schedule': 'linear',
     'buffer_size': 100_000,
     # 'final_beta_multiplier': 6,
-    'beta_end': 14.4,
+    'beta_end': 40.4,
     'gradient_steps': 4,
     'hidden_dim': 64,
     'learning_rate': 5e-4,
-    'learning_starts': 15_00,
+    'learning_starts': 15_000,
     'target_update_interval': 100,
     'tau': 0.93,
     'tau_theta': 0.96,
