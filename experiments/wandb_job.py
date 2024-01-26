@@ -6,7 +6,7 @@ from SoftQAgent import SoftQAgent
 import wandb
 import argparse
 
-LOG_INTERVAL = 500
+
 
 env_id = 'CartPole-v1'
 # env_id = 'MountainCar-v0'
@@ -67,9 +67,12 @@ def runner(config=None, run=None):
     if 'buffer_size' not in config:
         config['buffer_size'] = total_timesteps
 
+    LOG_INTERVAL = 500
     if 'NoFrameskip' in env_id:
         config.pop('device', '')
         device = 'cuda'
+        LOG_INTERVAL = 5000
+
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
@@ -122,7 +125,8 @@ if __name__ == "__main__":
     algo = args.algo
     sweep_id = algo_to_sweep_id[algo]
     if 'NoFrameskip' in args.env_id:
-        sweep_id = '5gwi5rfx'
+        # sweep_id = '5gwi5rfx'
+        sweep_id = 'e6nnzdsf'
     env_id = args.env_id
     device = args.device
     # from disc_envs import get_environment
