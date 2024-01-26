@@ -175,10 +175,10 @@ def main():
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
     env_id = 'Pendulum-v1'
-    # env_id = 'Hopper-v4'
+    # env_id = 'Hopper-v3'
     # env_id = 'HalfCheetah-v4'
-    # env_id = 'Ant-v4'
-    env_id = 'Simple-v0'
+    env_id = 'Ant-v4'
+    # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     agent = UActor(env_id, **config, device='cuda',
                       num_nets=2, tensorboard_log='pend', 
@@ -186,7 +186,7 @@ def main():
                       render=False, max_grad_norm=10, log_interval=500,
                       )
                       
-    agent.learn(total_timesteps=50_000)
+    agent.learn(total_timesteps=500_000)
 
 
 if __name__ == '__main__':

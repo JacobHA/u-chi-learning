@@ -11,6 +11,7 @@ metrics_to_ylabel = {
     'rollout/ep_reward': 'Average Rollout Reward',
     'train/theta': r'Reward-rate, $\theta$',
     'train/avg logu': r'Average of $\log u(s,a)$',
+    'rollout/avg_entropy': r'Policy Entropy',
 }
 all_metrics = [
     'rollout/reward', 'eval/avg_reward', 'train/theta', 'train/avg logu'
@@ -83,7 +84,14 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             plt.legend(loc='lower right', ncol=1, borderaxespad=0.)
             # strip the title from the values in legend:
             handles, labels = plt.gca().get_legend_handles_labels()
-            labels = [label.split(title+'-')[-1] for label in labels]
+            labels = []
+            for handle in handles:
+                label = handle.get_label()
+                try:
+                    labels.append(label.split(title+'-')[-1])
+                except TypeError:
+                    labels.append(label)
+            # labels = [label.split(title+'-')[-1] for label in labels]
             plt.gca().legend(handles=handles, labels=labels)
                 
             plt.xlim(xlim)
@@ -112,7 +120,9 @@ if __name__ == "__main__":
     # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
     plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
-    # plotter(folder=folder, metrics=['rollout/ep_reward'])
+    plotter(env=env, folder=folder, metrics=['rollout/ep_reward'])
+    plotter(env=env, folder=folder, metrics=['rollout/avg_entropy'])
+
 
     # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
     # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])
