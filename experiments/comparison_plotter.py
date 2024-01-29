@@ -11,6 +11,7 @@ metrics_to_ylabel = {
     'rollout/ep_reward': 'Average Rollout Reward',
     'train/theta': r'Reward-rate, $\theta$',
     'train/avg logu': r'Average of $\log u(s,a)$',
+    'rollout/avg_entropy': r'Policy Entropy',
 }
 all_metrics = [
     'rollout/reward', 'eval/avg_reward', 'train/theta', 'train/avg logu'
@@ -21,7 +22,7 @@ sns.set_context("poster")
 # Make font color black:
 plt.rcParams['text.color'] = 'black'
 
-def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
+def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             xlim=None, ylim=None, title=None):
 
     algo_data = pd.DataFrame()
@@ -34,7 +35,7 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             continue
 
         algo_name = os.path.basename(subfolder).split('_')[0]
-        if algo_name in exclude_algos or 'red' not in algo_name:
+        if algo_name in exclude_algos:
             print(f"Skipping {algo_name}, in exclude_algos.")
             continue
         
@@ -83,32 +84,45 @@ def plotter(folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             plt.legend(loc='lower right', ncol=1, borderaxespad=0.)
             # strip the title from the values in legend:
             handles, labels = plt.gca().get_legend_handles_labels()
-            labels = [label.split(title+'-')[-1] for label in labels]
+            labels = []
+            for handle in handles:
+                label = handle.get_label()
+                try:
+                    labels.append(label.split(title+'-')[-1])
+                except TypeError:
+                    labels.append(label)
+            # labels = [label.split(title+'-')[-1] for label in labels]
             plt.gca().legend(handles=handles, labels=labels)
-
+                
             plt.xlim(xlim)
             plt.ylim(ylim)
             plt.xlabel('Environment Steps')
             plt.ylabel(name)
 
             plt.tight_layout()
-            plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}{folder}.png"), dpi=300)
+            plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}-{env}.png"), dpi=300)
             plt.close()
         else:
             print("No data to plot.")
 
 if __name__ == "__main__":
-    exp = "LunarLander-v2"
-    folder = f'experiments/ft/{exp}'
-    # folder = 'experiments/ft/CartPole-v1'
-    folder = 'experiments/ft/MountainCar-v0'
-    folder = 'experiments/ablations/Acrobot-v1'
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--env', type=str, default='MountainCar-v0')
+    args = parser.parse_args()
+    env = args.env
+
+    folder = f'experiments/ft/{env}/'
+    # env_to_settings = {
+
 
     # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
     # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
-    plotter(folder=folder, metrics=['eval/avg_reward'], title=folder.split('/')[-1])
-    # plotter(folder=folder, metrics=['rollout/ep_reward'])
+    plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
+    plotter(env=env, folder=folder, metrics=['rollout/ep_reward'])
+    plotter(env=env, folder=folder, metrics=['rollout/avg_entropy'])
+
 
     # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
     # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])

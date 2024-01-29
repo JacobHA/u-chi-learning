@@ -9,6 +9,10 @@ from LogUAgent import LogUAgent
 from hparams import *
 import time
 
+# env = 'CartPole-v1'
+# env = 'LunarLander-v2'
+# env = 'Acrobot-v1'
+# env = 'MountainCar-v0'
 
 str_to_algo = {
     'u': UAgent,
@@ -16,6 +20,15 @@ str_to_algo = {
     # 'logu': LogUAgent,
     'ppo': CustomPPO,
     'dqn': CustomDQN
+}
+
+
+env_id_to_timesteps = {
+    'CartPole-v1': 50_000,
+    'Acrobot-v1': 50_000,
+    'LunarLander': 250_000,
+    'PongNoFrameskip-v4': 1_000_000,
+    'MountainCar-v0': 100_000,
 }
 
 def runner(env_id, algo_str, device, tensorboard_log, config=None, total_timesteps=None):
@@ -61,10 +74,12 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--device', type=str, default='cuda')
 
     args = parser.parse_args()
+    env = args.env
+
 
     start = time.time()
     tensorboard_log = f'experiments/ft/{args.env}'
-    total_timesteps = 250_000
+    total_timesteps = env_id_to_timesteps[args.env]
     for i in range(args.count):
         if args.algo == '*':
             for algo in str_to_algo.keys():
