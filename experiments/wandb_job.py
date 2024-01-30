@@ -54,6 +54,8 @@ def runner(config=None, run=None):
     # beta_end = config.pop('final_beta_multiplier') * config['beta']
     config['gradient_steps'] = config['train_freq']
     runs_per_hparam = 3
+    if 'NoFrameskip' in env_id:
+        runs_per_hparam = 1
     auc = 0
     total_timesteps = env_id_to_timesteps[env_id]
 
@@ -110,7 +112,7 @@ def wandb_agent():
 
 
 if __name__ == "__main__":
-    algo_to_sweep_id = {'u': '27ojzk9g',  # '6301y2oc',
+    algo_to_sweep_id = {'u': 'fy52mgn3',  # '6301y2oc',
                         'sql': 'frb1998p'}
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
