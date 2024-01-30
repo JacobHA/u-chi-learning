@@ -66,7 +66,8 @@ class LogUAgent(BaseAgent):
                 online_logu_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
             online_curr_logu = online_curr_logu.squeeze(-1)
 
-            self.new_thetas[grad_step, :] = -torch.mean(rewards.squeeze(-1) + (
+            # TODO: beta missing on the rewards?
+            self.new_thetas[grad_step, :] = -torch.mean( rewards.squeeze(-1) + (
                 online_log_chi - online_curr_logu) / self.beta, dim=1)
 
             target_next_logus = [target_logu(next_states)

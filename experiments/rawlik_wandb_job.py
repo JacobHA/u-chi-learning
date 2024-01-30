@@ -1,6 +1,4 @@
 import sys
-
-import torch
 sys.path.append("darer")
 import argparse
 import wandb
@@ -18,13 +16,8 @@ env_id = 'CartPole-v1'
 # env_id = 'Pendulum-v1'
 env_id = None
 
-env_to_early_stop_dict = {
-    'CartPole-v1': {'reward': 200, 'steps': 10_000},
-    'Acrobot-v1': {'reward': -200, 'steps': 10_000},
-    'MountainCar-v0': {'reward': -190, 'steps': 20_000},
-    'LunarLander-v2': {'reward': 0, 'steps': 20_000},
-    'PongNoFrameskip-v4': {'reward': -22, 'steps': 20_000},
-}
+from hparams import id_to_hparam_dicts
+
 
 env_id_to_timesteps = {
     'CartPole-v1': 50_000,
@@ -45,35 +38,15 @@ int_hparams = ['batch_size',
 
 def runner(config=None, run=None):
     # Convert the necessary kwargs to ints:
-    for int_kwarg in int_hparams:
-        try:
-            config[int_kwarg] = int(config[int_kwarg])
-        except KeyError:
-            pass  # use default value
-
-    # beta_end = config.pop('final_beta_multiplier') * config['beta']
-    config['gradient_steps'] = config['train_freq']
-    runs_per_hparam = 3
-    auc = 0
+    hconfig = id_to_hparam_dicts[env_id][algo]
     total_timesteps = env_id_to_timesteps[env_id]
-
-    # check if learning starts ratio is a config key:
-    if 'learning_starts_ratio' in config:
-        learn_ratio = config.pop('learning_starts_ratio')
-        config['learning_starts'] = total_timesteps * learn_ratio
-
-    else:
-        pass
 
     if 'buffer_size' not in config:
         config['buffer_size'] = total_timesteps
 
     LOG_INTERVAL = 500
     device = 'cpu'
-    if 'NoFrameskip' in env_id:
-        config.pop('device', '')
-        device = 'cuda'
-        LOG_INTERVAL = 5000
+    runs_per_hparam = 3
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
@@ -82,10 +55,9 @@ def runner(config=None, run=None):
             # config.pop('env_id')
             # config['buffer_size'] = 300_000
             agent = UAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
-                        render=False,
-                        use_rawlik=False,
-                        device=device,
-                        loss_fn=torch.nn.functional.smooth_l1_loss)
+                           render=False,
+                           use_rawlik=False,
+                           device=device)
 
         elif algo == 'sql':
             agent = SoftQAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
@@ -129,7 +101,9 @@ if __name__ == "__main__":
     sweep_id = algo_to_sweep_id[algo]
     if 'NoFrameskip' in args.env_id:
         # sweep_id = '5gwi5rfx'
-        sweep_id = 'tcbn6vni'
+        sweep_id = 'e6nnzdsf'
+    if args.env_id == 'LunarLander-v2':
+        sweep_id = 'y6gv3ss2'
     env_id = args.env_id
     device = args.device
 

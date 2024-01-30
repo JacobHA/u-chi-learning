@@ -136,20 +136,21 @@ cartpole_dqn = {
 }
 
 nature_pong = {
-  "batch_size": 32,
-  "beta": 0.1,
-  "buffer_size": 300_000,
-  "tau": 0.95,
+  "batch_size": 64,
+  "beta": 0.8,
+  "buffer_size": 400_000,
+  "tau": 1,
   "train_freq": 4,
-  "learning_starts": 50000 ,
-  "learning_rate": 0.0001,#00025 ,
+  "learning_starts": 0,#50000 ,
+  "learning_rate": 0.00012,#00025 ,
 #   "gradient_momentum": 0.95 ,
 #   "squared_gradient_momentum": 0.95 ,
 #   "min_squared_gradient": 0.01 ,
 #   "action_history_len": 4 ,
 #   "action_repeat": 4 ,
 #   "discount_factor": 0.99 ,
-  "target_update_interval": 20000,
+  "target_update_interval": 10000,
+  "tau_theta": 0.99,
   'aggregator': 'max',
   'hidden_dim': 512,
 }
@@ -350,6 +351,22 @@ sql_cpole = {
     'tau_theta': 0.97,
     'theta_update_interval': 510,
     'train_freq': 9,
+}
+
+lunar_u = {
+    'batch_size': 64,
+    'beta': 0.885,
+    'buffer_size': 100_000,
+    'gradient_steps': 4,
+    'learning_rate': 0.0003,
+    'learning_starts': 0.0174*500_000,
+    'target_update_interval': 1000,
+    'tau': 0.38,
+    'tau_theta': 0.999,
+    'theta_update_interval': 500,#750,
+    'train_freq': 4,
+    'hidden_dim': 32,
+    'aggregator': 'max'
 }
 
 # Set up a table of algos/envs to configs:
