@@ -1,11 +1,10 @@
 import sys
 sys.path.append("darer")
-from UAgent import UAgent
-from LogUAgent import LogUAgent
-from SoftQAgent import SoftQAgent
-import wandb
 import argparse
-
+import wandb
+from SoftQAgent import SoftQAgent
+from LogUAgent import LogUAgent
+from UAgent import UAgent
 
 
 env_id = 'CartPole-v1'
@@ -28,7 +27,7 @@ env_to_early_stop_dict = {
 env_id_to_timesteps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 50_000,
-    'LunarLander': 250_000,
+    'LunarLander-v2': 500_000,
     'PongNoFrameskip-v4': 1_000_000,
     'MountainCar-v0': 100_000,
 }
@@ -68,11 +67,11 @@ def runner(config=None, run=None):
         config['buffer_size'] = total_timesteps
 
     LOG_INTERVAL = 500
+    device = 'cpu'
     if 'NoFrameskip' in env_id:
         config.pop('device', '')
         device = 'cuda'
         LOG_INTERVAL = 5000
-
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
@@ -81,14 +80,14 @@ def runner(config=None, run=None):
             # config.pop('env_id')
             # config['buffer_size'] = 300_000
             agent = UAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
-                        render=False,
-                        use_rawlik=False,
-                        device=device)
+                           render=False,
+                           use_rawlik=False,
+                           device=device)
 
         elif algo == 'sql':
             agent = SoftQAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
-                            render=False,
-                            device=device)
+                               render=False,
+                               device=device)
         wandb.log({'agent_name': agent.algo_name})
 
         early_stopped = agent.learn(total_timesteps=total_timesteps,)
@@ -108,8 +107,8 @@ def wandb_agent():
 
 
 if __name__ == "__main__":
-    algo_to_sweep_id = {'u': '6301y2oc',
-                         'sql': 'frb1998p'}
+    algo_to_sweep_id = {'u': '27ojzk9g',  # '6301y2oc',
+                        'sql': 'frb1998p'}
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device", type=str, default='cpu')
@@ -123,14 +122,15 @@ if __name__ == "__main__":
     entity = args.entity
     project = args.project
     algo = args.algo
+
     sweep_id = algo_to_sweep_id[algo]
     if 'NoFrameskip' in args.env_id:
         # sweep_id = '5gwi5rfx'
         sweep_id = 'e6nnzdsf'
+    if args.env_id == 'LunarLander-v2':
+        sweep_id = 'y6gv3ss2'
     env_id = args.env_id
     device = args.device
-    # from disc_envs import get_environment
-    # env_id = get_environment('Pendulum21', nbins=3, max_episode_steps=200, reward_offset=0)
 
     full_sweep_id = f"{entity}/{project}/{sweep_id}"
 
