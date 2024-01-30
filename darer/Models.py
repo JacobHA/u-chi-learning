@@ -533,7 +533,7 @@ class UNet(nn.Module):
         # weights_init_(model)
 
         # Add a softplus layer:
-        model = nn.Sequential(model, nn.Softplus())
+        model = nn.Sequential(model, nn.Softplus(beta=1))
         model.to(self.device)
         self.model = model
         self.nS = nS

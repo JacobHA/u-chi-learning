@@ -1,4 +1,6 @@
 import sys
+
+import torch
 sys.path.append("darer")
 import argparse
 import wandb
@@ -80,9 +82,10 @@ def runner(config=None, run=None):
             # config.pop('env_id')
             # config['buffer_size'] = 300_000
             agent = UAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
-                           render=False,
-                           use_rawlik=False,
-                           device=device)
+                        render=False,
+                        use_rawlik=False,
+                        device=device,
+                        loss_fn=torch.nn.functional.smooth_l1_loss)
 
         elif algo == 'sql':
             agent = SoftQAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
@@ -126,9 +129,7 @@ if __name__ == "__main__":
     sweep_id = algo_to_sweep_id[algo]
     if 'NoFrameskip' in args.env_id:
         # sweep_id = '5gwi5rfx'
-        sweep_id = 'e6nnzdsf'
-    if args.env_id == 'LunarLander-v2':
-        sweep_id = 'y6gv3ss2'
+        sweep_id = 'tcbn6vni'
     env_id = args.env_id
     device = args.device
 
