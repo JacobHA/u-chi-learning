@@ -1,4 +1,6 @@
 import sys
+
+import torch
 sys.path.append("darer")
 from UAgent import UAgent
 from LogUAgent import LogUAgent
@@ -83,7 +85,8 @@ def runner(config=None, run=None):
             agent = UAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
                         render=False,
                         use_rawlik=False,
-                        device=device)
+                        device=device,
+                        loss_fn=torch.nn.functional.smooth_l1_loss)
 
         elif algo == 'sql':
             agent = SoftQAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
@@ -126,7 +129,7 @@ if __name__ == "__main__":
     sweep_id = algo_to_sweep_id[algo]
     if 'NoFrameskip' in args.env_id:
         # sweep_id = '5gwi5rfx'
-        sweep_id = 'e6nnzdsf'
+        sweep_id = 'tcbn6vni'
     env_id = args.env_id
     device = args.device
     # from disc_envs import get_environment
