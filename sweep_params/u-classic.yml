@@ -6,15 +6,15 @@ parameters:
   batch_size:
     values: [16, 32, 64, 128]
   beta:
-    distribution: uniform
-    max: 2
-    min: 0.01
+    distribution: log_uniform_values
+    max: 1.0
+    min: 0.001
   train_freq:
     values: [1, 4, 8, 16]
   learning_rate:
-    distribution: uniform
-    max: 0.005
-    min: 0.0001
+    distribution: log_uniform_values
+    max: 0.01
+    min: 0.0003
   target_update_interval:
     values: [10, 50, 100, 500]
   tau:
@@ -26,13 +26,13 @@ parameters:
   tau_theta:
     distribution: uniform
     max: 1
-    min: 0.5
+    min: 0.8
   learning_starts_ratio:
     distribution: uniform
     max: 0.1
     min: 0.0
   aggregator:
-    values: [max]
+    values: [max, min]
   hidden_dim:
     values: [32, 64, 128, 256]
   prior_tau:
@@ -40,9 +40,7 @@ parameters:
     max: 1
     min: 0.1
   prior_update_interval:
-    distribution: uniform
-    max: 100
-    min: 1
+    values: [500, 1000, 5000]
   'use_rawlik':
     values: [ True, False ]
 program: wandb_job.py

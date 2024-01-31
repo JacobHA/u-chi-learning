@@ -97,10 +97,10 @@ class LogUAgent(BaseAgent):
         # Do a Polyak update of parameters:
         self.target_logus.polyak(self.online_logus, self.tau)
 
-from hparams import cartpole_hparams2, pendulum_logu, nature_pong
+from hparams import cartpole_u, pendulum_logu, nature_pong
 env_to_hparams = {
     'PongNoFrameskip-v4': nature_pong,
-    'CartPole-v1': cartpole_hparams2,
+    'CartPole-v1': cartpole_u,
 }
 
 def main(env_id, config, total_timesteps):

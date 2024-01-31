@@ -19,6 +19,6 @@ export WANDB_MODE=offline
 wandb offline
 
 # Start the evaluations
-EXPNAME=${1:-"atari-mini"}
+EXPNAME=${1:-"classic-bench"}
 DEVICE=${2:-"cuda"}
-python experiments/atari_sweep.py --local-wandb True --proj u-chi-learning --exp-name $EXPNAME --device $DEVICE --n_runs 1
+python experiments/classic_sweep.py --n_runs=1 --proj=u-chi-learning --algo="u" --exp-name=$EXPNAME --env_id="LunarLander-v2" --device=$DEVICE

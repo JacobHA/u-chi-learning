@@ -45,14 +45,15 @@ def wandb_train(local_cfg=None, env_id=None, n_hparam_runs=None):
     if local_cfg:
         local_cfg["controller"] = {'type': 'local'}
         sampled_params = sample_wandb_hyperparams(local_cfg["parameters"], int_hparams=int_hparams)
+        if env_id:
+            sampled_params['env_id'] = env_id
         local_cfg["parameters"] = sampled_params
         print(f"locally sampled params: {sampled_params}")
         wandb_kwargs['config'] = local_cfg
     for i in range(n_hparam_runs):
         with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
             config = wandb.config.as_dict()
-            if not env_id:
-                env_id = config['parameters'].pop('env_id')
+            env_id = config['parameters'].pop('env_id')
             learn_ratio = config['parameters'].pop('learning_starts_ratio')
             total_timesteps = env_to_total_timesteps[env_id]
             config['parameters']['learning_starts'] = total_timesteps * learn_ratio
@@ -66,10 +67,10 @@ if __name__ == "__main__":
     args = argparse.ArgumentParser()
     args.add_argument("--sweep", type=str, default=None)
     args.add_argument("--n_runs", type=int, default=100)
-    args.add_argument("--proj", type=str, default="u-chi-learning-test")
+    args.add_argument("--proj", type=str, default="u-chi-learning")
     args.add_argument("--local-wandb", type=bool, default=True)
     args.add_argument("--exp-name", type=str, default="classic-bench")
-    args.add_argument("--algo", type=str, default="u-norwl")
+    args.add_argument("--algo", type=str, default="u")
     args.add_argument("--device", type=str, default='cuda')
     args.add_argument("--n-hparam-runs", type=int, default=5, help="number of times to re-train with a single set of hyperparameters")
     args.add_argument("--env_id", type=str, default=None, help="env id to run. If none, will sweep over envs in the experiment config")
