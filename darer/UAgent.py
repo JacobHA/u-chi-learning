@@ -147,7 +147,7 @@ class UAgent(BaseAgent):
             # in_log = torch.clamp(in_log, min=1e-6, max=1e6)
             # clamp to a tolerable range:
             # batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
-            batch_rho = torch.mean(torch.exp(self.beta * rewards.squeeze(-1)) * in_log)
+            batch_rho = torch.mean(torch.exp(self.beta * rewards.squeeze()) * in_log)
 
             # batch_theta = torch.clamp(batch_theta, min=-30, max=30)
             self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
