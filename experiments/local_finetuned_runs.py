@@ -24,7 +24,7 @@ env_id_to_timesteps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 50_000,
     'LunarLander': 250_000,
-    'PongNoFrameskip-v4': 1_000_000,
+    'PongNoFrameskip-v4': 10_000_000,
     'MountainCar-v0': 100_000,
 }
 
@@ -38,6 +38,7 @@ def runner(algo, device):
         configs = lunars
     elif env == 'Acrobot-v1':
         configs = acrobots
+    elif 
     else:
         raise ValueError(f"env {env} not recognized.")
 
@@ -45,7 +46,7 @@ def runner(algo, device):
     config = configs[algo]
     algo = str_to_algo[algo]
 
-    rawlik_hparams = {'use_rawlik': True,
+    rawlik_hparams = {'use_rawlik': False,
                     'prior_update_interval': 5000,
                     'prior_tau': 0.995,
                         }
