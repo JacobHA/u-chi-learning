@@ -111,20 +111,20 @@ cartpole_dqn = {
 
 nature_pong = {
   "batch_size": 64,
-  "beta": 0.8,
-  "buffer_size": 400_000,
+  "beta": 0.87,
+  "buffer_size": 1_000_000,
   "tau": 1,
   "train_freq": 4,
-  "learning_starts": 0,#50000 ,
-  "learning_rate": 0.00012,#00025 ,
+  "learning_starts": 50000 ,
+  "learning_rate": 0.0001,#00025 ,
 #   "gradient_momentum": 0.95 ,
 #   "squared_gradient_momentum": 0.95 ,
 #   "min_squared_gradient": 0.01 ,
 #   "action_history_len": 4 ,
 #   "action_repeat": 4 ,
 #   "discount_factor": 0.99 ,
-  "target_update_interval": 10000,
-  "tau_theta": 0.99,
+  "target_update_interval": 15000,
+  "tau_theta": 0.98,
   'aggregator': 'max',
   'hidden_dim': 512,
 }
@@ -262,7 +262,6 @@ mcar_dqn = {
     'gradient_steps': 8,
     'hidden_dim': 256,
     'learning_rate': 0.004,
-    'learning_starts': 1000,
     'target_update_interval': 600,
     'learning_starts': 1000,
     'train_freq': 16,
@@ -300,6 +299,21 @@ sql_lunar = {
     'gradient_steps': 5,
 }
 
+pong_dqn = {
+    'batch_size': 32,
+    'buffer_size': 1_000_000,
+    'exploration_final_eps': 0.01,
+    'exploration_fraction': 0.1,
+    'gamma': 0.99,
+    'gradient_steps': 4,
+    'hidden_dim': 256,
+    'learning_rate': 0.00025,
+    'learning_starts': 1000,
+    'target_update_interval': 1000,
+    'train_freq': 4,
+
+}
+
 sql_acro = {
     'batch_size': 128,
     'beta': 2.6,
@@ -329,18 +343,18 @@ sql_cpole = {
 }
 
 lunar_u = {
-    'batch_size': 64,
-    'beta': 0.885,
-    'buffer_size': 100_000,
+    'batch_size': 32,
+    'beta': 1.08 / 4,
+    'buffer_size': 500_000,
     'gradient_steps': 4,
-    'learning_rate': 0.0003,
-    'learning_starts': 0.0174*500_000,
-    'target_update_interval': 1000,
-    'tau': 0.38,
-    'tau_theta': 0.999,
-    'theta_update_interval': 500,#750,
+    'learning_rate': 0.00032,
+    'learning_starts': 0.052*500_000,
+    'target_update_interval': 50,
+    'tau': 0.8,
+    'tau_theta': 0.995,
+    'theta_update_interval': 50000,#750,
     'train_freq': 4,
-    'hidden_dim': 32,
+    'hidden_dim': 64,
     'aggregator': 'max'
 }
 
@@ -368,10 +382,16 @@ mcars = {
 }
 
 lunars = {
+    'u': lunar_u,
     'logu': lunar_logu,
     'ppo': lunar_ppo,
     'dqn': lunar_dqn,
     'sql': sql_lunar,
+}
+
+pongs = {
+    'u': nature_pong,
+    # 'dqn':
 }
 
 id_to_hparam_dicts = {
@@ -379,4 +399,5 @@ id_to_hparam_dicts = {
     'Acrobot-v1': acrobots,
     'MountainCar-v0': mcars,
     'LunarLander-v2': lunars,
+    'PongNoFrameskip-v4': pongs
 }
