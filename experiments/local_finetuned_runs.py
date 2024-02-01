@@ -5,6 +5,7 @@ from CustomDQN import CustomDQN
 from CustomPPO import CustomPPO
 # from LogU import LogULearner
 from UAgent import UAgent
+from SoftQAgent import SoftQAgent
 from hparams import *
 import time
 
@@ -16,14 +17,15 @@ import time
 str_to_algo = {
     'u': UAgent,
     'ppo': CustomPPO,
-    'dqn': CustomDQN
+    'dqn': CustomDQN,
+    'sql': SoftQAgent
 }
 
 
 env_id_to_timesteps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 50_000,
-    'LunarLander': 250_000,
+    'LunarLander-v2': 500_000,
     'PongNoFrameskip-v4': 1_000_000,
     'MountainCar-v0': 100_000,
 }
@@ -45,13 +47,15 @@ def runner(algo, device):
     config = configs[algo]
     algo = str_to_algo[algo]
 
-    rawlik_hparams = {'use_rawlik': True,
-                    'prior_update_interval': 5000,
-                    'prior_tau': 0.995,
-                        }
+    rawlik_hparams = {'use_rawlik': ppi}
 
-    model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=1000, **rawlik_hparams)#, name='irred')#, 
+    if algo == UAgent:
+        model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
+                 device=device, log_interval=1000, **rawlik_hparams)#, name='U-rawlik2')#,
+    else:
+        model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
+                 device=device, log_interval=1000)
+        
     total_timesteps = env_id_to_timesteps[env]
     model.learn(total_timesteps=total_timesteps)
 
@@ -62,9 +66,12 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--algo', type=str, default='u')
     parser.add_argument('-d', '--device', type=str, default='cpu')
     parser.add_argument('-e', '--env', type=str, default='MountainCar-v0')
+    parser.add_argument('-p', '--ppi', type=bool, default=False)
+
 
     args = parser.parse_args()
     env = args.env
+    ppi = args.ppi
 
 
     start = time.time()
