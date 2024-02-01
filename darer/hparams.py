@@ -1,3 +1,6 @@
+import torch
+
+
 lunar_ppo = {
     'batch_size': 64,
     'clip_range': 0.2,
@@ -142,7 +145,9 @@ cartpole_u = {
     'theta_update_interval': 10,#750,
     'train_freq': 1,
     'gradient_steps': 1,
-    'aggregator': 'max'
+    'aggregator': 'max',
+    'prior_tau': 0.88,
+    'prior_update_interval': 5000,
 }
 
 maze = {
@@ -188,7 +193,9 @@ acrobot_u = {
     'train_freq': 7,
     'hidden_dim': 64,
     'theta_update_interval': 6,
-    'aggregator': 'max'
+    'aggregator': 'max',
+    'prior_update_interval': 500,
+    'prior_tau': 0.42
 }
 
 pendulum_logu = {
@@ -282,9 +289,24 @@ mcar_u = {
     'theta_update_interval': 10,#750,
     'train_freq': 16,
     'hidden_dim': 32,
-    'aggregator': 'max'
+    'aggregator': 'max',
+    'prior_tau': 0.62,
+    'prior_update_interval': 5000,
+    'loss_fn': torch.nn.functional.smooth_l1_loss,
+    'name': 'smoothl1'
 }
-
+mcar_sql = {
+    'batch_size': 128,
+    'beta': 0.7,
+    'gamma': 0.99,
+    'hidden_dim': 64,
+    'learning_rate': 0.002,
+    'learning_starts': 0.09*100_000,
+    'target_update_interval': 100,
+    'tau': 0.97,
+    'gradient_steps': 2,
+    'train_freq': 2,
+}
 sql_lunar = {
     'batch_size': 32,
     'beta': 2.3,
@@ -309,9 +331,8 @@ sql_acro = {
     'learning_starts': 0.04*50_000,
     'target_update_interval': 100,
     'tau': 0.92,
-    'tau_theta': 0.67,
-    'theta_update_interval': 550,
     'train_freq': 9,
+    'gradient_steps': 9,
 }
 
 sql_cpole = {
@@ -323,26 +344,45 @@ sql_cpole = {
     'learning_starts': 0.02*50_000,
     'target_update_interval': 100,
     'tau': 0.95,
-    'tau_theta': 0.97,
-    'theta_update_interval': 510,
     'train_freq': 9,
+    'gradient_steps': 9,
 }
 
 lunar_u = {
     'batch_size': 64,
-    'beta': 0.885,
+    'beta': 0.5,
     'buffer_size': 100_000,
-    'gradient_steps': 4,
-    'learning_rate': 0.0003,
-    'learning_starts': 0.0174*500_000,
-    'target_update_interval': 1000,
-    'tau': 0.38,
-    'tau_theta': 0.999,
-    'theta_update_interval': 500,#750,
-    'train_freq': 4,
-    'hidden_dim': 32,
-    'aggregator': 'max'
+    'gradient_steps': 1,
+    'learning_rate': 0.0005,
+    'learning_starts': 0.01*500_000,
+    'target_update_interval': 5000,
+    'tau': 0.95,
+    'tau_theta': 0.995,
+    'theta_update_interval': 50000,#750,
+    'train_freq': 1,
+    'hidden_dim': 128,
+    'aggregator': 'max',
+    'loss_fn': torch.nn.functional.smooth_l1_loss
 }
+
+lunar_u2 = {
+    'batch_size': 32,
+    'beta': 0.1,
+    'buffer_size': 500_000,
+    'gradient_steps': 4,
+    'learning_rate': 0.005,
+    'learning_starts': 0.05*500_000,
+    'target_update_interval': 100,
+    'tau': 0.52,
+    'tau_theta': 0.995,
+    'theta_update_interval': 50000,#750,
+    'train_freq': 4,
+    'hidden_dim': 128,
+    'aggregator': 'max',
+    'loss_fn': torch.nn.functional.smooth_l1_loss
+
+}
+
 
 # Set up a table of algos/envs to configs:
 cartpoles = {
@@ -365,9 +405,11 @@ mcars = {
     'u': mcar_u,
     # 'ppo': mcar_ppo,
     'dqn': mcar_dqn,
+    'sql': mcar_sql,
 }
 
 lunars = {
+    'u': lunar_u,
     'logu': lunar_logu,
     'ppo': lunar_ppo,
     'dqn': lunar_dqn,
