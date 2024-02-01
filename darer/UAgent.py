@@ -72,10 +72,12 @@ class UAgent(BaseAgent):
             else:
                 pi0 = torch.ones(self.nA, device=self.device) * (1/self.nA)
             chosen_action = self.online_us.choose_action(state, prior=pi0, greedy=False)
-            pi_by_pi0 = self.aggregator_fn(torch.stack(
+            u = self.aggregator_fn(torch.stack(
                 [u(state) for u in self.online_us], dim=0), dim=0)
+            pi = u[0] * pi0
+            pi /= pi.sum(dim=-1, keepdim=True)
             # kl = pi_by_pi0[0][chosen_action] * pi0[chosen_action] * torch.log(pi_by_pi0[0][chosen_action])
-            kl = (pi_by_pi0[0] * pi0 * torch.log(pi_by_pi0[0])).sum()
+            kl = (pi * torch.log(pi/pi0)).sum()
 
             kl = float(kl.item())
             # chosen_action = self.env.action_space.sample()
@@ -202,24 +204,24 @@ def main():
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'BreakoutNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import acrobot_u as config
+    from hparams import lunar_u as config
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,
                    tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
-                   beta_schedule='none', use_rawlik=True,
+                   beta_schedule='none', use_rawlik=False,
                    beta_end=5)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
     # use_rawlik=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
-    agent.learn(total_timesteps=10_000_000)
+    agent.learn(total_timesteps=500_000)
     t1 = time.thread_time_ns()
     print(f"Time to learn: {(t1-t0)/1e9} seconds")
 
