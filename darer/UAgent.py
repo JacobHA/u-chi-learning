@@ -204,14 +204,13 @@ def main():
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     env_id = 'Acrobot-v1'
-    env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'BreakoutNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import lunar_logu as config
+    from hparams import acrobot_u as config
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,
                    tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',

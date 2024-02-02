@@ -5,34 +5,24 @@ from CustomDQN import CustomDQN
 from CustomPPO import CustomPPO
 # from LogU import LogULearner
 from UAgent import UAgent
-from hparams import *
+from hparams import id_to_hparam_dicts, configs
 import time
 
 # env = 'CartPole-v1'
-# env = 'LunarLander-v2'
 env = 'Acrobot-v1'
 # env = 'MountainCar-v0'
 
 
 def runner(device):
-    if env == 'MountainCar-v0':
-        configs = mcars
-    elif env == 'CartPole-v1':
-        configs = cartpoles
-    elif env == 'LunarLander-v2':
-        configs = lunars
-    elif env == 'Acrobot-v1':
-        configs = acrobots
-    else:
-        raise ValueError(f"env {env} not recognized.")
+    try:
+        config = id_to_hparam_dicts[env]['u']
+    except KeyError:
+        print(f"env {env} not recognized.")
 
     # Now access the config for this algo:
     config = configs['u']
 
-    rawlik_hparams = {'use_rawlik': False,
-                    'prior_update_interval': 5_000,
-                    'prior_tau': 0.99,
-                        }
+    rawlik_hparams = {'use_rawlik': False}
 
     model = UAgent(env, **config, tensorboard_log=f'experiments/ablations/{env}',
                  device=device, log_interval=1000, **rawlik_hparams,

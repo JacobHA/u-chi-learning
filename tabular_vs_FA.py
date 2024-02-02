@@ -5,7 +5,6 @@ import pandas as pd
 from gymnasium.wrappers import TimeLimit
 import sys
 sys.path.append("darer")
-from LogUAgent import LogUAgent
 from UAgent import UAgent
 from darer.hparams import *
 from darer.utils import get_eigvec_values

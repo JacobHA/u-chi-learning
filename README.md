@@ -1,12 +1,17 @@
 EVAL: EigenVector-based Average-reward Learning
 
-Acrobot performance on EVAL (note logscale x axis):
+Welcome reviewers! Thank you for visiting the code associated to our ICML submission.
+In this repository you will find (within darer) a BaseAgent class which we subclass for SQL and EVAL, as well as several helper functions. The hyperparameters listed in the appendix are stored in darer/hparams.py.
 
-![auc][scaling_logu]
+First install the requirements.txt file (e.g. with pip).
 
-And same for SB3's DQN with their hparams (huggingface):
+The darer/UAgent.py script is configured so that you may run it with
 
-![auc][scaling_dqn]
+python darer/UAgent.py
+
+to see results on Acrobot. 
+
+The experiments/local_finetuned_runs.py file will run the experiments with finetuned hyperparameters.
 
 Model-based ground truth comparisons with tabular algorithms:
 
@@ -29,6 +34,3 @@ For updating requirements.txt:
 ```
 pip list --format=freeze > requirements.txt
 ```
-
-the contents of requirements.txt are a bit sensitive for the git actions testing...
-(e.g. have to remove some conda stuff)
