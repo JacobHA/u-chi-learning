@@ -291,9 +291,8 @@ mcar_u = {
     'aggregator': 'max',
     'prior_tau': 0.62,
     'prior_update_interval': 5000,
-    'loss_fn': torch.nn.functional.smooth_l1_loss,
-    'name': 'smoothl1'
 }
+
 mcar_sql = {
     'batch_size': 128,
     'beta': 0.7,
@@ -364,20 +363,21 @@ sql_cpole = {
 
 lunar_u = {
     'batch_size': 32,
-    'beta': 1.08 / 4,
-    'buffer_size': 500_000,
+    'beta': 1.08 / 12,
+    'buffer_size': 100_000,
     'gradient_steps': 4,
     'learning_rate': 0.00032,
     'learning_starts': 0.052*500_000,
     'target_update_interval': 50,
-    'tau': 0.8,
-    'tau_theta': 0.995,
-    'theta_update_interval': 50000,#750,
+    'tau': 0.18,
+    'tau_theta': 0.99,
+    'theta_update_interval': 500,#750,
     'train_freq': 4,
     'hidden_dim': 128,
     'aggregator': 'max',
-    'loss_fn': torch.nn.functional.smooth_l1_loss
-
+    'loss_fn': torch.nn.functional.smooth_l1_loss,
+    'prior_tau': 0.01,
+    'prior_update_interval': 10,
 }
 
 

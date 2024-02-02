@@ -148,8 +148,10 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
             # eval_env = AtariAdapter(eval_env)
             # if render:
             #     eval_env = RecordVideo(eval_env, video_folder='videos')
-            env = FireResetEnv(env)
-            eval_env = FireResetEnv(eval_env)
+            # check if there is a fire button:
+            if 'FIRE' in env.unwrapped.get_action_meanings():
+                env = FireResetEnv(env)
+                eval_env = FireResetEnv(eval_env)
         else:
             env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
@@ -186,14 +188,14 @@ class FireResetEnv(gym.Wrapper):
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
-    def reset(self):
-        self.env.reset()
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
         obs, _, done, _, _ = self.env.step(1)
         if done:
-            self.env.reset()
+            self.env.reset(**kwargs)
         obs, _, done, _, _ = self.env.step(2)
         if done:
-            self.env.reset()
+            self.env.reset(**kwargs)
         return obs, {}
 
 

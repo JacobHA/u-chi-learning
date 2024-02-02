@@ -211,7 +211,7 @@ def main():
     # env_id = 'MountainCar-v0'
     # env_id = 'Drug-v0'
 
-    from hparams import lunar_u as config
+    from hparams import lunar_logu as config
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,
                    tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',

@@ -9,3 +9,5 @@ multinasium/
 pend/
 *.tfevents.*
 tabular/
+pong/
+sweep_params/

@@ -44,10 +44,10 @@ def runner(algo, device):
 
     if algo == UAgent:
         model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=10000, **rawlik_hparams)#, name='U-rawlik2')#,
+                 device=device, log_interval=1000, **rawlik_hparams)#, name='U-rawlik2')#,
     else:
         model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=10000)
+                 device=device, log_interval=1000)
         
     total_timesteps = env_id_to_timesteps[env]
     model.learn(total_timesteps=total_timesteps)

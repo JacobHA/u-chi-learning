@@ -1,12 +1,14 @@
+import sys
+sys.path.append('darer')
+
 import argparse
 import wandb
 import yaml
 import numpy as np
 import random
 import copy
-from MultiLogU import main
-import sys
-sys.path.append('darer')
+from UAgent import main
+
 
 from utils import sample_wandb_hyperparams
 

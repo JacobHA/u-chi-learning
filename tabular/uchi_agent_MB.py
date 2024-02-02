@@ -44,22 +44,10 @@ def logu_solver(env_src=None, map_name=None, beta=15):
     twisted_matrix = get_mdp_transition_matrix(dynamics, prior_policy)
     # twist w e^beta r:
     twisted_matrix = twisted_matrix.A @ np.diag(np.exp(beta * rewards.flatten()))
-    # get ev gap:
-
-    # Must "wisely" choose a reference state to normalize u by.
-    u_ref_state = (0, 1)
-    # where does the reference state send you to?
-    chi_ref_state = int(dynamics[u_ref_state])
-
-    delta_rwds = rewards - rewards[u_ref_state]
-
-    next_state = dynamics.A[u_ref_state]
-
 
     init_u = np.ones((n_states, n_actions))
     init_chi = chi(init_u, n_states, n_actions, prior_policy=prior_policy)
     # init_u = u
-
 
     # Learning rate and training episodes:
     alpha = 0.02
@@ -67,6 +55,7 @@ def logu_solver(env_src=None, map_name=None, beta=15):
 
     # Track eigenvalue during learning (can use to check convergence):
     thetas = []
+    theta = 1
 
     # We will be updating log(u) and chi on each iteration
     logu = np.log(init_u)
@@ -80,21 +69,22 @@ def logu_solver(env_src=None, map_name=None, beta=15):
         # Set old logu to current logu (so we can learn and calculate error between the two)
         loguold = logu
         # Loop over all state action pairs
+        new_thetas = np.zeros((n_states, n_actions))
         for state in range(n_states):
             for action in range(n_actions):
-                if (state, action) != u_ref_state:
-                    # Check which states will be transitioned to: (det. dynamics so only 1 possible next state)
+            
+                # Check which states will be transitioned to: (det. dynamics so only 1 possible next state)
 
-                    state_prime = np.argwhere(
-                        dynamics.A.T[state*env.nA + action] == 1)[0][0]
+                state_prime = np.argwhere(
+                    dynamics.A.T[state*env.nA + action] == 1)[0][0]
 
-                    # Update log(u) based on the u-chi relationship
-                    logu[state, action] = (
-                        beta * delta_rwds[state, action] + np.log(ch[state_prime]/ch[chi_ref_state]))
+                # Update log(u) based on the u-chi relationship
+                logu[state, action] = (
+                    beta * (rewards[state, action] + theta) + np.log(ch[state_prime])) #- logu[state, action])
+                new_thetas[state, action] = - rewards[state, action] #- (np.log(ch[state_prime]) - loguold[state, action])
 
         # Learn logu update
         logu = loguold * (1 - alpha) + alpha * logu
-        logu -= logu[u_ref_state]
 
         # Update chi at each state-iteration (because it will change each time)
         ch = chi(np.exp(logu), n_states, n_actions, prior_policy=prior_policy)
@@ -106,7 +96,7 @@ def logu_solver(env_src=None, map_name=None, beta=15):
         errs.append(np.abs(logu.flatten() - np.log(u_true)).sum())
 
         # Track eigenvalue
-        theta = - beta * rewards[u_ref_state] - np.log(ch[chi_ref_state])
+        theta = new_thetas.mean()
         thetas.append(theta)
 
     save_err_plot(errs, 'MB')
