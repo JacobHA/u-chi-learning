@@ -1,4 +1,7 @@
 import sys
+
+import torch.nn.functional
+
 sys.path.append('darer')
 import argparse
 from CustomDQN import CustomDQN
@@ -56,7 +59,6 @@ def runner(env_id, algo_str, device, tensorboard_log, config=None, total_timeste
             config.update(rawlik_hparams)
 
     algo = str_to_algo[algo_str]
-
     model = algo(env_id, **config, tensorboard_log=tensorboard_log,
                  device=device, log_interval=1000)#, aggregator='max')
     model.learn(total_timesteps=total_timesteps)

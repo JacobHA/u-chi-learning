@@ -41,6 +41,8 @@ parameters:
     min: 0.1
   prior_update_interval:
     values: [500, 1000, 5000]
-  'use_rawlik':
+  use_rawlik:
     values: [ True, False ]
+  loss_fn:
+    values: [ "smooth_l1" ]
 program: wandb_job.py

@@ -19,4 +19,6 @@ export WANDB_MODE=offline
 wandb offline
 
 # Start the evaluations
-python experiments/classic_sweep.py --n_runs=1 --proj=u-chi-learning --algo="u" --exp-name="classic-bench" --env_id="LunarLander-v2"
+ENVNAME=${1:-"LunarLander-v2"}
+DEVICE=${2:-"cuda"}
+python experiments/classic_sweep.py --n_runs=1 --proj=u-chi-learning --algo="u" --exp-name="classic-bench" --env_id=$ENVNAME --device=$DEVICE

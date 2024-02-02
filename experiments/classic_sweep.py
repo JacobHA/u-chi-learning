@@ -4,6 +4,7 @@ import yaml
 import copy
 import sys
 import traceback as tb
+import torch
 sys.path.append('darer')
 
 from utils import sample_wandb_hyperparams
@@ -20,6 +21,9 @@ env_to_total_timesteps = {
     "MountainCar-v0": 1_000_000,
     "LunarLander-v2": 250_000,
     "Acrobot-v1": 1_000_000,
+}
+loss_str_to_fn = {
+    "smooth_l1": torch.nn.functional.smooth_l1_loss,
 }
 
 int_hparams = {'batch_size', 'buffer_size', 'gradient_steps',
@@ -57,6 +61,7 @@ def wandb_train(local_cfg=None, env_id=None, n_hparam_runs=None):
             learn_ratio = config['parameters'].pop('learning_starts_ratio')
             total_timesteps = env_to_total_timesteps[env_id]
             config['parameters']['learning_starts'] = total_timesteps * learn_ratio
+            config['parameters']['loss_fn'] = loss_str_to_fn[config['parameters']['loss_fn']]
             runner(env_id, algo_str, device,
                    tensorboard_log=f'local-{algo_str}-{env_id}',
                    config=config['parameters'],
