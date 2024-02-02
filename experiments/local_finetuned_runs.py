@@ -31,8 +31,8 @@ env_id_to_timesteps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 50_000,
     'LunarLander-v2': 500_000,
-    'PongNoFrameskip-v4': 1_000_000,
-    'MountainCar-v0': 100_000,
+    'PongNoFrameskip-v4': 10_000_000,
+    'MountainCar-v0': 120_000,
 }
 
 def runner(env_id, algo_str, device, tensorboard_log, config=None, total_timesteps=None):
