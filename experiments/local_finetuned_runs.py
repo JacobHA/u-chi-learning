@@ -32,30 +32,22 @@ env_id_to_timesteps = {
 
 
 def runner(algo, device):
-    if env == 'MountainCar-v0':
-        configs = mcars
-    elif env == 'CartPole-v1':
-        configs = cartpoles
-    elif env == 'LunarLander-v2':
-        configs = lunars
-    elif env == 'Acrobot-v1':
-        configs = acrobots
-    elif 
-    else:
+    try:
+        config = id_to_hparam_dicts[env][algo]
+    except KeyError:
         raise ValueError(f"env {env} not recognized.")
 
     # Now access the config for this algo:
-    config = configs[algo]
     algo = str_to_algo[algo]
 
     rawlik_hparams = {'use_rawlik': ppi}
 
     if algo == UAgent:
         model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=1000, **rawlik_hparams)#, name='U-rawlik2')#,
+                 device=device, log_interval=10000, **rawlik_hparams)#, name='U-rawlik2')#,
     else:
         model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=1000)
+                 device=device, log_interval=10000)
         
     total_timesteps = env_id_to_timesteps[env]
     model.learn(total_timesteps=total_timesteps)
