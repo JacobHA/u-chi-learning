@@ -5,17 +5,6 @@ import wandb
 from SoftQAgent import SoftQAgent
 from LogUAgent import LogUAgent
 from UAgent import UAgent
-
-
-env_id = 'CartPole-v1'
-# env_id = 'MountainCar-v0'
-# env_id = 'LunarLander-v2'
-# env_id = 'Pong-v4'
-# env_id = 'HalfCheetah-v4'
-# env_id = 'Acrobot-v1'
-# env_id = 'Pendulum-v1'
-env_id = None
-
 from hparams import id_to_hparam_dicts
 
 
@@ -41,34 +30,25 @@ def runner(config=None, run=None):
     hconfig = id_to_hparam_dicts[env_id][algo]
     total_timesteps = env_id_to_timesteps[env_id]
 
-    if 'buffer_size' not in config:
-        config['buffer_size'] = total_timesteps
+
+    hconfig['buffer_size'] = total_timesteps
 
     LOG_INTERVAL = 500
     device = 'cpu'
     runs_per_hparam = 3
+    auc = 0
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
-        if algo == 'u':
-            # config.pop('device')
-            # config.pop('env_id')
-            # config['buffer_size'] = 300_000
-            agent = UAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
-                           render=False,
-                           use_rawlik=False,
-                           device=device)
+        # config.pop('device')
+        # config.pop('env_id')
+        # config['buffer_size'] = 300_000
+        agent = UAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
+                       **hconfig,
+                        render=False,
+                        device=device)
+        agent.learn(total_timesteps=total_timesteps,)
 
-        elif algo == 'sql':
-            agent = SoftQAgent(env_id, **config, log_interval=LOG_INTERVAL, use_wandb=True,
-                               render=False,
-                               device=device)
-        wandb.log({'agent_name': agent.algo_name})
-
-        early_stopped = agent.learn(total_timesteps=total_timesteps,)
-        # early_stop=env_to_early_stop_dict[env_id])
-        if early_stopped:
-            break
         auc += agent.eval_auc
     auc /= runs_per_hparam
     wandb.log({'avg_eval_auc': auc})
@@ -82,8 +62,6 @@ def wandb_agent():
 
 
 if __name__ == "__main__":
-    algo_to_sweep_id = {'u': '27ojzk9g',  # '6301y2oc',
-                        'sql': 'frb1998p'}
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device", type=str, default='cpu')
@@ -98,12 +76,7 @@ if __name__ == "__main__":
     project = args.project
     algo = args.algo
 
-    sweep_id = algo_to_sweep_id[algo]
-    if 'NoFrameskip' in args.env_id:
-        # sweep_id = '5gwi5rfx'
-        sweep_id = 'e6nnzdsf'
-    if args.env_id == 'LunarLander-v2':
-        sweep_id = 'y6gv3ss2'
+    sweep_id = 'mhovfqyc'
     env_id = args.env_id
     device = args.device
 

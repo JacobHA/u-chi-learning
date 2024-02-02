@@ -43,10 +43,25 @@ def calculate_timescale(env_src, beta=BETA):
     std_rl_timescale = 1 / gap
 
     tilted_matrix = mdp_generator.A @ np.diag(np.exp(beta * rewards.A[0]))
-    eigenvalues, _ = np.linalg.eig(tilted_matrix)
-    eig0, eig1 = np.sort(np.abs(eigenvalues))[::-1][0:2]
+    eigenvalues, eigenvecs = np.linalg.eig(tilted_matrix)
+    # sort both by magnitude:
+    eigenvalues, eigenvecs = zip(*sorted(zip(eigenvalues, eigenvecs), key=lambda x: np.abs(x[0]), reverse=True))
+    eig0, eig1 = eigenvalues[0:2]
+    # eig0, eig1 = np.sort(np.abs(eigenvalues))[::-1][0:2]
+    # dominant left eigenvector:
+    u = eigenvecs[0]
     gap = eig0 / eig1# find the natural timescale:
     beta_timescale = 1/np.log(gap)
+
+    # driven_matrix = np.diag(u**(-1)) @ tilted_matrix @ np.diag(u) / eig0
+    # # get driven matrix eigenvalues:
+    # eigenvalues, _ = np.linalg.eig(driven_matrix)
+    # eigenvalues = np.sort(np.abs(eigenvalues))[::-1]
+    # gap = 1 - eigenvalues[1]
+    # # find the natural timescale:
+    # driven_timescale = 1 / np.loggap
+
+
     print('timescale:', beta_timescale)
     return beta_timescale
 
@@ -116,13 +131,13 @@ def plot(horizons, returns, timescale, gs, speeds=None, return_stds=None, logu_r
     max_gamma = gammas.max()
     all_x = np.linspace(min_gamma, max_gamma, 10)
     plt.fill_between(all_x, logu_rwd - logu_std, logu_rwd + logu_std, color='blue', alpha=0.3)  
-    plt.axhline(logu_rwd, xmin=0.01, xmax=0.99, linestyle='-.', color='b', label='LogU')
+    plt.axhline(logu_rwd, xmin=0.01, xmax=0.99, linestyle='-.', color='b', label='EVAL (our method)')
 
     # plot a vertical line at timescale
     mixing_gamma = 1 - 1 / timescale
-    plt.axvline(mixing_gamma, linestyle='--', color='r')#, label='Spectral Gap', lw=2)
+    plt.axvline(mixing_gamma, linestyle='--', color='r', label='Spectral Gap', lw=2)
     # Add a text label:
-    plt.text(mixing_gamma*1.002, 38, r'Spectral Gap', color='r')#, fontsize=20)
+    # plt.text(mixing_gamma*1.002, 38, r'Spectral Gap', color='r')#, fontsize=20)
     # plt.xlabel(r'Discounting Timescale, $\left(1-\gamma\right)^{-1}$')
     plt.xlabel(r'Discount Factor, $\gamma$')
     # plt.ylabel('Reward Accumulated \nby Optimal Policy')
@@ -130,9 +145,10 @@ def plot(horizons, returns, timescale, gs, speeds=None, return_stds=None, logu_r
     plt.ylabel('Average Steps to Goal')
     # make the y-axis label, ticks and tick labels match the line color.
     plt.title('Discounted vs. Average-Reward Objective\n', fontsize=24)
-    plt.xlim(min_gamma*1.03,0.97)
+    plt.xlim(min_gamma, max_gamma)
     # Use horizon scaling:
-    if True:
+    horizon_scaling=False
+    if horizon_scaling:
         plt.xscale('function', functions=(forward, inverse))
         # place x ticks uniformly in transformed space:
         xmin, xmax = plt.xlim()
@@ -142,7 +158,7 @@ def plot(horizons, returns, timescale, gs, speeds=None, return_stds=None, logu_r
         # transform back to gammas:
         plt.xticks(inverse(ticks), [f'{1-1/t:.2f}' for t in ticks])
 
-    plt.ylim(6,40)
+    # plt.ylim(6,40)
     # # make a legend manually:
     # legend_elements = [
     #     matplotlib.lines.Line2D([0], [0], color='k', lw=1.5, label='Exact Soft-Q'),
@@ -153,13 +169,17 @@ def plot(horizons, returns, timescale, gs, speeds=None, return_stds=None, logu_r
     
     # Put legend on right side of fig, 1col:
     # plt.legend(loc='upper center', fancybox=True, shadow=True, ncol=3)
-    plt.legend(loc='upper right', fancybox=True, shadow=True, ncol=1)
+    # plt.legend(loc='upper right', fancybox=True, shadow=True, ncol=1)
+    # Legend below figure:
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=3)
+    plt.tight_layout()
     g1,g2=gs
 
     # add arrows:
+    gammas = np.real_if_close(gammas)
     # point an arrow from bottom of fig to the nearest rewards of g1:
     end_points = [(g1, np.interp(g1, gammas, returns)), (g2, np.interp(g2, gammas, returns))]
-    init_points = [(0.93, 25), (0.955, 25)]
+    init_points = [(0.85, 105), (0.975, 105)]
     for init_point, end_point in zip(init_points, end_points):
         plt.annotate("", xy=end_point, xytext=init_point,
                      arrowprops=dict(arrowstyle="->", color='k', lw=2))
@@ -170,11 +190,11 @@ def plot(horizons, returns, timescale, gs, speeds=None, return_stds=None, logu_r
     # Add inset plots of map_name/gamma_{g1,g2}.png:
     # put g1 on the left of spectral gap:
     size=0.32
-    axins1 = plt.axes([0.17, 0.45, size, size])
+    axins1 = plt.axes([0.17, 0.5, size, size])
     axins1.imshow(plt.imread(f'{map_name}/gamma_{g1}.png'))
     axins1.axis('off')
 
-    axins2 = plt.axes([0.485, 0.45, size, size])
+    axins2 = plt.axes([0.685, 0.5, size, size])
     axins2.imshow(plt.imread(f'{map_name}/gamma_{g2}.png'))
     axins2.axis('off')
     
@@ -191,7 +211,7 @@ def inverse(a):
     return 1 - 1/a
 
 
-def main(map_name='hallway1'):
+def main(map_name='hallway1', gs=[0.87, 0.96]):
     env_src = env_setup(map_name=map_name)
     timescale = calculate_timescale(env_src, beta=BETA)
 
@@ -199,7 +219,7 @@ def main(map_name='hallway1'):
     return_stds = []
     speeds = []
     map_state_dists = []
-    gamma_values = np.linspace(0.7, 0.999, 50)
+    gamma_values = np.linspace(0.8, 0.999, 50)
 
     # horizons = np.linspace(1,55,5)
     # gamma_values = 1 - 1 / horizons
@@ -224,7 +244,7 @@ def main(map_name='hallway1'):
     timescale_tiled = np.tile(timescale, len(horizons))
     data = np.array([horizons, returns, speeds, return_stds, timescale_tiled])
     np.save(f'{map_name}/data.npy', data)
-    plot(horizons, returns, timescale, speeds=speeds, return_stds=return_stds, logu_rwd=logu_rwd, logu_std=logu_std)
+    plot(horizons, returns, timescale, gs=gs, speeds=speeds, return_stds=return_stds, logu_rwd=logu_rwd, logu_std=logu_std)
 
     
 def plot_policies(map_name, gammas, max_steps=1000, beta=BETA):
@@ -263,11 +283,11 @@ def plot_from_data(map_name, gs):
 
 if __name__ == '__main__':
     # map_name = 'hallway2'
-    map_name='7x7wall'
-    # main(map_name=map_name)
-    gs = [0.87, 0.96]
-    for g in gs:
-        run(env_setup(map_name=map_name), gamma=g, plot_gamma=True)
+    map_name='9x9channel'
+    gs = [0.87, 0.93]
+    # main(map_name=map_name, gs=gs)
+    # for g in gs:
+        # run(env_setup(map_name=map_name), gamma=g, plot_gamma=True)
 
-    plot_policies(map_name=map_name, gammas=gs)
+    # plot_policies(map_name=map_name, gammas=gs)
     plot_from_data(map_name, gs=gs)

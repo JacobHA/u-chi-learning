@@ -34,9 +34,9 @@ def main(total_steps=1_200_000, hparams:dict=None):
     model = DQN('CnnPolicy', env, verbose=1, device='cuda',
                 policy_kwargs={
                     'normalize_images': False,
-                }, **hparams, tensorboard_log='local-pong')
+                }, **hparams, tensorboard_log='ft/PongNoFrameskip-v4')
 
-    model.learn(total_timesteps=total_steps, log_interval=3)
+    model.learn(total_timesteps=total_steps, log_interval=10)
 
 
 def wandb_train(local_cfg=None):
@@ -52,13 +52,13 @@ def wandb_train(local_cfg=None):
         print(f"dqn parameters: {local_cfg['parameters']}")
     with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
         config = wandb.config.as_dict()
-        main(total_steps=1_200_000, hparams=config['parameters'])
+        main(total_steps=10_000_000, hparams=config['parameters'])
 
 
 if __name__ == "__main__":
     args = argparse.ArgumentParser()
     args.add_argument("--sweep", type=str, default=None)
-    args.add_argument("--n_runs", type=int, default=100)
+    args.add_argument("--n_runs", type=int, default=10)
     args.add_argument("--proj", type=str, default="u-chi-learning-test")
     args.add_argument("--local-wandb", type=bool, default=True)
     args.add_argument("--exp-name", type=str, default="atari-pong")

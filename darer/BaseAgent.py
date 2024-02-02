@@ -382,7 +382,7 @@ class BaseAgent:
         self.logger.dump(step=self.env_steps)
         self.initial_time = time.thread_time_ns()
 
-    def evaluate(self, n_episodes=5) -> float:
+    def evaluate(self, n_episodes=10) -> float:
         # run the current policy and return the average reward
         self.initial_time = time.process_time_ns()
         avg_reward = 0.

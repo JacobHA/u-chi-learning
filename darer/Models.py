@@ -380,7 +380,8 @@ class OnlineSoftQNets(OnlineNets):
                 # pi propto e^beta Q:
                 # first subtract a baseline from q_a:
                 q_a = q_a - (torch.max(q_a) + torch.min(q_a))/2
-                pi = prior * torch.exp(self.beta * q_a)
+                clamped_exp = torch.clamp(self.beta * q_a, min=-20, max=20)
+                pi = prior * torch.exp(clamped_exp)
                 pi = pi / torch.sum(pi)
                 a = Categorical(pi).sample()
                 action = a.cpu().numpy()

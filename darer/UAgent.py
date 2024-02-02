@@ -72,10 +72,12 @@ class UAgent(BaseAgent):
             else:
                 pi0 = torch.ones(self.nA, device=self.device) * (1/self.nA)
             chosen_action = self.online_us.choose_action(state, prior=pi0, greedy=False)
-            pi_by_pi0 = self.aggregator_fn(torch.stack(
+            u = self.aggregator_fn(torch.stack(
                 [u(state) for u in self.online_us], dim=0), dim=0)
+            pi = u[0] * pi0
+            pi /= pi.sum(dim=-1, keepdim=True)
             # kl = pi_by_pi0[0][chosen_action] * pi0[chosen_action] * torch.log(pi_by_pi0[0][chosen_action])
-            kl = (pi_by_pi0[0] * pi0 * torch.log(pi_by_pi0[0])).sum()
+            kl = (pi * torch.log(pi/pi0)).sum()
 
             kl = float(kl.item())
             # chosen_action = self.env.action_space.sample()
@@ -145,7 +147,7 @@ class UAgent(BaseAgent):
             # in_log = torch.clamp(in_log, min=1e-6, max=1e6)
             # clamp to a tolerable range:
             # batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
-            batch_rho = torch.mean(torch.exp(self.beta * rewards.squeeze(-1)) * in_log)
+            batch_rho = torch.mean(torch.exp(self.beta * rewards.squeeze()) * in_log)
 
             # batch_theta = torch.clamp(batch_theta, min=-30, max=30)
             self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
@@ -216,7 +218,7 @@ if __name__ == '__main__':
     # env_id = 'Taxi-v3'
     # env_id = 'CliffWalking-v0'
     env_id = 'Acrobot-v1'
-    # env_id = 'LunarLander-v2'
+    env_id = 'LunarLander-v2'
     # env_id = 'PongNoFrameskip-v4'
     # env_id = 'BreakoutNoFrameskip-v4'
     # env_id = 'FrozenLake-v1'

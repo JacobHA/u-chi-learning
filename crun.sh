@@ -16,7 +16,7 @@
 ##SBATCH --gres=gpu:1
 ##SBATCH --partition=DGXA100
 ##SBATCH --export=NONE
-#SBATCH --array=1-40
+#SBATCH --array=1-10
 ## --begin=now+1min
 echo "using scavenger"
 
@@ -32,16 +32,7 @@ echo "Start Run"
 echo `date`
 
 python experiments/wandb_job.py -d cpu -env LunarLander-v2 -a u
-# python experiments/wandb_job.py -d cpu -env MountainCar-v0 -a sql
-
-# python experiments/wandb_job.py -d cuda -env PongNoFrameskip-v4 -a u
-
-# python darer/LogUAgent.py
-# python experiments/wandb_job.py -env CartPole-v1 -a u
-# python experiments/wandb_job.py -env LunarLander-v2 -a sql
-
-# python experiments/baselines/DQN_comparison.py
-# python experiments/local_finetuned_runs.py -a u
+# python experiments/rawlik_wandb_job.py -d cpu -env Acrobot-v1 -a u
 
 # Diagnostic/Logging Information
 echo "Finish Run"

@@ -8,7 +8,7 @@ from CustomDQN import CustomDQN
 from CustomPPO import CustomPPO
 # from LogU import LogULearner
 from UAgent import UAgent
-from LogUAgent import LogUAgent
+from SoftQAgent import SoftQAgent
 from hparams import *
 import time
 
@@ -22,14 +22,15 @@ str_to_algo = {
     'u-norwl': UAgent,
     # 'logu': LogUAgent,
     'ppo': CustomPPO,
-    'dqn': CustomDQN
+    'dqn': CustomDQN,
+    'sql': SoftQAgent
 }
 
 
 env_id_to_timesteps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 50_000,
-    'LunarLander': 250_000,
+    'LunarLander-v2': 500_000,
     'PongNoFrameskip-v4': 1_000_000,
     'MountainCar-v0': 100_000,
 }
@@ -60,7 +61,7 @@ def runner(env_id, algo_str, device, tensorboard_log, config=None, total_timeste
 
     algo = str_to_algo[algo_str]
     model = algo(env_id, **config, tensorboard_log=tensorboard_log,
-                 device=device, log_interval=1000)#, aggregator='max')
+                 device=device, log_interval=10000)#, aggregator='max')
     model.learn(total_timesteps=total_timesteps)
 
 
@@ -74,6 +75,7 @@ if __name__ == '__main__':
     # 'MountainCar-v0'
     parser.add_argument('-e', '--env', type=str, default='LunarLander-v2')
     parser.add_argument('-d', '--device', type=str, default='cuda')
+    parser.add_argument('-p', '--ppi', type=bool, default=False)
 
     args = parser.parse_args()
     env = args.env
@@ -82,6 +84,10 @@ if __name__ == '__main__':
     start = time.time()
     tensorboard_log = f'experiments/ft/{args.env}'
     total_timesteps = env_id_to_timesteps[args.env]
+    try:
+        config = id_to_hparam_dicts[env][algo]
+    except KeyError:
+        raise ValueError(f"env {env} not recognized.")
     for i in range(args.count):
         if args.algo == '*':
             for algo in str_to_algo.keys():
