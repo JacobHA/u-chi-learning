@@ -15,8 +15,6 @@ sys.path.append("../tabular")
 sys.path.append("tabular")
 from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 from wrappers import FrameStack
-# from gym.wrappers.monitoring.video_recorder import VideoRecorder
-from gymnasium.wrappers import RecordVideo
 
 
 def logger_at_folder(log_dir=None, algo_name=None):
@@ -40,41 +38,11 @@ def logger_at_folder(log_dir=None, algo_name=None):
             time.sleep(0.5)
             num += 1
             tmp_path = f"{log_dir}/{algo_name}_{num}"
-            # try:
-            #     os.makedirs(tmp_path, exist_ok=False)
-            # except FileExistsError:
-            #     # try again with an incremented number:
-            # pass
         logger = configure(tmp_path, ["stdout", "tensorboard"])
     else:
-        # print the logs to stdout:
-        # , "csv", "tensorboard"])
         logger = configure(format_strings=["stdout"])
 
     return logger
-
-
-# class AtariAdapter(gym.Wrapper):
-#     """
-#     Wrapper for atari-preprocessed environments to make them consistent with unprocessed environments.
-#     Observation space has to include a channel dimension.
-#     """
-#     def __init__(self, env):
-#         super().__init__(env)
-#         self.env = env
-#         obs_space_kwargs = env.observation_space.__dict__
-#         obs_space_kwargs['shape'] = (*obs_space_kwargs['_shape'], 1)
-#         for key in ['bounded_below', 'bounded_above', '_shape', 'low_repr', 'high_repr', '_np_random']:
-#             obs_space_kwargs.pop(key)
-#         obs_space_kwargs["low"] = obs_space_kwargs["low"][...,np.newaxis]
-#         obs_space_kwargs["high"] = obs_space_kwargs["high"][...,np.newaxis]
-#         self.observation_space = gym.spaces.Box(**obs_space_kwargs)
-#         self.action_space = env.action_space
-#
-#     def step(self, action):
-#         obs, rew, term, trunk, info = self.env.step(action)
-#         obs = obs[..., np.newaxis]
-#         return obs, rew, term, trunk, info
 
 
 class PermuteAtariObs(gym.Wrapper):
@@ -137,7 +105,6 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
             # permute dims for nature CNN in sb3
             if permute_dims:
                 env = PermuteAtariObs(env)
-            # env = AtariAdapter(env)
             # make another instance for evaluation purposes only:
             eval_env = gym.make(env_id, render_mode='human' if render else None, frameskip=frameskip)
             eval_env = AtariPreprocessing(eval_env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
@@ -145,9 +112,6 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
                 eval_env = FrameStack(eval_env, framestack_k)
             if permute_dims:
                 eval_env = PermuteAtariObs(eval_env)
-            # eval_env = AtariAdapter(eval_env)
-            # if render:
-            #     eval_env = RecordVideo(eval_env, video_folder='videos')
             # check if there is a fire button:
             if 'FIRE' in env.unwrapped.get_action_meanings():
                 env = FireResetEnv(env)

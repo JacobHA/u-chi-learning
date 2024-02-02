@@ -11,10 +11,11 @@ from darer.utils import get_eigvec_values
 from tabular.tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 from tabular.frozen_lake_env import ModifiedFrozenLake, MAPS
 
+
 config = maze
 config.pop('beta')
 map_name = '3x5uturn'
-# map_name = 'hallway1'
+
 
 def exact_solution(beta, env):
     dynamics, rewards = get_dynamics_and_rewards(env.unwrapped)
@@ -121,15 +122,8 @@ def plot():
 
 
 if __name__ == '__main__':
-    import multiprocessing as mp
-
-    # pool = mp.Pool(15)
-    #looks like levels off around beta=100, beta=0.1
     alphas = np.linspace(1/50, 10, 10)[::-1]
     betas = 1 / alphas
-    # pool.map(main, betas)
-    # pool.close()
-    # pool.join()
     for beta in betas:
         main(beta)
     

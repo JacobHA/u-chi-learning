@@ -78,11 +78,6 @@ def model_initializer(is_image_space,
             activation(),
             nn.Linear(hidden_dim, nA),
         ))
-        # intialize weights with xavier:
-        # for m in model:
-        #     if isinstance(m, nn.Linear):
-        #         nn.init.xavier_uniform_(m.weight, gain=1)
-        #         nn.init.constant_(m.bias, 0)
 
     return model, nS
 
@@ -165,8 +160,7 @@ class EmptyScheduler(LRScheduler):
 
 str_to_scheduler = {
     "step": (StepLR, {'step_size': 100_000, 'gamma': 0.5}),
-    # "MultiplicativeLR": (MultiplicativeLR, ()), 
-    "linear": (LinearLR, {"start_factor":1./3, "end_factor":1.0, "last_epoch":-1}), 
+    "linear": (LinearLR, {"start_factor":1./3, "end_factor":1.0, "last_epoch":-1}),
     "exponential": (ExponentialLR, {'gamma': 0.9999}), 
     "none": (EmptyScheduler, {"last_epoch":-1})
 }
@@ -298,37 +292,22 @@ class OnlineLogUNets(OnlineNets):
             if not self.is_vector_env:
                 if greedy:
                     action_net_idx = torch.argmax(logu + logprior, dim=0)
-                    # action = idxs[action_net_idx].cpu().numpy()
                     action = action_net_idx.cpu().numpy()
                 else:
-                    # pi* = pi0 * exp(logu)
                     logu = logu.clamp(-30,30)
                     in_exp = logu + logprior
                     in_exp -= (in_exp.max() + in_exp.min())/2
                     dist = torch.exp(in_exp)
                     dist /= torch.sum(dist)
                     c = Categorical(dist)
-                    # action = idxs[c.sample().cpu().item()].cpu().numpy()
                     action = c.sample().cpu().numpy()
             else:
                 raise NotImplementedError
                 actions = np.array(actions)
                 rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
                 action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
-            # perhaps re-weight this based on pessimism?
             return action
-            # with torch.no_grad():
-            #     logus = [net(state) for net in self.nets]
-            #     logu = torch.stack(logus, dim=-1)
-            #     logu = logu.squeeze(1)
-            #     logu = torch.mean(logu, dim=-1)#[0]
-            #     baseline = (torch.max(logu) + torch.min(logu))/2
-            #     logu = logu - baseline
-            #     logu = torch.clamp(logu, min=-20, max=20)
-            #     dist = torch.exp(logu)
-            #     dist = dist / torch.sum(dist)
-            #     c = Categorical(dist)#, validate_args=True)
-            #     return c.sample()#.item()
+
 
 class OnlineUNets(OnlineNets):
     def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
@@ -463,13 +442,13 @@ class GaussianPolicy(nn.Module):
 
         # action rescaling
         if action_space is None:
-            self.action_scale = torch.tensor(1.)#, device=self.device)
-            self.action_bias = torch.tensor(0.)#, device=self.device)
+            self.action_scale = torch.tensor(1.)
+            self.action_bias = torch.tensor(0.)
         else:
             self.action_scale = torch.FloatTensor(
-                (action_space.high - action_space.low) / 2.)#, device=self.device)
+                (action_space.high - action_space.low) / 2.)
             self.action_bias = torch.FloatTensor(
-                (action_space.high + action_space.low) / 2.)#, device=self.device)
+                (action_space.high + action_space.low) / 2.)
             
         self.observation_space = observation_space
         self.to(device)
@@ -480,8 +459,6 @@ class GaussianPolicy(nn.Module):
         x = F.relu(self.linear1(obs))
         x = F.relu(self.linear2(x))
         mean = self.mean_linear(x)
-        # log_std = self.log_std_linear(x)
-        # log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         log_std = torch.ones_like(mean) * -2
         return mean, log_std
 
@@ -546,8 +523,7 @@ class UNet(nn.Module):
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
-        
-        # x = x.detach()
+
         x = preprocess_obs(x, self.env.observation_space)
         assert x.dtype == torch.float32, "Input must be a float tensor."
 
@@ -581,12 +557,9 @@ class UNet(nn.Module):
                         x = x.unsqueeze(0)
                                 
         y = self.model(x)
-        # get machine epsilon:
-        # assert (y >= 0).all(), f"u must be non-negative. u={y}"
         # Clamp above eps:
         y = torch.clamp(y, min=self.eps)
         return y
-        # return x
         
     
 class PiNet(nn.Module):
@@ -611,15 +584,8 @@ class PiNet(nn.Module):
                                   activation,
                                   hidden_dim,
                                   self.device)
-        # weights_init_(model)
-        # initialize the net to have zero bias and identical weights:
-        # for m in model:
-        #     if isinstance(m, nn.Linear):
-        #         nn.init.uniform_(m.weight, a=0, b=1/10)
-        #         nn.init.constant_(m.bias, 0)
 
         # Add a softplus layer:
-        # model = nn.Sequential(model, nn.Softmax(dim=-1))
         model.to(self.device)
         self.model = model
         self.nS = nS
@@ -665,12 +631,9 @@ class PiNet(nn.Module):
                                 
         y = self.model(x) / 10
         y = torch.nn.functional.softmax(y, dim=-1)
-        
-        # get machine epsilon:
-        eps = torch.finfo(torch.float32).eps
+
         assert (y >= 0).all(), f"u must be non-negative. u={y}"
         return y
-        # return x
     
     
 class SoftQNet(torch.nn.Module):
@@ -702,8 +665,7 @@ class SoftQNet(torch.nn.Module):
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
-        
-        # x = x.detach()
+
         x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
         assert x.dtype == torch.float32, "Input must be a float tensor."
 

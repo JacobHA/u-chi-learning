@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -123,16 +122,5 @@ if __name__ == "__main__":
     env = args.env
 
     folder = f'experiments/ft/{env}/'
-    # env_to_settings = {
-    
-
-    # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
-    # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
     plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
-    # plotter(env=env, folder=folder, metrics=['rollout/ep_reward'])
-    # plotter(env=env, folder=folder, metrics=['rollout/avg_entropy'], exclude_algos=['Acrobot-v1-U', 'Acrobot-v1-SQL'], title=r'Relative Entropy $\mathrm{KL}\left(\pi|\pi_0\right)$')
-
-
-    # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
-    # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])

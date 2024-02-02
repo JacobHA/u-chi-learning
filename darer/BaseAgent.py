@@ -210,8 +210,6 @@ class BaseAgent:
             self.model.clip_grad_norm(self.max_grad_norm)
             self.optimizers.step()
 
-        # TODO: Clamp based on reward range
-        # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
         self.new_thetas = torch.clamp(self.new_thetas, min=-50, max=50)
         new_theta = self.new_thetas.mean(dim=0)
         self.logger.record(f"train/new_theta", new_theta.item())
@@ -219,25 +217,8 @@ class BaseAgent:
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
         if self._n_updates % self.theta_update_interval == 0:
-            # new_theta = self.new_theta_pending / self.new_theta_counter
             self.theta = self.tau_theta * self.theta + \
                 (1 - self.tau_theta) * new_theta
-        # else:
-        #     self.new_theta_pending += new_theta
-        #     self.new_theta_counter += 1
-        #     self.logger.record("train/theta_buffer", self.new_theta_pending.item() / self.new_theta_counter)
-
-        # # Log info from this training cycle:
-        # self.logger.record("train/avg logu", curr_logu.mean().item())
-        # self.logger.record("train/min logu", curr_logu.min().item())
-        # self.logger.record("train/max logu", curr_logu.max().item())
-
-        # Log the max gradient:
-        # total_norm = torch.max(torch.stack(
-        #             [px.grad.detach().abs().max()
-        #                 for p in self.online_logus.parameters() for px in p]
-        #             ))
-        # self.logger.record("train/max_grad", total_norm.item())
 
     def learn(self, total_timesteps: int, early_stop: dict = {}) -> bool:
         """
@@ -264,17 +245,11 @@ class BaseAgent:
             avg_ep_len = 0
             entropy = 0
             while not done and self.env_steps < total_timesteps:
-                # take a random action:
-                # if self.env_steps < self.learning_starts:
-                #     action = self.env.action_space.sample()
-                # else:
                 action, kl = self.exploration_policy(state)
                 if isinstance(self.env.action_space, gym.spaces.Discrete):
                     action_freqs[action] += 1
                 # Add KL divergence bw the current policy and the prior:
                 entropy += float(kl)
-                # action = self.online_logus.greedy_action(state)
-                # action = self.env.action_space.sample()
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
                     action)
@@ -396,11 +371,8 @@ class BaseAgent:
             done = False
             while not done:
                 action = self.evaluation_policy(state)
-                # action = self.online_logus.choose_action(state)
                 if isinstance(self.env.action_space, gym.spaces.Discrete):
                     action_freqs[action] += 1
-                # action = action.item()
-                # action = self.online_logus.choose_action(state)
                 n_steps += 1
 
                 next_state, reward, terminated, truncated, info = self.eval_env.step(

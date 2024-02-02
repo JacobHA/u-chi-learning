@@ -62,16 +62,8 @@ class CustomDQN(DQN):
         self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
         self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
 
-        # Ensure eval/avg_reward is recorded, even if no episode was completed:
-        # self.eval_rwd = self.evaluate_agent()
-        # self.eval_auc += self.eval_rwd
-
-
         if self.use_sde:
             self.logger.record("train/std", (self.actor.get_std()).mean().item())
 
         if len(self.ep_success_buffer) > 0:
             self.logger.record("rollout/success_rate", safe_mean(self.ep_success_buffer))
-        
-        # Pass the number of timesteps for tensorboard
-        # self.logger.dump(step=self.num_timesteps)

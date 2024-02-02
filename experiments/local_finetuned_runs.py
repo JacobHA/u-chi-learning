@@ -3,16 +3,11 @@ sys.path.append('darer')
 import argparse
 from CustomDQN import CustomDQN
 from CustomPPO import CustomPPO
-# from LogU import LogULearner
 from UAgent import UAgent
 from SoftQAgent import SoftQAgent
 from hparams import *
 import time
 
-# env = 'CartPole-v1'
-# env = 'LunarLander-v2'
-# env = 'Acrobot-v1'
-# env = 'MountainCar-v0'
 
 str_to_algo = {
     'u': UAgent,

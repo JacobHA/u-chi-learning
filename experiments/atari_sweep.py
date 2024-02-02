@@ -4,8 +4,6 @@ sys.path.append('darer')
 import argparse
 import wandb
 import yaml
-import numpy as np
-import random
 import copy
 from UAgent import main
 

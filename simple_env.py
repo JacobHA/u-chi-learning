@@ -12,12 +12,8 @@ class SimpleEnv(gym.Env):
 
     def step(self, action):
         # Goal is to stay near center: reward = -|x|
-        # transition to state + action with periodic? BCs:
-        # new_state = 1.2*action + self.state
-        # new_state = np.clip(new_state, -1, 1)
         new_state = self.state
         self.state = new_state
-        # reward = -np.abs(self.state)**2
         reward = -np.abs(action)**2
 
         return new_state, reward[0], False, False, {}
@@ -26,9 +22,7 @@ class SimpleEnv(gym.Env):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
         # Choose a random starting state:
-        self.state = np.array([0], dtype=np.float32) 
-        #self.np_random.uniform(low=-1, high=1, size=(1,))
-        # self.state = np.array([0])
+        self.state = np.array([0], dtype=np.float32)
         return self.state, {}
     
     def render(self, mode='human'):

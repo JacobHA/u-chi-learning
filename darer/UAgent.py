@@ -1,4 +1,3 @@
-
 import time
 from typing import Optional
 import numpy as np
@@ -76,7 +75,6 @@ class UAgent(BaseAgent):
                 [u(state) for u in self.online_us], dim=0), dim=0)
             pi = u[0] * pi0
             pi /= pi.sum(dim=-1, keepdim=True)
-            # kl = pi_by_pi0[0][chosen_action] * pi0[chosen_action] * torch.log(pi_by_pi0[0][chosen_action])
             kl = (pi * torch.log(pi/pi0)).sum()
 
             kl = float(kl.item())
@@ -87,7 +85,6 @@ class UAgent(BaseAgent):
         with torch.no_grad():
             if self.use_rawlik:
                 pi0 = self.target_prior.nets[0](state).squeeze()
-                # pi0 /= pi0.sum()
             else:
                 pi0 = None
 
@@ -99,17 +96,12 @@ class UAgent(BaseAgent):
 
     def _on_step(self):
         super()._on_step()
-        #TODO: put this in _update_target
         if self.use_rawlik:
             if self.env_steps % self.prior_update_interval == 0:
                 self.target_prior.polyak(self.online_prior, self.prior_tau)
 
     def gradient_descent(self, batch, grad_step: int):
         states, actions, next_states, dones, rewards = batch
-        # rewards[dones.bool()] -= 1
-        # Calculate the current u values (feedforward):
-        # curr_ua = torch.stack([online_u(states).squeeze()
-        #                     for online_u in self.online_us], dim=1)
         curr_u = torch.stack([online_u(states).squeeze().gather(1, actions.long())
                             for online_u in self.online_us], dim=1)
         if self.use_rawlik:
@@ -120,12 +112,10 @@ class UAgent(BaseAgent):
                                          for u in self.online_us], dim=0)
             online_curr_u = torch.stack([u(states).gather(1, actions)
                                          for u in self.online_us], dim=0)
-            #TODO: collapse these into one call
             online_curr_ua = torch.stack([u(states)
                                           for u in self.online_us], dim=0)
             if self.use_rawlik:
                 target_priora = self.target_prior.nets[0](states).squeeze()
-                # target_priora /= target_priora.sum(dim=-1, keepdim=True)
 
                 target_prior_next = self.target_prior.nets[0](
                     next_states).squeeze()
@@ -136,7 +126,6 @@ class UAgent(BaseAgent):
                 target_priora = torch.ones(self.batch_size, self.nA, device=self.device) * (1/self.nA)
                 target_prior_next = torch.ones(self.batch_size, self.nA, device=self.device) * (1/self.nA)
 
-            # TODO: Test target vs online nets for this calculation:
             online_u_next = self.aggregator_fn(online_u_next, dim=0)
             online_chi = (
                 online_u_next * target_prior_next.repeat(1, 1)).sum(dim=-1)
@@ -144,12 +133,8 @@ class UAgent(BaseAgent):
             online_curr_u = self.aggregator_fn(online_curr_u, dim=0)
 
             in_log = online_chi / online_curr_u
-            # in_log = torch.clamp(in_log, min=1e-6, max=1e6)
-            # clamp to a tolerable range:
-            # batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
             batch_rho = torch.mean(torch.exp(self.beta * rewards.squeeze()) * in_log)
 
-            # batch_theta = torch.clamp(batch_theta, min=-30, max=30)
             self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
             
             target_next_us = [target_u(next_states) for target_u in self.target_us]
@@ -170,13 +155,10 @@ class UAgent(BaseAgent):
             expected_curr_u = torch.exp(self.beta * (in_exp)) * next_chis
             expected_curr_u = expected_curr_u
 
-        # self.logger.record("train/u-avg", torch.mean(curr_u, dim=0))
-
         # Calculate the u ("critic") loss:
         loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in curr_u.permute(1, 0, 2))
         self.logger.record("train/loss", loss.item())
         if self.use_rawlik:
-            # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
             pistar = self.aggregator_fn(online_curr_ua, dim=0) * target_priora
             pistar /= pistar.sum(dim=-1, keepdim=True)
 
@@ -184,48 +166,21 @@ class UAgent(BaseAgent):
             ), pistar, reduction='batchmean', log_target=False)
 
             self.logger.record("train/prior_loss", prior_loss.item())
-            # prior_loss.backward()
             loss += prior_loss
 
-        # weight = 1e-1
-        # Mean across actions:
-        # curr_umean = torch.mean(curr_ua, dim=-1, keepdim=True).repeat(1, 1, self.nA)
-        # regularize_loss = weight * torch.nn.functional.l1_loss(curr_ua, curr_umean)
-        # self.logger.record("train/regularize_loss", regularize_loss.item())
-        return loss #+ regularize_loss
+        return loss
 
 
-def main():
-    from disc_envs import get_environment
-    env_id = get_environment('Pendulum21', nbins=3,
-                             max_episode_steps=200, reward_offset=0)
-
-    env_id = 'CartPole-v1'
-    # env_id = 'Taxi-v3'
-    # env_id = 'CliffWalking-v0'
+if __name__ == '__main__':
     env_id = 'Acrobot-v1'
-    # env_id = 'PongNoFrameskip-v4'
-    # env_id = 'BreakoutNoFrameskip-v4'
-    # env_id = 'FrozenLake-v1'
-    # env_id = 'MountainCar-v0'
-    # env_id = 'Drug-v0'
-
     from hparams import acrobot_u as config
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,
-                   tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
+                   tensorboard_log='pong', num_nets=2, render=False,  # aggregator='min',
                    beta_schedule='none', use_rawlik=False,
                    beta_end=5)
-    #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
-    # use_rawlik=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=500_000)
     t1 = time.thread_time_ns()
-    print(f"Time to learn: {(t1-t0)/1e9} seconds")
-
-
-if __name__ == '__main__':
-
-    for _ in range(1):
-        main()
+    print(f"Time to learn: {(t1 - t0) / 1e9} seconds")
