@@ -1,0 +1,16 @@
+tau: 0.6864815240861177
+beta: 0.0599507462142674
+env_id: "LunarLander-v2"
+loss_fn: "smooth_l1"
+prior_tau: 0.6196558907346434
+tau_theta: 0.8495082406052556
+aggregator: "max"
+batch_size: 32
+hidden_dim: 128
+train_freq: 4
+use_rawlik: true
+learning_rate: 0.00825857702346978
+learning_starts_ratio: 0.050224228883872825
+prior_update_interval: 500
+theta_update_interval: 50
+target_update_interval: 1

@@ -58,8 +58,8 @@ def wandb_train(local_cfg=None):
 if __name__ == "__main__":
     args = argparse.ArgumentParser()
     args.add_argument("--sweep", type=str, default=None)
-    args.add_argument("--n_runs", type=int, default=10)
-    args.add_argument("--proj", type=str, default="u-chi-learning-test")
+    args.add_argument("--n_runs", type=int, default=100)
+    args.add_argument("--proj", type=str, default="u-chi-learning")
     args.add_argument("--local-wandb", type=bool, default=True)
     args.add_argument("--exp-name", type=str, default="atari-pong")
     args.add_argument("--device", type=str, default='cuda')
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     experiment_name = args.exp_name
     device = args.device
     # load the default config
-    with open("sweep_params/dqn-atari-default.yml", "r") as f:
+    with open("sweep_params/dqn_pong_nature.yml", "r") as f:
         default_config = yaml.load(f, yaml.SafeLoader)
     # generate a new sweep if one was not passed as an argument
     if args.sweep is None and not args.local_wandb:

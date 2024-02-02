@@ -178,10 +178,10 @@ class UAgent(BaseAgent):
         if self.use_rawlik:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
             pistar = self.aggregator_fn(online_curr_ua, dim=0) * target_priora
+            pistar += 1e-6
             pistar /= pistar.sum(dim=-1, keepdim=True)
 
-            prior_loss = F.kl_div(curr_priora.squeeze().log(
-            ), pistar, reduction='batchmean', log_target=False)
+            prior_loss = (pistar * torch.log(pistar / curr_priora.squeeze())).sum()
 
             self.logger.record("train/prior_loss", prior_loss.item())
             # prior_loss.backward()

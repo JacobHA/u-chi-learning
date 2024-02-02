@@ -425,7 +425,6 @@ acrobots = {
 
 mcars = {
     'u': mcar_u,
-    # 'ppo': mcar_ppo,
     'dqn': mcar_dqn,
     'sql': mcar_sql,
 }
@@ -433,7 +432,6 @@ mcars = {
 lunars = {
     'u': lunar_u,
     'logu': lunar_logu,
-    'u': lunar_u,
     'ppo': lunar_ppo,
     'dqn': lunar_dqn,
     'sql': sql_lunar,

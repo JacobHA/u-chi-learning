@@ -663,7 +663,7 @@ class PiNet(nn.Module):
                     if (x.shape == self.nS).all():
                         x = x.unsqueeze(0)
                                 
-        y = self.model(x) / 10
+        y = self.model(x) + 1e-6
         y = torch.nn.functional.softmax(y, dim=-1)
         
         # get machine epsilon:
