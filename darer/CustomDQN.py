@@ -6,7 +6,8 @@ from stable_baselines3.common.utils import safe_mean, should_collect_more_steps
 
 class CustomDQN(DQN):
     def __init__(self, *args, log_interval=500, hidden_dim=64, **kwargs):
-        super().__init__('MlpPolicy', *args, verbose=4, **kwargs)
+        policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
+        super().__init__('MlpPolicy', *args, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
         self.eval_auc = 0
         self.eval_rwd = 0
         self.eval_interval = log_interval
@@ -14,7 +15,6 @@ class CustomDQN(DQN):
         self.step_to_avg_eval_rwd = {}
 
         # Translate hidden dim to policy_kwargs:
-        self.policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
 
     def _on_step(self) -> None:
         # Evaluate the agent and log it if step % log_interval == 0:
