@@ -1,4 +1,4 @@
-LogU learning implementation in gym (mazes and cartpole)
+EVAL (EigenVector-based Average-reward Learning) implementation in Gymnasium's classic control and mazes.
 
 # Simple TODOs:
 - [x] "bigger" tabular expt overrides: Add Heaven & Hell experiment in the tabular case
