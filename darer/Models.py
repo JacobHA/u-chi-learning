@@ -1,72 +1,128 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
-from stable_baselines3.common.preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim, get_obs_shape
 import numpy as np
-from stable_baselines3.common.utils import zip_strict
+from stable_baselines3.common.utils import polyak_update, zip_strict
 from gymnasium import spaces
 import gymnasium as gym
+from torch.optim.lr_scheduler import StepLR, MultiplicativeLR, LinearLR, ExponentialLR, LRScheduler
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.distributions import Normal
+
+from sb3preprocessing import is_image_space, preprocess_obs, get_action_dim, get_flattened_obs_dim
+from utils import is_tabular
+
+def is_image_space_simple(observation_space, is_vector_env=False):
+    if is_vector_env:
+        return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 4
+    return isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3
+NORMALIZE_IMG = False
+
+
+def model_initializer(is_image_space,
+                      observation_space,
+                      nA,
+                      activation,
+                      hidden_dim,
+                      device):
+    model = nn.Sequential()
+
+    # check if image:
+    if is_image_space:
+        nS = get_flattened_obs_dim(observation_space)
+        # Use a CNN:
+        n_channels = observation_space.shape[2]
+        model.extend(nn.Sequential(
+            nn.Conv2d(n_channels, 32, kernel_size=8, stride=4, device=device),
+            activation(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, device=device),
+            activation(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, device=device),
+            nn.Flatten(start_dim=1),
+        ))
+        # calculate resulting shape for FC layers:
+        with torch.no_grad():
+            rand_inp = observation_space.sample()
+            x = torch.tensor(rand_inp, device=device)  # Convert to PyTorch tensor
+            x = x.detach()
+            x = preprocess_obs(x, observation_space, normalize_images=NORMALIZE_IMG)
+            x = x.permute([2,0,1]).unsqueeze(0)
+            flat_size = model(x).shape[1]
+        # with torch.no_grad():
+        #     n_flatten = model(torch.as_tensor(observation_space.sample()[None]).float()).shape[1]
+
+        print(f"Using a CNN with {flat_size}-dim. outputs.")
+
+        model.extend(nn.Sequential(
+            nn.Linear(flat_size, hidden_dim),
+            activation(),
+            nn.Linear(hidden_dim, nA),
+        ))
+
+    else:
+        if isinstance(observation_space, spaces.Discrete):
+            nS = observation_space.n
+            input_dim = nS
+        else:    
+            nS = observation_space.shape
+            input_dim = nS[0]
+        
+        # Use a simple MLP:
+        model.extend(nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            activation(),
+            nn.Linear(hidden_dim, hidden_dim),
+            activation(),
+            nn.Linear(hidden_dim, nA),
+        ))
+        # intialize weights with xavier:
+        # for m in model:
+        #     if isinstance(m, nn.Linear):
+        #         nn.init.xavier_uniform_(m.weight, gain=1)
+        #         nn.init.constant_(m.bias, 0)
+
+    return model, nS
 
 class LogUNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
         super(LogUNet, self).__init__()
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
         self.env = env
-        self.nA = env.action_space.n
-        self.is_image_space = is_image_space(env.observation_space)
-
+        if self.using_vector_env:
+            self.observation_space = self.env.single_observation_space
+            self.action_space = self.env.single_action_space
+        else:
+            self.observation_space = self.env.observation_space
+            self.action_space = self.env.action_space
+        self.nA = self.action_space.n
+        # do the check on an env before wrapping it
+        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
+        self.is_tabular = is_tabular(env)
         self.device = device
-        if isinstance(env.observation_space, spaces.Discrete):
-            self.nS = env.observation_space.n
-        elif isinstance(env.observation_space, spaces.Box):
-            # check if image:
-            if is_image_space(env.observation_space):
-                self.nS = get_flattened_obs_dim(env.observation_space)
-                # Use a CNN:
-                n_channels = env.observation_space.shape[2]
-                model = nn.Sequential(
-                    nn.Conv2d(n_channels, 64, kernel_size=8, stride=4),
-                    activation(),
-                    nn.Conv2d(64, 32, kernel_size=4, stride=2),
-                    activation(),
-                    nn.Conv2d(32, 32, kernel_size=3, stride=1),
-                    activation(),
-                    nn.Flatten(start_dim=1, end_dim=-1),
-                )
-                model.to(self.device)
-                # calculate resulting shape for FC layers:
-                rand_inp = env.observation_space.sample()
-                x = torch.tensor(rand_inp, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
-                x = x.detach()
-                x = preprocess_obs(x, self.env.observation_space)
-                x = x.permute([2,0,1]).unsqueeze(0)
-                flat_size = model(x).shape[1]
-                print(f"Using a CNN with {flat_size}-dim. outputs.")
-                # flat part
-                model.extend(nn.Sequential(
-                    nn.Linear(flat_size, hidden_dim),
-                    activation(),
-                    nn.Linear(hidden_dim, hidden_dim),
-                    activation(),
-                    nn.Linear(hidden_dim, self.nA),
-                ))
-            else:
-                self.nS = env.observation_space.shape[0]
+        model, nS = model_initializer(self.is_image_space,
+                                  self.observation_space,
+                                  self.nA,
+                                  activation,
+                                  hidden_dim,
+                                  self.device)
 
-                model = (nn.Sequential(
-                    nn.Linear(self.nS, hidden_dim),
-                    activation(),
-                    nn.Linear(hidden_dim, hidden_dim),
-                    activation(),
-                    nn.Linear(hidden_dim, self.nA),
-                ))
-            self.model = model
+        model.to(self.device)
+        self.model = model
+        self.nS = nS
+        
         self.to(device)
      
     def forward(self, x):
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)  # Convert to PyTorch tensor
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
+        
         # x = x.detach()
-        x = preprocess_obs(x, self.env.observation_space)
+        x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
+        assert x.dtype == torch.float32, "Input must be a float tensor."
+
         # Reshape the image:
         if self.is_image_space:
             if len(x.shape) == 3:
@@ -76,45 +132,64 @@ class LogUNet(nn.Module):
             else:
                 # Batch of images
                 x = x.permute([0,3,1,2])
+        elif self.is_tabular:
+            # Single state
+            if x.shape[0] == self.nS:
+                x = x.unsqueeze(0)
+            else: 
+                x = x.squeeze(1)
+                pass
+        else:
+            if len(x.shape) > len(self.nS):
+                # in batch mode:
+                pass
+            else:
+                # is a single state
+                if isinstance(x.shape, torch.Size):
+                    if x.shape == self.nS:
+                        x = x.unsqueeze(0)
+                else:
+                    if (x.shape == self.nS).all():
+                        x = x.unsqueeze(0)
+
         x = self.model(x)
         return x
         
-    def choose_action(self, state, greedy=False, prior=None):
-        if prior is None:
-            prior = 1 / self.nA
-        with torch.no_grad():
-            logu = self.forward(state)
+   
 
-            if greedy:
-                # not worth exponentiating since it is monotonic
-                a = (logu * prior).argmax(dim=-1)
-                return a.item()
+class EmptyScheduler(LRScheduler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    def get_lr(self):
+        return [pg['lr'] for pg in self.optimizer.param_groups]
 
-            # First subtract a baseline:
-            logu = logu - (torch.max(logu) + torch.min(logu))/2
-            # clamp to avoid overflow:
-            logu = torch.clamp(logu, min=-20, max=20)
-            dist = torch.exp(logu) * prior
-            # dist = dist / torch.sum(dist)
-            c = Categorical(dist)#, validate_args=True)
-            # c = Categorical(logits=logu*prior)
-            a = c.sample()
-
-        return a.item()
-
+str_to_scheduler = {
+    "step": (StepLR, {'step_size': 100_000, 'gamma': 0.5}),
+    # "MultiplicativeLR": (MultiplicativeLR, ()), 
+    "linear": (LinearLR, {"start_factor":1./3, "end_factor":1.0, "last_epoch":-1}), 
+    "exponential": (ExponentialLR, {'gamma': 0.9999}), 
+    "none": (EmptyScheduler, {"last_epoch":-1})
+}
 
 class Optimizers():
-    def __init__(self, list_of_optimizers: list):
+    def __init__(self, list_of_optimizers: list, scheduler_str: str = 'none'):
         self.optimizers = list_of_optimizers
+        scheduler_str = scheduler_str.lower()
+        scheduler, params = str_to_scheduler[scheduler_str]
+        
+        self.schedulers = [scheduler(opt, **params) for opt in self.optimizers]
 
     def zero_grad(self):
         for opt in self.optimizers:
             opt.zero_grad()
 
     def step(self):
-        for opt in self.optimizers:
+        for opt, scheduler in zip(self.optimizers, self.schedulers):
             opt.step()
+            scheduler.step()
 
+    def get_lr(self):
+        return self.schedulers[0].get_lr()[0]
 
 class TargetNets():
     def __init__(self, list_of_nets):
@@ -158,12 +233,10 @@ class TargetNets():
         with torch.no_grad():
             # zip does not raise an exception if length of parameters does not match.
             for new_params, target_params in zip(online_nets.parameters(), self.parameters()):
-                for new_param, target_param in zip_strict(new_params, target_params):
-                    # target_param.data.mul_(tau)
-                    # new_param.data.mul_(1 - tau)
-                    # target_param.data.add_(new_param.data)
-                    target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
-                    # torch.add(target_param.data, new_param.data, out=target_param.data)
+                # for new_param, target_param in zip_strict(new_params, target_params):
+                #     target_param.data.mul_(tau).add_(new_param.data, alpha=1.0-tau)
+                #TODO: 
+                polyak_update(new_params, target_params, tau)
 
     def parameters(self):
         """
@@ -182,40 +255,21 @@ class OnlineNets():
     Args:
         list_of_nets (list): A list of online networks.
     """
-    def __init__(self, list_of_nets, aggregator='min'):
+    def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
         self.nets = list_of_nets
-        if aggregator == 'min':
-            self.aggregator = torch.min
-        elif aggregator == 'mean':
-            self.aggregator = torch.mean
-        elif aggregator == 'max':
-            self.aggregator = torch.max
+        self.nA = list_of_nets[0].nA
+        self.device = list_of_nets[0].device
+        self.aggregator_fn = aggregator_fn
+        self.is_vector_env = is_vector_env
 
     def __len__(self):
         return len(self.nets)
     
     def __iter__(self):
         return iter(self.nets)
-    
-    def greedy_action(self, state):
-        with torch.no_grad():
-            # logu = torch.stack([net(state) for net in self.nets], dim=-1)
-            # logu = logu.squeeze(1)
-            # logu = self.aggregator(logu, dim=-1)[0]
-            
-            # greedy_action = logu.argmax()
-            # greedy_actions = [net(state).argmax().cpu() for net in self.nets]
-            greedy_actions = [net.choose_action(state, greedy=True) for net in self.nets]
-            greedy_action = np.random.choice(greedy_actions)
-        return greedy_action
-        # return greedy_action.item()
 
-    def choose_action(self, state):
-        # Get a sample from each net, then sample uniformly over them:
-        actions = [net.choose_action(state) for net in self.nets]
-        action = np.random.choice(actions)
-        # perhaps re-weight this based on pessimism?
-        return action
+    def choose_action(self, state, greedy=False, prior=None):
+        raise NotImplementedError
 
     def parameters(self):
         return [net.parameters() for net in self]
@@ -225,9 +279,145 @@ class OnlineNets():
             torch.nn.utils.clip_grad_norm_(net.parameters(), max_grad_norm)
 
 
+class OnlineLogUNets(OnlineNets):
+    def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
+        super().__init__(list_of_nets, aggregator_fn, is_vector_env)
+
+    def choose_action(self, state, greedy=False, prior=None):
+        with torch.no_grad():
+            
+            if prior is None:
+                prior = 1 / self.nA
+            logprior = torch.log(torch.tensor(prior, device=self.device))
+            # Get a sample from each net, then sample uniformly over them:
+            logus = torch.stack([net.forward(state) for net in self.nets], dim=1)
+            logus = logus.squeeze(0)
+            # Aggregate over the networks:
+            logu = self.aggregator_fn(logus, dim=0)
+
+            if not self.is_vector_env:
+                if greedy:
+                    action_net_idx = torch.argmax(logu + logprior, dim=0)
+                    # action = idxs[action_net_idx].cpu().numpy()
+                    action = action_net_idx.cpu().numpy()
+                else:
+                    # pi* = pi0 * exp(logu)
+                    logu = logu.clamp(-30,30)
+                    in_exp = logu + logprior
+                    in_exp -= (in_exp.max() + in_exp.min())/2
+                    dist = torch.exp(in_exp)
+                    dist /= torch.sum(dist)
+                    c = Categorical(dist)
+                    # action = idxs[c.sample().cpu().item()].cpu().numpy()
+                    action = c.sample().cpu().numpy()
+            else:
+                raise NotImplementedError
+                actions = np.array(actions)
+                rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
+                action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
+            # perhaps re-weight this based on pessimism?
+            return action
+            # with torch.no_grad():
+            #     logus = [net(state) for net in self.nets]
+            #     logu = torch.stack(logus, dim=-1)
+            #     logu = logu.squeeze(1)
+            #     logu = torch.mean(logu, dim=-1)#[0]
+            #     baseline = (torch.max(logu) + torch.min(logu))/2
+            #     logu = logu - baseline
+            #     logu = torch.clamp(logu, min=-20, max=20)
+            #     dist = torch.exp(logu)
+            #     dist = dist / torch.sum(dist)
+            #     c = Categorical(dist)#, validate_args=True)
+            #     return c.sample()#.item()
+
+class OnlineUNets(OnlineNets):
+    def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
+        super().__init__(list_of_nets, aggregator_fn, is_vector_env)
+
+    def choose_action(self, state, greedy=False, prior=None):
+        with torch.no_grad():
+            
+            if prior is None:
+                prior = 1 / self.nA
+            # Get a sample from each net, then sample uniformly over them:
+            us = torch.stack([net.forward(state) for net in self.nets], dim=1)
+            us = us.squeeze(0)
+            # Aggregate over the networks:
+            u = self.aggregator_fn(us, dim=0)
+            policy = prior * u
+            policy /= torch.sum(policy)
+
+            if not self.is_vector_env:
+                if greedy:
+                    action_net_idx = torch.argmax(policy, dim=0)
+                    action = action_net_idx.cpu().numpy()
+                else:
+                    c = Categorical(policy)
+                    action = c.sample().cpu().numpy()
+            else:
+                raise NotImplementedError
+
+            return action
+
+
+class OnlineSoftQNets(OnlineNets):
+    def __init__(self, list_of_nets, aggregator_fn, beta, is_vector_env=False):
+        super().__init__(list_of_nets, aggregator_fn, is_vector_env)
+        self.beta = beta
+           
+    def choose_action(self, state, greedy=False, prior=None):
+        if prior is None:
+            prior = 1 / self.nA
+        with torch.no_grad():
+            q_as = torch.stack([net.forward(state) for net in self], dim=1)
+            q_as = q_as.squeeze(0)
+            q_a = self.aggregator_fn(q_as, dim=0)
+
+
+            if greedy:
+                action = torch.argmax(q_a).cpu().numpy()
+            else:
+                # pi propto e^beta Q:
+                # first subtract a baseline from q_a:
+                q_a = q_a - (torch.max(q_a) + torch.min(q_a))/2
+                clamped_exp = torch.clamp(self.beta * q_a, min=-20, max=20)
+                pi = prior * torch.exp(clamped_exp)
+                pi = pi / torch.sum(pi)
+                a = Categorical(pi).sample()
+                action = a.cpu().numpy()
+        return action
+
 class LogUsa(nn.Module):
     def __init__(self, env, hidden_dim=256, device='cuda'):
         super(LogUsa, self).__init__()
+        self.env = env
+        self.device = device
+        self.nS = get_flattened_obs_dim(self.env.observation_space)
+        self.nA = get_action_dim(self.env.action_space)
+        self.fc1 = nn.Linear(self.nS + self.nA, hidden_dim, device=self.device)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim, device=self.device)
+        self.fc3 = nn.Linear(hidden_dim, 1, device=self.device)
+        self.relu = nn.ReLU()
+
+    def forward(self, obs, action):
+        obs = torch.Tensor(obs).to(self.device)
+        action = torch.Tensor(action).to(self.device)
+        obs = preprocess_obs(obs, self.env.observation_space, normalize_images=NORMALIZE_IMG)
+        x = torch.cat([obs, action], dim=-1)
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = self.relu(x)
+        x = self.fc3(x)
+        return x
+
+LOG_SIG_MAX = 5
+LOG_SIG_MIN = -30
+epsilon = 1e-6
+
+class Usa(nn.Module):
+    def __init__(self, env, hidden_dim=256, device='cuda'):
+        super(Usa, self).__init__()
         self.env = env
         self.device = device
         self.nS = get_flattened_obs_dim(self.env.observation_space)
@@ -247,16 +437,7 @@ class LogUsa(nn.Module):
         x = self.fc2(x)
         x = self.relu(x)
         x = self.fc3(x)
-        return x
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions import Normal
-
-LOG_SIG_MAX = 5
-LOG_SIG_MIN = -30
-epsilon = 1e-6
+        return nn.functional.softplus(x)
 
 
 # Initialize Policy weights
@@ -295,15 +476,17 @@ class GaussianPolicy(nn.Module):
 
     def forward(self, obs):
         obs = torch.Tensor(obs).to(self.device)
-        obs = preprocess_obs(obs, self.observation_space)
+        obs = preprocess_obs(obs, self.observation_space, normalize_images=NORMALIZE_IMG)
         x = F.relu(self.linear1(obs))
         x = F.relu(self.linear2(x))
         mean = self.mean_linear(x)
-        log_std = self.log_std_linear(x)
-        log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+        # log_std = self.log_std_linear(x)
+        # log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+        log_std = torch.ones_like(mean) * -2
         return mean, log_std
 
     def sample(self, state):
+        # with torch.no_grad():
         mean, log_std = self.forward(state)
         std = log_std.exp()
         # print(std)
@@ -324,3 +507,234 @@ class GaussianPolicy(nn.Module):
         self.action_bias = self.action_bias.to(device)
         return super(GaussianPolicy, self).to(device)
     
+
+class UNet(nn.Module):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+        super(UNet, self).__init__()
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
+        self.env = env
+        if self.using_vector_env:
+            self.observation_space = self.env.single_observation_space
+            self.action_space = self.env.single_action_space
+        else:
+            self.observation_space = self.env.observation_space
+            self.action_space = self.env.action_space
+        self.nA = self.action_space.n
+        # do the check on an env before wrapping it
+        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
+        self.is_tabular = is_tabular(env)
+        self.device = device
+        # use a sinusoidal activation:
+        model, nS = model_initializer(self.is_image_space,
+                                  self.observation_space,
+                                  self.nA,
+                                  activation,
+                                  hidden_dim,
+                                  self.device)
+        # weights_init_(model)
+
+        # Add a softplus layer:
+        model = nn.Sequential(model, nn.Softplus(beta=1))
+        model.to(self.device)
+        self.model = model
+        self.nS = nS
+        
+        self.to(device)
+        self.eps = torch.finfo(torch.float32).eps
+
+     
+    def forward(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
+        
+        # x = x.detach()
+        x = preprocess_obs(x, self.env.observation_space)
+        assert x.dtype == torch.float32, "Input must be a float tensor."
+
+        # Reshape the image:
+        if self.is_image_space:
+            if len(x.shape) == 3:
+                # Single image
+                x = x.permute([2,0,1])
+                x = x.unsqueeze(0)
+            else:
+                # Batch of images
+                x = x.permute([0,3,1,2])
+        elif self.is_tabular:
+            # Single state
+            if x.shape[0] == self.nS:
+                x = x.unsqueeze(0)
+            else: 
+                x = x.squeeze(1)
+                pass
+        else:
+            if len(x.shape) > len(self.nS):
+                # in batch mode:
+                pass
+            else:
+                # is a single state
+                if isinstance(x.shape, torch.Size):
+                    if x.shape == self.nS:
+                        x = x.unsqueeze(0)
+                else:
+                    if (x.shape == self.nS).all():
+                        x = x.unsqueeze(0)
+                                
+        y = self.model(x)
+        # get machine epsilon:
+        # assert (y >= 0).all(), f"u must be non-negative. u={y}"
+        # Clamp above eps:
+        y = torch.clamp(y, min=self.eps)
+        return y
+        # return x
+        
+    
+class PiNet(nn.Module):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+        super(PiNet, self).__init__()
+        self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
+        self.env = env
+        if self.using_vector_env:
+            self.observation_space = self.env.single_observation_space
+            self.action_space = self.env.single_action_space
+        else:
+            self.observation_space = self.env.observation_space
+            self.action_space = self.env.action_space
+        self.nA = self.action_space.n
+        # do the check on an env before wrapping it
+        self.is_image_space = is_image_space_simple(self.env.observation_space, self.using_vector_env)
+        self.is_tabular = is_tabular(env)
+        self.device = device
+        model, nS = model_initializer(self.is_image_space,
+                                  self.observation_space,
+                                  self.nA,
+                                  activation,
+                                  hidden_dim,
+                                  self.device)
+        # weights_init_(model)
+        # initialize the net to have zero bias and identical weights:
+        # for m in model:
+        #     if isinstance(m, nn.Linear):
+        #         nn.init.uniform_(m.weight, a=0, b=1/10)
+        #         nn.init.constant_(m.bias, 0)
+
+        # Add a softplus layer:
+        # model = nn.Sequential(model, nn.Softmax(dim=-1))
+        model.to(self.device)
+        self.model = model
+        self.nS = nS
+        
+        self.to(device)
+     
+    def forward(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
+        
+        # x = x.detach()
+        x = preprocess_obs(x, self.env.observation_space)
+        assert x.dtype == torch.float32, "Input must be a float tensor."
+
+        # Reshape the image:
+        if self.is_image_space:
+            if len(x.shape) == 3:
+                # Single image
+                x = x.permute([2,0,1])
+                x = x.unsqueeze(0)
+            else:
+                # Batch of images
+                x = x.permute([0,3,1,2])
+        elif self.is_tabular:
+            # Single state
+            if x.shape[0] == self.nS:
+                x = x.unsqueeze(0)
+            else: 
+                x = x.squeeze(1)
+                pass
+        else:
+            if len(x.shape) > len(self.nS):
+                # in batch mode:
+                pass
+            else:
+                # is a single state
+                if isinstance(x.shape, torch.Size):
+                    if x.shape == self.nS:
+                        x = x.unsqueeze(0)
+                else:
+                    if (x.shape == self.nS).all():
+                        x = x.unsqueeze(0)
+                                
+        y = self.model(x) / 10
+        y = torch.nn.functional.softmax(y, dim=-1)
+        
+        # get machine epsilon:
+        eps = torch.finfo(torch.float32).eps
+        assert (y >= 0).all(), f"u must be non-negative. u={y}"
+        return y
+        # return x
+    
+    
+class SoftQNet(torch.nn.Module):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+        super(SoftQNet, self).__init__()
+        self.env = env
+        self.nA = env.action_space.n
+        self.is_image_space = is_image_space(env.observation_space)
+        self.is_tabular = is_tabular(env)
+        self.device = device
+        # Start with an empty model:
+        model = nn.Sequential()
+        if self.is_image_space:
+            raise NotImplementedError
+        else:
+            self.nS = env.observation_space.shape
+            input_dim = self.nS[0]
+            model.extend(nn.Sequential(
+                nn.Linear(input_dim, hidden_dim),
+                activation(),
+                nn.Linear(hidden_dim, hidden_dim),
+                activation(),
+                nn.Linear(hidden_dim, self.nA),    
+            ))
+
+        model.to(self.device)
+        self.model = model
+    
+    def forward(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
+        
+        # x = x.detach()
+        x = preprocess_obs(x, self.env.observation_space, normalize_images=NORMALIZE_IMG)
+        assert x.dtype == torch.float32, "Input must be a float tensor."
+
+        # Reshape the image:
+        if self.is_image_space:
+            if len(x.shape) == 3:
+                # Single image
+                x = x.permute([2,0,1])
+                x = x.unsqueeze(0)
+            else:
+                # Batch of images
+                x = x.permute([0,3,1,2])
+        elif self.is_tabular:
+            # Single state
+            if x.shape[0] == self.nS:
+                x = x.unsqueeze(0)
+            else: 
+                x = x.squeeze(1)
+                pass
+        else:
+            if len(x.shape) > len(self.nS):
+                # in batch mode:
+                pass
+            else:
+                # is a single state
+                if isinstance(x.shape, torch.Size):
+                    if x.shape == self.nS:
+                        x = x.unsqueeze(0)
+                else:
+                    if (x.shape == self.nS).all():
+                        x = x.unsqueeze(0)
+
+        x = self.model(x)
+        return x

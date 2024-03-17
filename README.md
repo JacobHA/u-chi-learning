@@ -1,15 +1,18 @@
 LogU learning implementation in gym (mazes and cartpole)
 
 # Simple TODOs:
-- [ ] Compare multilogu w/ and w/o the 1/A factor in chi calc.
-- [ ] Same w/ periodic updates of ref s,a,s'
-- [ ] Create a folder when one is missing for logging
+- [x] "bigger" tabular expt overrides: Add Heaven & Hell experiment in the tabular case
+- [ ] Start thinking about bigger WHY question (lifelong learning, episode length hparam, gamma->1 ...)
+- [x] Theory comparison overrides: Compare multilogu w/ and w/o the 1/A factor in chi calc.
+- [x] Batch theta overrides: Same w/ periodic updates of ref s,a,s'
+- [x] Implement LR schedule
+- [x] Create a folder when one is missing for logging
 - [ ] Correct log interval for PPO
 # New (Simple) Features:
 - [x] Monitor FPS
 - [x] Monitor min/max of logu to watch for divergence
-- [ ] Add learning rate decay thru scheduler
-- [x] Add "train_freq" rather than episodic trainin:
+- [x] Add learning rate decay thru scheduler
+- [x] Add "train_freq" rather than episodic training
 - [ ] Possibly use SB3 style: :param train_freq: Update the model every ``train_freq`` steps. Alternatively pass a tuple of frequency and unit
         like ``(5, "step")`` or ``(2, "episode")``.
 - [x] Add gradient clipping
@@ -33,22 +36,16 @@ LogU learning implementation in gym (mazes and cartpole)
 - [x] smooth out theta learning
 
 # Future TODOs:
-- [ ] Generate dependencies
-- [x] Write tests
+- [x] Generate requirements
+- [ ] Write more tests
 - [ ] Make more off-policy / offline?
 - [ ] V learning with cloning
 - [x] UV learning
 - [ ] Rawlik scheme
+- [ ] Test UV learning with steady state from tabular
+- [ ] Effective temperature from Rawlik
 
 # Notes:
-- I had to change this in SB3 code to allow for next_actions in replay buffer (stable_baselines3.common.type_aliases)
-class ReplayBufferSamples(NamedTuple):
-    observations: th.Tensor
-    actions: th.Tensor
-    next_observations: th.Tensor
-    next_actions: th.Tensor
-    dones: th.Tensor
-    rewards: th.Tensor
 
 I added this line to the `gymnasium/envs/__init__.py` file:
 ```
@@ -87,3 +84,13 @@ Model-free ground truth comparisons:
 [eigvec_figure]: figures/left_eigenvector_MF.png
 [scaling_logu]: Acrobot-v1.png 
 [scaling_dqn]: Acrobot-v1-dqn.png
+
+
+
+For updating requirements.txt:
+```
+pip list --format=freeze > requirements.txt
+```
+
+the contents of requirements.txt are a bit sensitive for the git actions testing...
+(e.g. have to remove some conda stuff)
