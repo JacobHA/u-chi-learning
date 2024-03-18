@@ -112,7 +112,7 @@ def wandb_agent():
 
 
 if __name__ == "__main__":
-    algo_to_sweep_id = {'u': 'vnhfo7z4',  # '6301y2oc',
+    algo_to_sweep_id = {'u': 'fy52mgn3', #'vnhfo7z4',  # '6301y2oc',
                         'sql': 'frb1998p'}
     # Parse the "algo" argument
     parser = argparse.ArgumentParser()
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     sweep_id = algo_to_sweep_id[algo]
     if 'NoFrameskip' in args.env_id:
         # sweep_id = '5gwi5rfx'
-        sweep_id = 'tcbn6vni'
+        sweep_id = 'e6nnzdsf'
     env_id = args.env_id
     device = args.device
 

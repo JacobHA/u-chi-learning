@@ -25,9 +25,16 @@ str_to_algo = {
 env_id_to_timesteps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 50_000,
-    'LunarLander-v2': 500_000,
+    'LunarLander-v2': 100_000,
     'PongNoFrameskip-v4': 10_000_000,
-    'MountainCar-v0': 120_000,
+    'MountainCar-v0': 500_000,
+}
+
+env_to_log_interval = {
+    'CartPole-v1': 1000,
+    'Acrobot-v1': 1000,
+    'LunarLander-v2': 10000,
+    'MountainCar-v0': 10000,
 }
 
 
@@ -44,10 +51,11 @@ def runner(algo, device):
 
     if algo == UAgent:
         model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=10000, **rawlik_hparams)#, name='U-rawlik2')#,
+                 device=device, log_interval=env_to_log_interval[env],
+                  **rawlik_hparams)#, name='U-rawlik2')#,
     else:
         model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=10000)
+                 device=device, log_interval=env_to_log_interval[env])
         
     total_timesteps = env_id_to_timesteps[env]
     model.learn(total_timesteps=total_timesteps)
