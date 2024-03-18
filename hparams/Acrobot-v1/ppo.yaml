@@ -1,0 +1,4 @@
+ent_coef: 0
+gae_lambda: 0.94
+n_epochs: 4
+n_steps: 256

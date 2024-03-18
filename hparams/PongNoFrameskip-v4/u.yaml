@@ -1,0 +1,12 @@
+aggregator: max
+batch_size: 64
+beta: 0.9
+buffer_size: 1000000
+hidden_dim: 256
+learning_rate: 0.0001
+learning_starts: 50000
+name: u2
+target_update_interval: 5000
+tau: 1
+tau_theta: 0.98
+train_freq: 4

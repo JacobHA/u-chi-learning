@@ -1,0 +1,10 @@
+batch_size: 128
+beta: 10
+gamma: 0.99
+gradient_steps: 5
+hidden_dim: 512
+learning_rate: 0.003
+learning_starts: 10000
+target_update_interval: 1000
+tau: 0.97
+train_freq: 5

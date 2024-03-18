@@ -1,0 +1,17 @@
+aggregator: max
+batch_size: 128
+beta: 0.83
+buffer_size: 100000
+gradient_steps: 16
+hidden_dim: 32
+learning_rate: 0.001
+learning_starts: 4000.0
+loss_fn: !!python/name:torch.nn.functional.smooth_l1_loss ''
+name: smoothl1
+prior_tau: 0.62
+prior_update_interval: 5000
+target_update_interval: 50
+tau: 0.72
+tau_theta: 0.87
+theta_update_interval: 10
+train_freq: 16
