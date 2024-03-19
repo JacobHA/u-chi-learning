@@ -40,6 +40,7 @@ def runner(config=None, run=None):
 
     for _ in range(runs_per_hparam):
         wandb.log({'env_id': env_id})
+        wandb.log({'beta': hconfig['beta']})
         # config.pop('device')
         # config.pop('env_id')
         # config['buffer_size'] = 300_000
