@@ -118,18 +118,24 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--env', type=str, default='Acrobot-v1')
+    parser.add_argument('-e', '--env', type=str, default='')
     args = parser.parse_args()
     env = args.env
+    if env == '':
+        envs = ['Acrobot-v1', 'CartPole-v1', 'MountainCar-v0', 'LunarLander-v2']
+    else:
+        envs = [env]
 
-    folder = f'experiments/ft/{env}/'
-    # folder = f'experiments/ablations/{env}/'
-    # env_to_settings = {
-    
+    for env in envs:
+        print(f"Plotting for {env} env.")
+        folder = f'experiments/ft/{env}/'
+        # folder = f'experiments/ablations/{env}/'
+        # env_to_settings = {
+        
 
-    # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
-    # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
+        # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
+        # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
-    plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
+        plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
 
-    # Run from u-chi-learning directory: "python experiments/comparison_plotter.py -e ..."
+        # Run from u-chi-learning directory: "python experiments/comparison_plotter.py -e ..."
