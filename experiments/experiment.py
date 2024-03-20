@@ -2,7 +2,12 @@ import gymnasium
 import wandb
 import argparse
 import yaml
-from darer.UAgent import UAgent
+import sys
+
+sys.path.append('darer')
+from SoftQAgent import SoftQAgent
+from CustomDQN import CustomDQN
+from UAgent import UAgent
 from utils import sample_wandb_hyperparams
 
 
@@ -86,11 +91,11 @@ def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', dev
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
-    args.add_argument('--project', type=str, default='eval-ft')
+    args.add_argument('--project', type=str, default='eval-full-ft')
     args.add_argument('--do_sweep', action='store_true')    
     args.add_argument('--env_id', type=str, default='Acrobot-v1')
     args.add_argument('--algo', type=str, default='u')
-    args.add_argument('--device', type=str, default='cpu')
+    args.add_argument('--device', type=str, default='cuda')
     args = args.parse_args()
     env_id = args.env_id
     device = args.device
@@ -106,10 +111,23 @@ if __name__ == '__main__':
     else:
         print("Running finetuned hyperparameters...")
         algo = args.algo
-        
-        hparams = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
+        print(algo)
+
+        hparams = yaml.safe_load(open(f'hparams/{env_id}/sql.yaml'))
         # Drop the gamma hparam:
-        if algo == 'u': hparams.pop('gamma')
+        if algo == 'u': 
+            try:
+                hparams.pop('gamma')
+            except:
+                pass
+            hparams['tau_theta'] = 0.05
+            hparams['theta_update_interval'] = 100
+            AgentClass = UAgent
+        elif algo == 'dqn':
+            AgentClass = CustomDQN
+        elif algo == 'sql':
+            AgentClass = SoftQAgent
+
         for i in range(args.count):
             
             # main(None, project=args.project, ft_params=hparams, log_dir='ft_logs', device=device)
@@ -119,13 +137,11 @@ if __name__ == '__main__':
 
             full_config.update(hparams)
 
-            agent = UAgent(env_id, **full_config,
-                                device='cpu', log_interval=10000,
-                                tensorboard_log='ft_logs', num_nets=1,
-                                render=False,
-                                which_bounds='both',
-                                # reward_bounds=(-1,0),
-                                name_suffix='')
+            agent = AgentClass(env_id, **full_config,
+                                device='cpu', log_interval=200,
+                                tensorboard_log='ft_logs', num_nets=2,
+                                render=False)
 
-            # Measure the time it takes to learn:
+            # Measure the time it takes to learn: 
             agent.learn(total_timesteps=env_to_steps[env_id])
+            del agent
