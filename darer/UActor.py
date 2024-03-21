@@ -134,8 +134,9 @@ class UActor(BaseAgent):
         actor_curr_u = torch.stack([online_u(states, actor_actions)
                                         for online_u in self.online_us], dim=-1)
 
-        log_u_prob = torch.log(self.aggregator_fn(actor_curr_u, dim=-1).squeeze())
-        actor_loss = self.loss_fn(curr_log_prob, log_u_prob)
+        actor_log_curr_u = torch.log(self.aggregator_fn(actor_curr_u, dim=-1).squeeze())
+        # actor_loss = self.loss_fn(curr_log_prob, log_u_prob)
+        actor_loss = torch.mean((self.beta**(-1)) * curr_log_prob - actor_log_curr_u)
             # curr_log_prob - self.aggregator_fn(actor_curr_u)).mse()
         self.logger.record("train/log_prob", curr_log_prob.mean().item())
         self.logger.record("train/loss", loss.item())
@@ -180,8 +181,8 @@ def main():
     env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
-    agent = UActor(env_id, **config, device='cuda',
-                      num_nets=2, tensorboard_log='pend', 
+    agent = UActor(env_id, **config, device='cpu',
+                      num_nets=1, tensorboard_log='pend', 
                       actor_learning_rate=1e-4, 
                       render=False, max_grad_norm=10, log_interval=500,
                       )

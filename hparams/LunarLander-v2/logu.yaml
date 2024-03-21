@@ -1,0 +1,12 @@
+batch_size: 650
+beta: 0.25
+buffer_size: 100000
+gradient_steps: 1
+hidden_dim: 256
+learning_rate: 0.00055
+learning_starts: 5000
+target_update_interval: 2000
+tau: 0.25
+tau_theta: 0.7
+theta_update_interval: 1
+train_freq: 1

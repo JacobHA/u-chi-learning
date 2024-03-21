@@ -16,6 +16,14 @@ metrics_to_ylabel = {
 all_metrics = [
     'rollout/reward', 'eval/avg_reward', 'train/theta', 'train/avg logu'
 ]
+
+name_to_nicename = {
+    '1nets': '1 net',
+    '2nets': '2 nets',
+    '3nets': '3 nets',
+    '10nets': '10 nets',
+}
+
 sns.set_theme(style="whitegrid")
 # use poster settings:
 sns.set_context("poster")
@@ -30,6 +38,8 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
     print("Found subfolders:", subfolders)
     # Sort the subfolders for consistent plotting colors (later can make a dict):
     subfolders = sorted(subfolders)
+    # make "-10nets" come AFTER "-1nets":
+    # subfolders = sorted(subfolders, key=lambda x: int(x.split('-')[-1].replace('nets', '')))
     # Collect all the data into one dataframe for parsing into figures:
     for subfolder in subfolders:
         if not os.path.isdir(subfolder) or subfolder.endswith('.png'):
@@ -68,6 +78,8 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
         plt.figure(figsize=(12, 8))
         plt.title(title)
         # Filter the data to only include this metric:
+        # sort algo_data by algo name:
+        algo_data = algo_data.sort_values('algo')
         metric_data = algo_data[algo_data['tag'] == metric]
         if not metric_data.empty:
             print(f"Plotting {metric}...")
@@ -100,8 +112,10 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
                 # Swap Rawlik for PPI:
                 labels = [label.replace('rawlik', 'PPI') for label in labels]
                 # Remove the number of runs:
-                # labels = [label.split(' (')[0] for label in labels]
+                labels = [label.split(' (')[0] for label in labels]
+
             # labels = [label.split(title+'-')[-1] for label in labels]
+            labels = [name_to_nicename.get(label, label) for label in labels]
             plt.gca().legend(handles=handles, labels=labels)
                 
             plt.xlim(xlim)
@@ -118,24 +132,18 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--env', type=str, default='')
+    parser.add_argument('-e', '--env', type=str, default='Acrobot-v1')
     args = parser.parse_args()
     env = args.env
-    if env == '':
-        envs = ['Acrobot-v1', 'CartPole-v1', 'MountainCar-v0', 'LunarLander-v2']
-    else:
-        envs = [env]
 
-    for env in envs:
-        print(f"Plotting for {env} env.")
-        folder = f'experiments/ft/{env}/'
-        # folder = f'experiments/ablations/{env}/'
-        # env_to_settings = {
-        
+    folder = f'experiments/ablations/{env}/'
+    # env_to_settings = {
+    
 
-        # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
-        # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
+    plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title='Effect of Number of Networks')
+    # plotter(env=env, folder=folder, metrics=['rollout/ep_reward'])
+    # plotter(env=env, folder=folder, metrics=['rollout/avg_entropy'], exclude_algos=['Acrobot-v1-U', 'Acrobot-v1-SQL'], title=r'Relative Entropy $\mathrm{KL}\left(\pi|\pi_0\right)$')
 
-        plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
 
-        # Run from u-chi-learning directory: "python experiments/comparison_plotter.py -e ..."
+    # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
+    # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])

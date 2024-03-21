@@ -30,13 +30,11 @@ def runner(device):
     config = configs['u']
 
     rawlik_hparams = {'use_rawlik': False,
-                    'prior_update_interval': 5_000,
-                    'prior_tau': 0.99,
                         }
 
     model = UAgent(env, **config, tensorboard_log=f'experiments/ablations/{env}',
                  device=device, log_interval=1000, **rawlik_hparams,
-                 name=f'{NUM_NETS}nets-red',
+                 name=f'{NUM_NETS}nets',
                  num_nets=NUM_NETS
                  )#, aggregator='max')
     model.learn(total_timesteps=50_000)
@@ -44,7 +42,7 @@ def runner(device):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--count', type=int, default=5)
+    parser.add_argument('-c', '--count', type=int, default=10)
     parser.add_argument('-d', '--device', type=str, default='cpu')
     parser.add_argument('-n', '--num_nets', type=int, default=2)
     args = parser.parse_args()
