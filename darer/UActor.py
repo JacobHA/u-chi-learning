@@ -79,48 +79,56 @@ class UActor(BaseAgent):
 
         online_curr_u = torch.stack([online_u(states, actions)
                                 for online_u in self.online_us], dim=-1).squeeze(1)
-        with torch.no_grad():
-            # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
-                                            #   _ in range(self.batch_size)])).to(self.device)
-            # sampled_action, log_prob = self.actor.action_log_prob(observations)
-            # randomly shuffle the actions:
-            sampled_action = actions[torch.randperm(actions.shape[0])]
-            # sampled_action = actions#self.actor.action_log_prob(next_states)[0]#.squeeze(1)
-            # use same number of samples as the batch size for convenience:
-            # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
-            #                                _ in range(self.batch_size)])).to(self.device)
-            # use single sample for now:
-            # sampled_action = torch.Tensor(np.array([self.env.action_space.sample()])).to(self.device)
-            # repeat the sampled action for each state in batch:
-            # sampled_action = sampled_action.repeat(self.batch_size, 1)
 
-            # tile next states across the sampling amount (batch size):
-            next_states = next_states.unsqueeze(0)
-            next_states = next_states.repeat(self.batch_size,1,1)
-            # tile sampled actions across the amount of states (batch size), in 2nd slot:
-            sampled_action = sampled_action.unsqueeze(1)
-            sampled_action = sampled_action.repeat(1, self.batch_size, 1)
+        with torch.no_grad():
+            pi_next_a, next_a_log_prob = self.actor.action_log_prob(next_states)
+
+            # # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
+            #                                 #   _ in range(self.batch_size)])).to(self.device)
+            # # sampled_action, log_prob = self.actor.action_log_prob(observations)
+            # # randomly shuffle the actions:
+            # sampled_action = actions[torch.randperm(actions.shape[0])]
+            # # sampled_action = actions#self.actor.action_log_prob(next_states)[0]#.squeeze(1)
+            # # use same number of samples as the batch size for convenience:
+            # # sampled_action = torch.Tensor(np.array([self.env.action_space.sample() for 
+            # #                                _ in range(self.batch_size)])).to(self.device)
+            # # use single sample for now:
+            # # sampled_action = torch.Tensor(np.array([self.env.action_space.sample()])).to(self.device)
+            # # repeat the sampled action for each state in batch:
+            # # sampled_action = sampled_action.repeat(self.batch_size, 1)
+
+            # # tile next states across the sampling amount (batch size):
+            # next_states = next_states.unsqueeze(0)
+            # next_states = next_states.repeat(self.batch_size,1,1)
+            # # tile sampled actions across the amount of states (batch size), in 2nd slot:
+            # sampled_action = sampled_action.unsqueeze(1)
+            # sampled_action = sampled_action.repeat(1, self.batch_size, 1)
             # permute randomly:
             # sampled_action = sampled_action[torch.randperm(sel.shape[0])]
-            ref_u_next = torch.stack([u(next_states, sampled_action)
+
+            ref_u_next = torch.stack([u(next_states, pi_next_a)
                                   for u in self.online_us], dim=0)
             # Aggregate over networks
             ref_u_next = self.aggregator_fn(ref_u_next, dim=0)
+
             # Calculate chi by summing over actions:
-            # Which dimensions should I be summing over for actions?? (2nd slot, dim=1)
-            next_chi = ref_u_next.sum(dim=1) / self.batch_size
+            # next_chi = ref_u_next.sum(dim=1) / self.batch_size
 
             curr_u = torch.stack([u(states, actions) for u in self.online_us], dim=0)
             curr_u = self.aggregator_fn(curr_u, dim=0)
 
-            batch_rho = torch.mean(torch.exp(self.beta * rewards) * next_chi / curr_u)
+            batch_rho = torch.mean(torch.exp(self.beta * rewards) * ref_u_next / curr_u)
             self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
 
-            target_next_u = torch.stack([target_u(next_states, sampled_action)
+            target_next_u = torch.stack([target_u(next_states, pi_next_a)
                                             for target_u in self.target_us], dim=-1)
 
             next_u = self.aggregator_fn(target_next_u, dim=-1)
-            next_u = next_u.sum(dim=1) / self.batch_size
+            # Need importance weighting:
+            log_pi0 = -torch.log(torch.tensor(self.nA))
+            next_u *= torch.exp(log_pi0 - next_a_log_prob).unsqueeze(1)
+            # pi0(a'|s') / pi(a'|s')
+            # next_u = next_u.sum(dim=1) / self.batch_size
             next_u = next_u * (1 - dones) #+ self.theta * dones
 
             expected_curr_u = torch.exp(self.beta * (rewards + self.theta)) * next_u
@@ -135,9 +143,8 @@ class UActor(BaseAgent):
                                         for online_u in self.online_us], dim=-1)
 
         actor_log_curr_u = torch.log(self.aggregator_fn(actor_curr_u, dim=-1).squeeze())
-        # actor_loss = self.loss_fn(curr_log_prob, log_u_prob)
-        actor_loss = torch.mean((self.beta**(-1)) * curr_log_prob - actor_log_curr_u)
-            # curr_log_prob - self.aggregator_fn(actor_curr_u)).mse()
+        actor_loss = torch.mean(curr_log_prob - actor_log_curr_u)
+
         self.logger.record("train/log_prob", curr_log_prob.mean().item())
         self.logger.record("train/loss", loss.item())
         self.logger.record("train/actor_loss", actor_loss.item())
@@ -161,6 +168,8 @@ class UActor(BaseAgent):
         return noisy_action, kl
 
     def evaluation_policy(self, state: np.ndarray) -> float:
+        self.actor.set_training_mode(False)
+
         # noisyaction, logprob, action = self.actor.sample(state)  # , deterministic=True)
         action, _ = self.actor.predict(state)#, deterministic=True)
         # action = action.cpu().numpy()
@@ -175,16 +184,16 @@ def main():
     # env_id = 'LunarLanderContinuous-v2'
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
-    env_id = 'Pendulum-v1'
-    # env_id = 'Hopper-v3'
+    # env_id = 'Pendulum-v1'
+    env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
     env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
-    agent = UActor(env_id, **config, device='cpu',
-                      num_nets=1, tensorboard_log='pend', 
-                      actor_learning_rate=1e-4, 
-                      render=False, max_grad_norm=10, log_interval=500,
+    agent = UActor(env_id, **config, device='cuda',
+                      num_nets=2, tensorboard_log='pend', 
+                      actor_learning_rate=5e-4, 
+                      render=False, max_grad_norm=10, log_interval=1000,
                       )
                       
     agent.learn(total_timesteps=500_000)
