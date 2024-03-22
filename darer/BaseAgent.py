@@ -201,14 +201,14 @@ class BaseAgent:
         for grad_step in range(gradient_steps):
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(batch_size)
+            # loss = 
+            self.gradient_descent(batch, grad_step)
+            # self.optimizers.zero_grad()
 
-            loss = self.gradient_descent(batch, grad_step)
-            self.optimizers.zero_grad()
-
-            # Clip gradient norm
-            loss.backward()
-            self.model.clip_grad_norm(self.max_grad_norm)
-            self.optimizers.step()
+            # # Clip gradient norm
+            # loss.backward()
+            # self.model.clip_grad_norm(self.max_grad_norm)
+            # self.optimizers.step()
 
         # TODO: Clamp based on reward range
         # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
@@ -362,7 +362,7 @@ class BaseAgent:
             torch.save(self.online_logu.state_dict(),
                        'sql-policy.para')
         # Get the current learning rate from the optimizer:
-        self.lr = self.optimizers.get_lr()
+        self.lr = 0#self.u_optimizers.get_lr()
         log_class_vars(self, self.logger, LOG_PARAMS, use_wandb=self.use_wandb)
 
         if self.is_tabular:
