@@ -227,21 +227,21 @@ acrobot_u = {
 
 pendulum_logu = {
     'aggregator': 'max',
-    'batch_size': 64,#0,
-    'beta': 0.1,
-    'beta_schedule': 'linear',
+    'batch_size': 256,#0,
+    'beta': 1.5,
+    'beta_schedule': 'none',
     'buffer_size': 100_000,
     # 'final_beta_multiplier': 6,
-    'beta_end': 40.4,
-    'gradient_steps': 4,
-    'hidden_dim': 64,
+    'gradient_steps': 1,
+    'hidden_dim': 256,
     'learning_rate': 5e-4,
-    'learning_starts': 15_000,
-    'target_update_interval': 100,
-    'tau': 0.93,
-    'tau_theta': 0.96,
-    'theta_update_interval': 500,
-    'train_freq': 4,
+    'learning_starts': 1_000,
+    'target_update_interval': 1000,
+    'tau': 0.995,
+    'tau_theta': 0.9,
+    'theta_update_interval': 100,
+    'train_freq': 1,
+    'loss_fn': torch.nn.functional.smooth_l1_loss,
 }
 
 cheetah_hparams = {

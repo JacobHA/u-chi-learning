@@ -199,6 +199,9 @@ class TargetNets():
     def __iter__(self):
         return iter(self.nets)
 
+    def __call__(self, state, action):
+        return [net(state, action) for net in self.nets]
+
     def load_state_dicts(self, list_of_state_dicts):
         """
         Load state dictionaries into target networks.
@@ -267,6 +270,10 @@ class OnlineNets():
     
     def __iter__(self):
         return iter(self.nets)
+    
+    def __call__(self, state, action):
+        return [net(state, action) for net in self.nets]
+
 
     def choose_action(self, state, greedy=False, prior=None):
         raise NotImplementedError
@@ -437,7 +444,7 @@ class Usa(nn.Module):
         x = self.fc2(x)
         x = self.relu(x)
         x = self.fc3(x)
-        return nn.functional.softplus(x)
+        return nn.functional.softplus(x) + 1e-6
 
 
 # Initialize Policy weights

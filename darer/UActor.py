@@ -66,14 +66,17 @@ class UActor(BaseAgent):
         # Make (all) us and Actor learnable:
         opts = [torch.optim.Adam(u.parameters(), lr=self.learning_rate)
                 for u in self.online_us]
-        opts.append(torch.optim.Adam(
-            self.actor.parameters(), lr=self.actor_learning_rate))
-        self.optimizers = Optimizers(opts)
+        # opts.append(torch.optim.Adam(
+        #     self.actor.parameters(), lr=self.actor_learning_rate))
+        self.u_optimizers = Optimizers(opts)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
+                                                 lr=self.actor_learning_rate)
 
     def gradient_descent(self, batch, grad_step):
         self.actor.set_training_mode(True)
     
         states, actions, next_states, dones, rewards = batch
+        rewards[dones.bool()] -= 10
         # actor_actions, curr_log_prob, means = self.actor.sample(states)
         actor_actions, curr_log_prob = self.actor.action_log_prob(states)
 
@@ -120,16 +123,21 @@ class UActor(BaseAgent):
             batch_rho = torch.mean(torch.exp(self.beta * rewards) * ref_u_next / curr_u)
             self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
 
-            target_next_u = torch.stack([target_u(next_states, pi_next_a)
+            # sample an action from prior (uniform):
+            # next_a = torch.tensor([self.env.action_space.sample() 
+            #                        for _ in range(self.batch_size)]).to(self.device)
+            # sample using random torch tensor in self.env.action_space bounds:
+            next_a = torch.rand(self.batch_size, self.nA).to(self.device) * 4 - 2
+            target_next_u = torch.stack([target_u(next_states, next_a)
                                             for target_u in self.target_us], dim=-1)
 
             next_u = self.aggregator_fn(target_next_u, dim=-1)
             # Need importance weighting:
             log_pi0 = -torch.log(torch.tensor(self.nA))
-            next_u *= torch.exp(log_pi0 - next_a_log_prob).unsqueeze(1)
+            # next_u *= torch.exp(log_pi0 - next_a_log_prob).unsqueeze(1)
             # pi0(a'|s') / pi(a'|s')
             # next_u = next_u.sum(dim=1) / self.batch_size
-            next_u = next_u * (1 - dones) #+ self.theta * dones
+            # next_u = next_u * (1 - dones) #+ self.theta * dones
 
             expected_curr_u = torch.exp(self.beta * (rewards + self.theta)) * next_u
             expected_curr_u = expected_curr_u.squeeze(1)
@@ -138,32 +146,44 @@ class UActor(BaseAgent):
         self.logger.record("train/avg u", curr_u.mean().item())
         # Huber loss:
         loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in online_curr_u.T)
-        # MSE loss:
+        
+        # Increase update counter
+        self._n_updates += self.gradient_steps
+
+
+        # Optimize the u networks:
+        self.u_optimizers.zero_grad()
+        loss.backward()
+        self.model.clip_grad_norm(self.max_grad_norm)
+        self.u_optimizers.step()
+
+
+        # Calculate the actor loss:
         actor_curr_u = torch.stack([online_u(states, actor_actions)
                                         for online_u in self.online_us], dim=-1)
 
         actor_log_curr_u = torch.log(self.aggregator_fn(actor_curr_u, dim=-1).squeeze())
         actor_loss = torch.mean(curr_log_prob - actor_log_curr_u)
 
+        # Optimize the actor:
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        self.actor_optimizer.step()
+
         self.logger.record("train/log_prob", curr_log_prob.mean().item())
         self.logger.record("train/loss", loss.item())
         self.logger.record("train/actor_loss", actor_loss.item())
-        self.optimizers.zero_grad()
-        # Increase update counter
-        self._n_updates += self.gradient_steps
 
-        # if self._n_updates % 100 == 0:
-        # actor_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
-        
-        # Clip gradient norm
-        # loss.backward()
-        # self.online_us.clip_grad_norm(self.max_grad_norm)
-
-        return loss + actor_loss
+        return 0#loss + actor_loss
 
     def exploration_policy(self, state: np.ndarray) -> (float, float):
+
+        try: 
+            self.actor.predict(state)
+        except:
+            self.actor.predict(state)
         noisy_action, _ = self.actor.predict(state)
+
         kl = 0
         return noisy_action, kl
 
@@ -184,15 +204,16 @@ def main():
     # env_id = 'LunarLanderContinuous-v2'
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
-    # env_id = 'Pendulum-v1'
-    env_id = 'Hopper-v4'
+    env_id = 'Pendulum-v1'
+    # env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
     env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
+    # from simple_env import SimpleEnv
     agent = UActor(env_id, **config, device='cuda',
-                      num_nets=2, tensorboard_log='pend', 
-                      actor_learning_rate=5e-4, 
+                      num_nets=1, tensorboard_log='pend', 
+                      actor_learning_rate=1e-4, 
                       render=False, max_grad_norm=10, log_interval=1000,
                       )
                       
