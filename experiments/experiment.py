@@ -137,8 +137,9 @@ if __name__ == '__main__':
 
             agent = AgentClass(env_id, **full_config,
                                 device='auto', log_interval=500,
-                                tensorboard_log='ft_logs', num_nets=2,
-                                render=False)
+                                tensorboard_log=f'ft_logs/{env_id}', num_nets=1,
+                                render=False,
+                                )
 
             # Measure the time it takes to learn: 
             agent.learn(total_timesteps=env_to_steps[env_id])
