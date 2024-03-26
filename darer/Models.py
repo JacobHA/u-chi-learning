@@ -444,7 +444,7 @@ class Usa(nn.Module):
         x = self.fc2(x)
         x = self.relu(x)
         x = self.fc3(x)
-        return nn.functional.softplus(x) + 1e-6
+        return nn.functional.softplus(x) + 1e-9
 
 
 # Initialize Policy weights
