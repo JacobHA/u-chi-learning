@@ -112,11 +112,11 @@ class NewUAC(BaseAgent):
             crit /= 15
             # ref_u_next = th.cat(self.online_critics(next_states, sampled_next_actions), dim=1)
             # ref_u_next, _ = th.min(ref_u_next, dim=1, keepdim=True)
-            ref_u_next, _ = th.min(crit, dim=1, keepdim=True)
+            ref_u_next = self.aggregator_fn(crit, dim=1)
 
             # Same for current state action:
             curr_u = th.cat(self.online_critics(states, actions), dim=1)
-            curr_u, _ = th.max(curr_u, dim=1, keepdim=True)
+            curr_u = self.aggregator_fn(curr_u, dim=1).unsqueeze(1)
 
             batch_rho = torch.mean(torch.exp(self.beta * rewards) * ref_u_next / curr_u) #+ 1e-6
             # batch_rho = torch.clamp(batch_rho, max=20)
@@ -138,7 +138,7 @@ class NewUAC(BaseAgent):
 
             # next_u_values = th.cat(self.target_critics(next_states, sampled_next_actions), dim=1)
             # next_u_values, _ = th.max(next_u_values, dim=1, keepdim=True)
-            next_u_values, _ = th.max(next_crit, dim=1, keepdim=True)
+            next_u_values = self.aggregator_fn(next_crit, dim=1).unsqueeze(1)
 
             # td error 
             # self.theta=th.tensor([-5.0], device=self.device)
@@ -179,8 +179,8 @@ class NewUAC(BaseAgent):
         # Alternative: actor_loss = th.mean(log_prob - qf1_pi)
         # Min over all critic networks
         q_values_pi = th.cat(self.online_critics(states, actions_pi), dim=1)
-        min_qf_pi, _ = th.max(q_values_pi, dim=1, keepdim=True)
-        actor_loss = (log_prob - min_qf_pi).mean()
+        agg_qf_pi = self.aggregator_fn(q_values_pi, dim=1)
+        actor_loss = (log_prob - agg_qf_pi).mean()
         # Log the actor loss:
         self.logger.record("train/actor_loss", actor_loss.item())
 
