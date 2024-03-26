@@ -120,8 +120,6 @@ if __name__ == '__main__':
                 hparams.pop('gamma')
             except:
                 pass
-            hparams['tau_theta'] = 0.05
-            hparams['theta_update_interval'] = 100
             AgentClass = UAgent
         elif algo == 'dqn':
             AgentClass = CustomDQN
@@ -133,12 +131,12 @@ if __name__ == '__main__':
             # main(None, project=args.project, ft_params=hparams, log_dir='ft_logs', device=device)
             full_config = {}
             default_params = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
+            full_config.update(hparams)
             full_config.update(default_params)
 
-            full_config.update(hparams)
 
             agent = AgentClass(env_id, **full_config,
-                                device='cpu', log_interval=200,
+                                device='auto', log_interval=500,
                                 tensorboard_log='ft_logs', num_nets=2,
                                 render=False)
 
