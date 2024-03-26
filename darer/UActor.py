@@ -124,7 +124,7 @@ class UActor(BaseAgent):
             self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
 
             # sample an action from prior (uniform):
-            # next_a = torch.tensor([self.env.action_space.sample() 
+            # next_a = torch.tensor([self.env.action_space.sample()
             #                        for _ in range(self.batch_size)]).to(self.device)
             # sample using random torch tensor in self.env.action_space bounds:
             next_a = torch.rand(self.batch_size, self.nA).to(self.device) * 4 - 2
@@ -146,7 +146,7 @@ class UActor(BaseAgent):
         self.logger.record("train/avg u", curr_u.mean().item())
         # Huber loss:
         loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in online_curr_u.T)
-        
+
         # Increase update counter
         self._n_updates += self.gradient_steps
 
@@ -178,7 +178,7 @@ class UActor(BaseAgent):
 
     def exploration_policy(self, state: np.ndarray) -> (float, float):
 
-        try: 
+        try:
             self.actor.predict(state)
         except:
             self.actor.predict(state)
@@ -207,13 +207,13 @@ def main():
     env_id = 'Pendulum-v1'
     # env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
-    env_id = 'Ant-v4'
+    # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     # from simple_env import SimpleEnv
     agent = UActor(env_id, **config, device='cuda',
-                      num_nets=1, tensorboard_log='pend', 
-                      actor_learning_rate=1e-4, 
+                      num_nets=1, tensorboard_log='pend',
+                      actor_learning_rate=1e-4,
                       render=False, max_grad_norm=10, log_interval=1000,
                       )
                       

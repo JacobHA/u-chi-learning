@@ -38,26 +38,10 @@ env_to_log_interval = {
 }
 
 
-def runner(algo, device):
-    try:
-        config = id_to_hparam_dicts[env][algo]
-    except KeyError:
-        raise ValueError(f"env {env} not recognized.")
-
-    # Now access the config for this algo:
-    algo = str_to_algo[algo]
-
+def runner(env_id, algo_str, device, tensorboard_log, config, total_timesteps,):
     rawlik_hparams = {'use_rawlik': ppi}
-
-    if algo == UAgent:
-        model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=env_to_log_interval[env],
-                  **rawlik_hparams)#, name='U-rawlik2')#,
-    else:
-        model = algo(env, **config, tensorboard_log=f'experiments/ft/{env}',
-                 device=device, log_interval=env_to_log_interval[env])
-        
-    total_timesteps = env_id_to_timesteps[env]
+    model = algo(env, **config, tensorboard_log=tensorboard_log,
+             device=device, log_interval=env_to_log_interval[env])
     model.learn(total_timesteps=total_timesteps)
 
 
