@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
 
             agent = AgentClass(env_id, **full_config,
-                                device='auto', log_interval=500,
+                                device='cpu', log_interval=500,
                                 tensorboard_log='ft_logs', num_nets=2,
                                 render=False)
 
