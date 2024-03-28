@@ -128,7 +128,8 @@ if __name__ == "__main__":
 
     for env in envs:
         print(f"Plotting for {env} env.")
-        folder = f'experiments/ft/{env}/'
+        # folder = f'experiments/ft/{env}/'
+        folder = f'ft_logs/{env}'
         # folder = f'experiments/ablations/{env}/'
         # env_to_settings = {
         
@@ -136,6 +137,9 @@ if __name__ == "__main__":
         # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
         # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
-        plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
+        try:
+            plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
+        except KeyError:
+            print("No data to plot.")
 
         # Run from u-chi-learning directory: "python experiments/comparison_plotter.py -e ..."
