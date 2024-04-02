@@ -107,6 +107,7 @@ class UAgent(BaseAgent):
     def gradient_descent(self, batch, grad_step: int):
         states, actions, next_states, dones, rewards = batch
         # rewards[dones.bool()] -= 1
+        # rewards -= 1
         # Calculate the current u values (feedforward):
         # curr_ua = torch.stack([online_u(states).squeeze()
         #                     for online_u in self.online_us], dim=1)
@@ -192,8 +193,13 @@ class UAgent(BaseAgent):
         # curr_umean = torch.mean(curr_ua, dim=-1, keepdim=True).repeat(1, 1, self.nA)
         # regularize_loss = weight * torch.nn.functional.l1_loss(curr_ua, curr_umean)
         # self.logger.record("train/regularize_loss", regularize_loss.item())
-        return loss #+ regularize_loss
+        self.optimizers.zero_grad()
 
+        # Clip gradient norm
+        loss.backward()
+        self.model.clip_grad_norm(self.max_grad_norm)
+        self.optimizers.step()
+        return None
 
 def main(env_id, config, total_timesteps):
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,

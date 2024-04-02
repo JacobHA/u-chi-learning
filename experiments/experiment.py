@@ -14,8 +14,15 @@ from utils import sample_wandb_hyperparams
 env_to_steps = {
     'CartPole-v1': 10_000,
     'Acrobot-v1': 5_000,
-    'LunarLander-v2': 300_000,
+    'LunarLander-v2': 200_000,
     'MountainCar-v0': 500_000,
+}
+
+env_to_logfreq = {
+    'CartPole-v1': 200,
+    'Acrobot-v1': 200,
+    'LunarLander-v2': 1000,
+    'MountainCar-v0': 100,
 }
 
 int_hparams = {'train_freq', 'gradient_steps'}
@@ -49,7 +56,10 @@ def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', dev
     # run runs_per_hparam for each hyperparameter set
     for i in range(runs_per_hparam):
         unique_id = unique_id[:-1] + f"{i}"
-        with wandb.init(sync_tensorboard=True, id=unique_id, **wandb_kwargs) as run:  # 'clipping' 'jacobhadamczyk'
+        with wandb.init(sync_tensorboard=True, 
+                        id=unique_id,
+                        dir='/work/pi_rahul_kulkarni_umb_edu/wandb_scratch',
+                        **wandb_kwargs) as run:  # 'clipping' 'jacobhadamczyk'
             cfg = run.config
             print(run.id)
             config = cfg.as_dict()
@@ -75,8 +85,8 @@ def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', dev
             if 'algo_name' in full_config:
                 algo = full_config.pop('algo_name')
             agent = UAgent(env, **full_config,
-                                device=device, log_interval=100,
-                                tensorboard_log=log_dir, num_nets=1,
+                                device=device, log_interval=env_to_logfreq[env_id],
+                                tensorboard_log=log_dir, num_nets=2,
                                 render=False,)
 
             # Measure the time it takes to learn:
@@ -95,7 +105,7 @@ if __name__ == '__main__':
     args.add_argument('--do_sweep', action='store_true')    
     args.add_argument('--env_id', type=str, default='Acrobot-v1')
     args.add_argument('--algo', type=str, default='u')
-    args.add_argument('--device', type=str, default='cuda')
+    args.add_argument('--device', type=str, default='cpu')
     args = args.parse_args()
     env_id = args.env_id
     device = args.device
@@ -120,8 +130,6 @@ if __name__ == '__main__':
                 hparams.pop('gamma')
             except:
                 pass
-            hparams['tau_theta'] = 0.05
-            hparams['theta_update_interval'] = 100
             AgentClass = UAgent
         elif algo == 'dqn':
             AgentClass = CustomDQN
@@ -133,14 +141,15 @@ if __name__ == '__main__':
             # main(None, project=args.project, ft_params=hparams, log_dir='ft_logs', device=device)
             full_config = {}
             default_params = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
+            full_config.update(hparams)
             full_config.update(default_params)
 
-            full_config.update(hparams)
 
             agent = AgentClass(env_id, **full_config,
-                                device='cpu', log_interval=200,
-                                tensorboard_log='ft_logs', num_nets=2,
-                                render=False)
+                                device='auto', log_interval=500,
+                                tensorboard_log=f'ft_logs/{env_id}', num_nets=1,
+                                render=False,
+                                )
 
             # Measure the time it takes to learn: 
             agent.learn(total_timesteps=env_to_steps[env_id])

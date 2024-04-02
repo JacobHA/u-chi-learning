@@ -91,7 +91,6 @@ class NewUAC(BaseAgent):
 
     def gradient_descent(self, batch, grad_step):
         states, actions, next_states, dones, rewards = batch
-        ent_coef = self.beta ** (-1)
         
         self.actor.set_training_mode(True)
 
@@ -105,15 +104,19 @@ class NewUAC(BaseAgent):
 
         with th.no_grad():
             # Estimate theta across the batch:
-            # TODO: generalize for other action spaces
             sampled_next_actions = (th.rand((self.batch_size, *self.env.action_space.shape)) * (self.env.action_space.high - self.env.action_space.low) + self.env.action_space.low).to(self.device)
-
-            ref_u_next = th.cat(self.online_critics(next_states, sampled_next_actions), dim=1)
-            ref_u_next, _ = th.min(ref_u_next, dim=1, keepdim=True)
+            crit = th.cat(self.online_critics(next_states, sampled_next_actions), dim=1)
+            for _ in range(14):
+                sampled_next_actions = (th.rand((self.batch_size, *self.env.action_space.shape)) * (self.env.action_space.high - self.env.action_space.low) + self.env.action_space.low).to(self.device)
+                crit += th.cat(self.online_critics(next_states, sampled_next_actions), dim=1)
+            crit /= 15
+            # ref_u_next = th.cat(self.online_critics(next_states, sampled_next_actions), dim=1)
+            # ref_u_next, _ = th.min(ref_u_next, dim=1, keepdim=True)
+            ref_u_next = self.aggregator_fn(crit, dim=1)
 
             # Same for current state action:
             curr_u = th.cat(self.online_critics(states, actions), dim=1)
-            curr_u, _ = th.min(curr_u, dim=1, keepdim=True)
+            curr_u = self.aggregator_fn(curr_u, dim=1).unsqueeze(1)
 
             batch_rho = torch.mean(torch.exp(self.beta * rewards) * ref_u_next / curr_u) #+ 1e-6
             # batch_rho = torch.clamp(batch_rho, max=20)
@@ -124,12 +127,23 @@ class NewUAC(BaseAgent):
             # Select action according to policy
             # next_actions, next_log_prob = self.actor.action_log_prob(next_states)
             # Compute the next Q values: min over all critics targets
-            next_u_values = th.cat(self.target_critics(next_states, sampled_next_actions), dim=1)
-            next_u_values, _ = th.min(next_u_values, dim=1, keepdim=True)
+
+            sampled_next_actions = (th.rand((self.batch_size, *self.env.action_space.shape)) * (self.env.action_space.high - self.env.action_space.low) + self.env.action_space.low).to(self.device)
+            next_crit = th.cat(self.target_critics(next_states, sampled_next_actions), dim=1)
+            for _ in range(14):
+                sampled_next_actions = (th.rand((self.batch_size, *self.env.action_space.shape)) * (self.env.action_space.high - self.env.action_space.low) + self.env.action_space.low).to(self.device)
+                next_crit += th.cat(self.target_critics(next_states, sampled_next_actions), dim=1)
+            next_crit /= 15
+
+
+            # next_u_values = th.cat(self.target_critics(next_states, sampled_next_actions), dim=1)
+            # next_u_values, _ = th.max(next_u_values, dim=1, keepdim=True)
+            next_u_values = self.aggregator_fn(next_crit, dim=1).unsqueeze(1)
+
             # td error 
             # self.theta=th.tensor([-5.0], device=self.device)
             in_exp = self.beta * (rewards + self.theta)#, min=-50, max=5)
-            target_u_values = torch.exp(in_exp) * next_u_values + 1e-6
+            target_u_values = (torch.exp(in_exp) * next_u_values + 1e-9) #* (1 - dones)  # + 1 * dones
             # target_u_values = th.clamp(target_u_values, min=1e-6, max=1e6)
             self.logger.record("train/avg target u", target_u_values.mean().item())
             self.logger.record("train/max param actor", max([p.max() for p in self.actor.parameters()]).cpu().item())
@@ -165,8 +179,8 @@ class NewUAC(BaseAgent):
         # Alternative: actor_loss = th.mean(log_prob - qf1_pi)
         # Min over all critic networks
         q_values_pi = th.cat(self.online_critics(states, actions_pi), dim=1)
-        min_qf_pi, _ = th.min(q_values_pi, dim=1, keepdim=True)
-        actor_loss = (log_prob - min_qf_pi).mean()
+        agg_qf_pi = self.aggregator_fn(q_values_pi, dim=1)
+        actor_loss = (log_prob - agg_qf_pi).mean()
         # Log the actor loss:
         self.logger.record("train/actor_loss", actor_loss.item())
 
@@ -197,12 +211,12 @@ def main():
     # env_id = 'Hopper-v4'
     # env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
-    env_id = 'Simple-v0'
+    # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     # from simple_env import SimpleEnv
     agent = NewUAC(env_id, **config, device='cuda',
                     num_nets=1, tensorboard_log='pend', 
-                    actor_learning_rate=1e-4, 
+                    actor_learning_rate=3e-5, 
                     render=False, max_grad_norm=10, log_interval=500,
                       )
                       
