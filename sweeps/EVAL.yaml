@@ -15,9 +15,6 @@ parameters:
       - 500
       - 1000
       - 2000
-  algo_name:
-    values:
-      - 'u'
   batch_size:
     values:
       - 32

@@ -7,17 +7,6 @@ parameters:
     distribution: uniform
     max: 1.0
     min: 0.0
-  theta_update_interval:
-    values:
-      - 1
-      - 10
-      - 100
-      - 500
-      - 1000
-      - 2000
-  algo_name:
-    values:
-      - 'u'
   batch_size:
     values:
       - 32
@@ -59,6 +48,9 @@ parameters:
   num_nets:
     values:
       - 2
+  aggregator:
+    values:
+      - mean
 early_terminate:
   type: hyperband
   s: 2

@@ -78,11 +78,6 @@ def model_initializer(is_image_space,
             activation(),
             nn.Linear(hidden_dim, nA),
         ))
-        # intialize weights with xavier:
-        # for m in model:
-        #     if isinstance(m, nn.Linear):
-        #         nn.init.xavier_uniform_(m.weight, gain=1)
-        #         nn.init.constant_(m.bias, 0)
 
     return model, nS
 

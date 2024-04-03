@@ -7,3 +7,7 @@ scipy
 swig
 gymnasium[box2d]
 tensorboard
+stable-baselnies3
+typeguard
+tbparse
+matplotlib
