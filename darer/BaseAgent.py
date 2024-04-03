@@ -277,7 +277,7 @@ class BaseAgent:
                 # action = self.env.action_space.sample()
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
-                    action)
+                    action.item())
                 self._on_step()
                 avg_ep_len += 1
                 done = terminated or truncated
@@ -404,7 +404,7 @@ class BaseAgent:
                 n_steps += 1
 
                 next_state, reward, terminated, truncated, info = self.eval_env.step(
-                    action)
+                    action.item())
                 avg_reward += reward
                 state = next_state
                 done = terminated or truncated
