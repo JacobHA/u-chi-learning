@@ -170,6 +170,8 @@ class UAgent(BaseAgent):
             in_exp = torch.clamp(in_exp, max=30)
             expected_curr_u = torch.exp(self.beta * (in_exp)) * next_chis
             expected_curr_u = expected_curr_u
+            # Do batch normalization:
+            # expected_curr_u = expected_curr_u / expected_curr_u.max()#dim=-1, keepdim=True)
 
         # self.logger.record("train/u-avg", torch.mean(curr_u, dim=0))
 
