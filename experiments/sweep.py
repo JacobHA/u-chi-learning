@@ -6,8 +6,6 @@ import sys
 import os
 
 sys.path.append('darer')
-from SoftQAgent import SoftQAgent
-from CustomDQN import CustomDQN
 from UAgent import UAgent
 from utils import sample_wandb_hyperparams
 
@@ -28,14 +26,13 @@ env_to_logfreq = {
 
 int_hparams = {'train_freq', 'gradient_steps'}
 
-env_id='Acrobot-v1'
 # load text from settings file:
 try:
     WANDB_DIR = os.environ['WANDB_DIR']
 except KeyError:
     WANDB_DIR = None
     
-def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu'):
+def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu'):
     env = gymnasium.make(env_id)
     total_timesteps = env_to_steps[env_id]
     runs_per_hparam = 3
@@ -51,15 +48,9 @@ def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', dev
         wandb_kwargs['config'] = sampled_params
 
     # Use SQL as default params for U learning 
-    default_params = yaml.safe_load(open(f'hparams/{env_id}/sql.yaml'))
-    if args.algo == 'u': default_params.pop('gamma')
-    # try:
-    #     a1 = ft_params.pop('algo_name')
-    #     a = default_params.pop('algo_name')
-    #     assert a == algo, "ensure proper algo is used"
-    # except:
-    #     pass
-    # run runs_per_hparam for each hyperparameter set
+    with open(f'hparams/{env_id}/{algo}.yaml') as f:
+        default_params = yaml.load(f, Loader=yaml.FullLoader)
+
     for i in range(runs_per_hparam):
         unique_id = unique_id[:-1] + f"{i}"
         with wandb.init(sync_tensorboard=True, 
@@ -88,8 +79,6 @@ def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', dev
             for k in int_hparams:
                 full_config[k] = int(full_config[k])
 
-            if 'algo_name' in full_config:
-                algo = full_config.pop('algo_name')
             agent = UAgent(env, **full_config,
                                 device=device, log_interval=env_to_logfreq[env_id],
                                 tensorboard_log=log_dir,
@@ -114,14 +103,11 @@ if __name__ == '__main__':
     args.add_argument('--exp-name', type=str, default='EVAL')
 
     args = args.parse_args()
-    env_id = args.env_id
-    experiment_name = args.exp_name
-    device = args.device
 
     # Run a hyperparameter sweep with w&b:
     print("Running a sweep on wandb...")
-    sweep_cfg = yaml.safe_load(open(f'sweeps/{experiment_name}.yaml'))
+    sweep_cfg = yaml.safe_load(open(f'sweeps/{args.exp_name}.yaml'))
 
     for i in range(args.count):
-        main(sweep_cfg, project=args.project, device=device)
+        main(sweep_cfg, env_id=args.env_id, algo=args.algo, project=args.project, device=args.device)
 

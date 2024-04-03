@@ -12,9 +12,3 @@ parameters:
       - 128
       - 256
       - 512
-  algo_name:
-    values:
-      - 'u'
-      - 'sql'
-      - 'dqn'
-    

@@ -17,9 +17,6 @@ parameters:
       - 2000
       - 5000
       - 10000
-  algo_name:
-    values:
-      - 'u'
   use_rawlik:
     values:
       - True
