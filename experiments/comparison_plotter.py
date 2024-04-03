@@ -119,6 +119,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--env', type=str, default='')
+    parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
     args = parser.parse_args()
     env = args.env
     if env == '':
@@ -129,7 +130,7 @@ if __name__ == "__main__":
     for env in envs:
         print(f"Plotting for {env} env.")
         # folder = f'experiments/ft/{env}/'
-        folder = f'ft_logs/{env}'
+        folder = f'ft_logs/{args.experiment_name}/{env}'
         # folder = f'experiments/ablations/{env}/'
         # env_to_settings = {
         

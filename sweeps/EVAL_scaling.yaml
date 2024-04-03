@@ -1,0 +1,20 @@
+method: random
+metric:
+  goal: maximize
+  name: eval/auc
+parameters:
+  hidden_dim:
+    values:
+      - 8
+      - 16
+      - 32
+      - 64
+      - 128
+      - 256
+      - 512
+  algo_name:
+    values:
+      - 'u'
+      - 'sql'
+      - 'dqn'
+    

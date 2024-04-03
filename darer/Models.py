@@ -350,7 +350,7 @@ class OnlineUNets(OnlineNets):
             us = torch.stack([net.forward(state) for net in self.nets], dim=1)
             us = us.squeeze(0)
             # Aggregate over the networks:
-            u = self.aggregator_fn(us, dim=0)
+            u = self.aggregator_fn(us, dim=0).squeeze(0)
             policy = prior * u
             policy /= torch.sum(policy)
 
