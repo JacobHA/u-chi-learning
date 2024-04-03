@@ -49,9 +49,9 @@ int_args = ['batch_size',
             'learning_starts']
 
 
-str_to_aggregator = {'min': lambda x, dim: torch.min(x, dim=dim)[0],
-                     'max': lambda x, dim: torch.max(x, dim=dim)[0],
-                     'mean': lambda x, dim: (torch.mean(x, dim=dim))}
+str_to_aggregator = {'min': lambda x, dim: torch.min(x, dim=dim, keepdim=True)[0],
+                     'max': lambda x, dim: torch.max(x, dim=dim, keepdim=True)[0],
+                     'mean': lambda x, dim: (torch.mean(x, dim=dim, keepdim=True))}
 
 # use get_type_hints to throw errors if the user passes in an invalid type:
 
