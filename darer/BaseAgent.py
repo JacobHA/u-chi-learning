@@ -203,12 +203,6 @@ class BaseAgent:
             batch = self.replay_buffer.sample(batch_size)
             # loss = 
             self.gradient_descent(batch, grad_step)
-            # self.optimizers.zero_grad()
-
-            # # Clip gradient norm
-            # loss.backward()
-            # self.model.clip_grad_norm(self.max_grad_norm)
-            # self.optimizers.step()
 
         # TODO: Clamp based on reward range
         # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
@@ -222,22 +216,7 @@ class BaseAgent:
             # new_theta = self.new_theta_pending / self.new_theta_counter
             self.theta = self.tau_theta * self.theta + \
                 (1 - self.tau_theta) * new_theta
-        # else:
-        #     self.new_theta_pending += new_theta
-        #     self.new_theta_counter += 1
-        #     self.logger.record("train/theta_buffer", self.new_theta_pending.item() / self.new_theta_counter)
 
-        # # Log info from this training cycle:
-        # self.logger.record("train/avg logu", curr_logu.mean().item())
-        # self.logger.record("train/min logu", curr_logu.min().item())
-        # self.logger.record("train/max logu", curr_logu.max().item())
-
-        # Log the max gradient:
-        # total_norm = torch.max(torch.stack(
-        #             [px.grad.detach().abs().max()
-        #                 for p in self.online_logus.parameters() for px in p]
-        #             ))
-        # self.logger.record("train/max_grad", total_norm.item())
 
     def learn(self, total_timesteps: int, early_stop: dict = {}) -> bool:
         """

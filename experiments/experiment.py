@@ -101,11 +101,12 @@ def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', dev
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
-    args.add_argument('--project', type=str, default='eval-full-ft')
+    args.add_argument('--project', type=str, default='u-chi-learning')
     args.add_argument('--do_sweep', action='store_true')    
-    args.add_argument('--env_id', type=str, default='Acrobot-v1')
+    args.add_argument('--env_id', type=str, default='LunarLander-v2')
     args.add_argument('--algo', type=str, default='u')
     args.add_argument('--device', type=str, default='cpu')
+    args.add_argument('--exp-name', type=str, default='EVAL')
     args = args.parse_args()
     env_id = args.env_id
     device = args.device
@@ -113,7 +114,7 @@ if __name__ == '__main__':
     if args.do_sweep:
         # Run a hyperparameter sweep with w&b:
         print("Running a sweep on wandb...")
-        sweep_cfg = yaml.safe_load(open('sweeps/EVAL.yaml'))
+        sweep_cfg = yaml.safe_load(open(f'sweeps/{args.exp_name}.yaml'))
 
         for i in range(args.count):
             main(sweep_cfg, project=args.project, device=device)
@@ -140,14 +141,14 @@ if __name__ == '__main__':
             
             # main(None, project=args.project, ft_params=hparams, log_dir='ft_logs', device=device)
             full_config = {}
-            default_params = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
+            with open(f'hparams/{env_id}/{algo}.yaml') as f:
+                default_params = yaml.load(f, Loader=yaml.FullLoader)
             full_config.update(hparams)
             full_config.update(default_params)
 
-
             agent = AgentClass(env_id, **full_config,
                                 device='auto', log_interval=500,
-                                tensorboard_log=f'ft_logs/{env_id}', num_nets=1,
+                                tensorboard_log=f'ft_logs/{args.exp_name}-{env_id}',
                                 render=False,
                                 )
 

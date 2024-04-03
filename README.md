@@ -94,3 +94,11 @@ pip list --format=freeze > requirements.txt
 
 the contents of requirements.txt are a bit sensitive for the git actions testing...
 (e.g. have to remove some conda stuff)
+
+
+## Setup
+
+(optional) make a venv or conda env
+
+install the requirements (tested with cuda 11.8):
+`pip install -r requirements.txt`

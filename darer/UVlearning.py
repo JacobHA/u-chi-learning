@@ -9,7 +9,7 @@ import sys
 sys.path.append("tabular")
 sys.path.append("darer")
 from Models import UNet, OnlineNets, Optimizers, TargetNets
-from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder, rllib_env_id_to_envs
+from utils import env_id_to_envs, get_eigvec_values, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder
 
 torch.backends.cudnn.benchmark = True
 
