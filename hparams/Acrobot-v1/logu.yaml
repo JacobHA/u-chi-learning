@@ -8,5 +8,4 @@ learning_starts: 1000
 target_update_interval: 160
 tau: 0.4
 tau_theta: 0.95
-theta_update_interval: 8
 train_freq: 1

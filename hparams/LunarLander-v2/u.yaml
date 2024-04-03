@@ -10,5 +10,4 @@ loss_fn: !!python/name:torch.nn.functional.smooth_l1_loss ''
 target_update_interval: 50
 tau: 0.8
 tau_theta: 0.995
-theta_update_interval: 50000
 train_freq: 4

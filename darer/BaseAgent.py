@@ -16,7 +16,6 @@ HPARAM_ATTRS = {
     'buffer_size': 'buffer_size',
     'target_update_interval': 'target_update_interval',
     'tau': 'tau',
-    'theta_update_interval': 'theta_update_interval',
     'hidden_dim': 'hidden_dim',
     'num_nets': 'num_nets',
     'tau_theta': 'tau_theta',
@@ -40,7 +39,6 @@ LOG_PARAMS = {
 int_args = ['batch_size',
             'buffer_size',
             'target_update_interval',
-            'theta_update_interval',
             'hidden_dim',
             'num_nets',
             'gradient_steps',
@@ -67,7 +65,6 @@ class BaseAgent:
                  buffer_size: int = 100_000,
                  target_update_interval: int = 10_000,
                  tau: float = 1.0,
-                 theta_update_interval: int = 1,
                  hidden_dim: int = 64,
                  num_nets: int = 2,
                  tau_theta: float = 0.995,
@@ -126,7 +123,6 @@ class BaseAgent:
         self.save_checkpoints = save_checkpoints
         self.log_interval = log_interval
         self.tau_theta = tau_theta
-        self.theta_update_interval = theta_update_interval
         self.train_freq = train_freq
         if isinstance(train_freq, tuple):
             raise NotImplementedError("train_freq as a tuple is not supported yet.\
@@ -218,10 +214,9 @@ class BaseAgent:
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
-        if self._n_updates % self.theta_update_interval == 0:
-            # new_theta = self.new_theta_pending / self.new_theta_counter
-            self.theta = self.tau_theta * self.theta + \
-                (1 - self.tau_theta) * new_theta
+        # new_theta = self.new_theta_pending / self.new_theta_counter
+        self.theta = self.tau_theta * self.theta + \
+            (1 - self.tau_theta) * new_theta
         # else:
         #     self.new_theta_pending += new_theta
         #     self.new_theta_counter += 1
