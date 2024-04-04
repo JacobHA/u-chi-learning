@@ -33,8 +33,8 @@ env_id_to_timesteps = {
 env_to_log_interval = {
     'CartPole-v1': 1000,
     'Acrobot-v1': 1000,
-    'LunarLander-v2': 10000,
-    'MountainCar-v0': 10000,
+    'LunarLander-v2': 1000,
+    'MountainCar-v0': 1000,
 }
 
 
