@@ -1,32 +1,25 @@
-EVAL implementation in gymnasium (mazes and classic control)
+EVAL (EigenVector-based Average-reward Learning) implementation in Gymnasium's classic control and mazes.
 
 # TODOs:
+- [ ] fix viusalizations in todo
+- [ ] add refs (rawlik paper/thesis, prr)
 - [x] "bigger" tabular expt overrides: Add Heaven & Hell experiment in the tabular case
 - [x] Theory comparison overrides: Compare multilogu w/ and w/o the 1/A factor in chi calc.
 - [x] Batch theta overrides: Same w/ periodic updates of ref s,a,s'
 - [x] Implement LR schedule
 - [x] Create a folder when one is missing for logging
-- [x] Generate requirements
-- [ ] Write more tests
-- [ ] Make more off-policy / offline?
-- [ ] V learning with cloning
-- [x] UV learning
-- [ ] Rawlik scheme
-- [ ] Test UV learning with steady state from tabular
-- [ ] Effective temperature from Rawlik
-- [ ] Add wrapper for DM control suite (need to flatten dict obs space)
 
-
-# New (Simple) Features:
+# New Features:
+- [ ] Possibly use SB3 style: :param train_freq: Update the model every ``train_freq`` steps. Alternatively pass a tuple of frequency and unit
+        like ``(5, "step")`` or ``(2, "episode")``.
+- [ ] Prioritized Experience Replay
 - [x] Monitor FPS
 - [x] Monitor min/max of logu to watch for divergence
 - [x] Add learning rate decay thru scheduler
 - [x] Add "train_freq" rather than episodic training
-- [ ] Possibly use SB3 style: :param train_freq: Update the model every ``train_freq`` steps. Alternatively pass a tuple of frequency and unit
-        like ``(5, "step")`` or ``(2, "episode")``.
 - [x] Add gradient clipping
 - [x] More clever normalization to avoid logu divergence (just clamping)
-- [x] Merge Rawlik with LogU as an option. e.g. prior_update_interval=0 for no updates, and otherwise use Rawlik iteration
+- [x] Merge Rawlik with U as an option. e.g. prior_update_interval=0 for no updates, and otherwise use Rawlik iteration
 - [x] Switch to SB3 Replay Buffer
 
 # Experimental questions:
@@ -35,15 +28,22 @@ EVAL implementation in gymnasium (mazes and classic control)
 - [ ] Which params most strongly affect logu oscillations?
 - [ ] "..." affect logu divergence? 
 - [ ] Why does using off-policy (pi0) for exploration make logu diverge?
-- [ ] Which activation function is best?
+- [x] Which activation function is best? softplus >> relu for u-learning
 - [x] Which aggregration of theta is best (min/mean/max), same for logu (min is suggested to help with over-optimistic behavior)
 
 # Features requiring experiments:
-- [x] use target or online logu for exploration (greedy or not?)
-- [ ] Standard prioritized replay
 - [ ] Clipping theta
+- [x] use target or online logu for exploration (greedy or not?)
 - [x] smooth out theta learning
 
+# Long-Term TODOs:
+- [ ] Write more tests
+- [ ] V learning with cloning
+- [ ] UV learning
+- [ ] Test UV learning with steady state from tabular
+- [ ] Effective temperature tracking from Rawlik
+- [x] Rawlik scheme (PPI)
+- [x] Generate requirements
 
 # Notes:
 
