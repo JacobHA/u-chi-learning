@@ -1,13 +1,22 @@
-LogU learning implementation in gym (mazes and cartpole)
+EVAL implementation in gymnasium (mazes and classic control)
 
-# Simple TODOs:
+# TODOs:
 - [x] "bigger" tabular expt overrides: Add Heaven & Hell experiment in the tabular case
-- [ ] Start thinking about bigger WHY question (lifelong learning, episode length hparam, gamma->1 ...)
 - [x] Theory comparison overrides: Compare multilogu w/ and w/o the 1/A factor in chi calc.
 - [x] Batch theta overrides: Same w/ periodic updates of ref s,a,s'
 - [x] Implement LR schedule
 - [x] Create a folder when one is missing for logging
-- [ ] Correct log interval for PPO
+- [x] Generate requirements
+- [ ] Write more tests
+- [ ] Make more off-policy / offline?
+- [ ] V learning with cloning
+- [x] UV learning
+- [ ] Rawlik scheme
+- [ ] Test UV learning with steady state from tabular
+- [ ] Effective temperature from Rawlik
+- [ ] Add wrapper for DM control suite (need to flatten dict obs space)
+
+
 # New (Simple) Features:
 - [x] Monitor FPS
 - [x] Monitor min/max of logu to watch for divergence
@@ -17,7 +26,7 @@ LogU learning implementation in gym (mazes and cartpole)
         like ``(5, "step")`` or ``(2, "episode")``.
 - [x] Add gradient clipping
 - [x] More clever normalization to avoid logu divergence (just clamping)
-- [ ] Merge Rawlik with LogU as an option. e.g. prior_update_interval=0 for no updates, and otherwise use Rawlik iteration
+- [x] Merge Rawlik with LogU as an option. e.g. prior_update_interval=0 for no updates, and otherwise use Rawlik iteration
 - [x] Switch to SB3 Replay Buffer
 
 # Experimental questions:
@@ -35,15 +44,6 @@ LogU learning implementation in gym (mazes and cartpole)
 - [ ] Clipping theta
 - [x] smooth out theta learning
 
-# Future TODOs:
-- [x] Generate requirements
-- [ ] Write more tests
-- [ ] Make more off-policy / offline?
-- [ ] V learning with cloning
-- [x] UV learning
-- [ ] Rawlik scheme
-- [ ] Test UV learning with steady state from tabular
-- [ ] Effective temperature from Rawlik
 
 # Notes:
 
