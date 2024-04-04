@@ -6,7 +6,8 @@ sys.path.append('darer')
 from SoftQAgent import SoftQAgent
 from CustomDQN import CustomDQN
 from UAgent import UAgent
-
+from arSAC import arSAC
+from LogUAgent import LogUAgent
 
 env_to_steps = {
     'CartPole-v1': 10_000,
@@ -50,6 +51,10 @@ elif algo == 'dqn':
     AgentClass = CustomDQN
 elif algo == 'sql':
     AgentClass = SoftQAgent
+elif algo == 'arSAC':
+    AgentClass = arSAC
+elif algo == 'logu':
+    AgentClass = LogUAgent
 
 for i in range(args.count):
     full_config = {}
