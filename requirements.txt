@@ -4,6 +4,7 @@ wandb
 scipy
 swig
 gymnasium[box2d]
+shimmy
 tensorboard
 typeguard
 stable-baselines3
