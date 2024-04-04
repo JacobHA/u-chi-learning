@@ -60,25 +60,25 @@ class LogUAgent(BaseAgent):
             online_curr_logu = torch.stack([logu(states).gather(1, actions)
                                             for logu in self.online_logus], dim=0)
 
-            # since pi0 is same for all, just do exp(ref_logu) and sum over actions:
-            # TODO: should this go outside no grad? Also, is it worth defining a log_prior value?
+            # Aggregate the logus:
+            online_logu_next = self.aggregator_fn(online_logu_next, dim=0).squeeze(0)
+            online_curr_logu = self.aggregator_fn(online_curr_logu, dim=0).squeeze(0)
             online_log_chi = torch.logsumexp(
-                online_logu_next, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-            online_curr_logu = online_curr_logu.squeeze(-1)
+                online_logu_next, dim=-1, keepdim=True) - torch.log(torch.Tensor([self.nA])).to(self.device)
+            # online_curr_logu = online_curr_logu.unsqueeze(-1)
 
             # TODO: beta missing on the rewards?
-            self.new_thetas[grad_step, :] = -torch.mean( rewards.squeeze(-1) + (
-                online_log_chi - online_curr_logu) / self.beta, dim=1)
+            self.new_thetas[grad_step] = -torch.mean( rewards + (
+                online_log_chi - online_curr_logu) / self.beta, dim=0)
 
             target_next_logus = [target_logu(next_states)
                                  for target_logu in self.target_logus]
 
             # logsumexp over actions:
             target_next_logus = torch.stack(target_next_logus, dim=1)
-            target_next_logu = self.aggregator_fn(target_next_logus, dim=1)
+            target_next_logu = self.aggregator_fn(target_next_logus, dim=1).squeeze(1)
             next_logu = torch.logsumexp(
                 target_next_logu, dim=-1) - torch.log(torch.Tensor([self.nA])).to(self.device)
-            # next_logu, _ = self.aggregator_fn(next_logus, dim=1)
 
             next_logu = next_logu.reshape(-1, 1)
             assert next_logu.shape == dones.shape
