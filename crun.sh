@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=u-chi
 #SBATCH --time=2-23:00:00
-#SBATCH --mem-per-cpu=8gb
+#SBATCH --mem-per-cpu=12gb
 #SBATCH --cpus-per-task=3
 
 # Set filenames for stdout and stderr.  %j can be used for the jobid.
@@ -31,8 +31,15 @@ export MUJOCO_GL="glfw"
 echo "Start Run"
 echo `date`
 
-python experiments/wandb_job.py -d cpu -env LunarLander-v2 -a u
-# python experiments/rawlik_wandb_job.py -d cpu -env Acrobot-v1 -a u
+# python experiments/wandb_job.py -d cpu -env LunarLander-v2 -a u
+# python experiments/rawlik_wandb_job.py -d cpu -env LunarLander-v2 -a u
+# python experiments/ablation_num_nets.py -n 10 -c 10
+# python experiments/local_finetuned_runs.py -c 5 -a sql -e MountainCar-v0
+# python experiments/local_finetuned_runs.py -c 5 -a sql -e Acrobot-v1
+# python experiments/local_finetuned_runs.py -c 5 -a sql -e CartPole-v1
+# python experiments/local_finetuned_runs.py -c 5 -a sql -e LunarLander-v2
+
+python experiments/experiment.py --do_sweep --env Acrobot-v1 --count 500
 
 # Diagnostic/Logging Information
 echo "Finish Run"

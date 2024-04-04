@@ -53,30 +53,6 @@ def logger_at_folder(log_dir=None, algo_name=None):
 
     return logger
 
-
-# class AtariAdapter(gym.Wrapper):
-#     """
-#     Wrapper for atari-preprocessed environments to make them consistent with unprocessed environments.
-#     Observation space has to include a channel dimension.
-#     """
-#     def __init__(self, env):
-#         super().__init__(env)
-#         self.env = env
-#         obs_space_kwargs = env.observation_space.__dict__
-#         obs_space_kwargs['shape'] = (*obs_space_kwargs['_shape'], 1)
-#         for key in ['bounded_below', 'bounded_above', '_shape', 'low_repr', 'high_repr', '_np_random']:
-#             obs_space_kwargs.pop(key)
-#         obs_space_kwargs["low"] = obs_space_kwargs["low"][...,np.newaxis]
-#         obs_space_kwargs["high"] = obs_space_kwargs["high"][...,np.newaxis]
-#         self.observation_space = gym.spaces.Box(**obs_space_kwargs)
-#         self.action_space = env.action_space
-#
-#     def step(self, action):
-#         obs, rew, term, trunk, info = self.env.step(action)
-#         obs = obs[..., np.newaxis]
-#         return obs, rew, term, trunk, info
-
-
 class PermuteAtariObs(gym.Wrapper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,16 +76,6 @@ class PermuteAtariObs(gym.Wrapper):
         res, info = self.env.reset(*args, **kwargs)
         res = np.transpose(res, [2,1,0])
         return res, info
-
-
-from ray.rllib.env.wrappers.atari_wrappers import wrap_deepmind
-def rllib_env_id_to_envs(env_id, render=False):
-    env = gym.make(env_id)
-    env = wrap_deepmind(env, framestack=True, noframeskip=False)
-
-    eval_env = gym.make(env_id, render_mode='human' if render else None)
-    eval_env = wrap_deepmind(eval_env, framestack=True, noframeskip=False)
-    return env, eval_env
 
 def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False):
     if isinstance(env_id, gym.Env):

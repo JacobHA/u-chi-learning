@@ -1,0 +1,11 @@
+method: random
+metric:
+  goal: maximize
+  name: eval/auc
+parameters:
+  num_nets:
+    values:
+      - 1
+      - 2
+      - 3
+      - 10

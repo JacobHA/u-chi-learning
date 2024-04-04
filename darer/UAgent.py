@@ -107,6 +107,7 @@ class UAgent(BaseAgent):
     def gradient_descent(self, batch, grad_step: int):
         states, actions, next_states, dones, rewards = batch
         # rewards[dones.bool()] -= 1
+        # rewards -= 1
         # Calculate the current u values (feedforward):
         # curr_ua = torch.stack([online_u(states).squeeze()
         #                     for online_u in self.online_us], dim=1)
@@ -156,7 +157,7 @@ class UAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_us = torch.stack(target_next_us, dim=1)
-            target_next_u = self.aggregator_fn(target_next_us, dim=1)
+            target_next_u = self.aggregator_fn(target_next_us, dim=1).squeeze(1)
 
             next_chis = (target_next_u * target_prior_next).sum(dim=-1)
 
@@ -169,6 +170,8 @@ class UAgent(BaseAgent):
             in_exp = torch.clamp(in_exp, max=30)
             expected_curr_u = torch.exp(self.beta * (in_exp)) * next_chis
             expected_curr_u = expected_curr_u
+            # Do batch normalization:
+            # expected_curr_u = expected_curr_u / expected_curr_u.max()#dim=-1, keepdim=True)
 
         # self.logger.record("train/u-avg", torch.mean(curr_u, dim=0))
 
@@ -192,8 +195,13 @@ class UAgent(BaseAgent):
         # curr_umean = torch.mean(curr_ua, dim=-1, keepdim=True).repeat(1, 1, self.nA)
         # regularize_loss = weight * torch.nn.functional.l1_loss(curr_ua, curr_umean)
         # self.logger.record("train/regularize_loss", regularize_loss.item())
-        return loss #+ regularize_loss
+        self.optimizers.zero_grad()
 
+        # Clip gradient norm
+        loss.backward()
+        self.model.clip_grad_norm(self.max_grad_norm)
+        self.optimizers.step()
+        return None
 
 def main():
     from disc_envs import get_environment

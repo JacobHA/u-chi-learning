@@ -114,7 +114,7 @@ cartpole_dqn = {
 
 nature_pong = {
   "batch_size": 64,
-  "beta": 0.87,
+  "beta": 0.9,
   "buffer_size": 1_000_000,
   "tau": 1,
   "train_freq": 4,
@@ -126,10 +126,11 @@ nature_pong = {
 #   "action_history_len": 4 ,
 #   "action_repeat": 4 ,
 #   "discount_factor": 0.99 ,
-  "target_update_interval": 15000,
+  "target_update_interval": 5000,
   "tau_theta": 0.98,
   'aggregator': 'max',
-  'hidden_dim': 512,
+  'hidden_dim': 256,
+  'name': 'u2'
 }
 
 cartpole_u = {
@@ -199,22 +200,22 @@ acrobot_u = {
 }
 
 pendulum_logu = {
-    'aggregator': 'max',
-    'batch_size': 64,#0,
-    'beta': 0.1,
-    'beta_schedule': 'linear',
-    'buffer_size': 100_000,
-    # 'final_beta_multiplier': 6,
-    'beta_end': 40.4,
-    'gradient_steps': 4,
-    'hidden_dim': 64,
-    'learning_rate': 5e-4,
-    'learning_starts': 15_000,
-    'target_update_interval': 100,
-    'tau': 0.93,
-    'tau_theta': 0.96,
-    'theta_update_interval': 500,
-    'train_freq': 4,
+    'aggregator': 'mean',
+    'batch_size': 256,#0,
+    'beta': 'auto',#3.,
+    'beta_schedule': 'none',
+    'buffer_size': 1_000_000,
+    # 'final_beta_multiplier': 6
+    'gradient_steps': 1,
+    'hidden_dim': 256,
+    'learning_rate': 3e-4,
+    'learning_starts': 10000,
+    'target_update_interval': 1,
+    'tau': 0.005,
+    'tau_theta': 0.9995,
+    'theta_update_interval': 1,
+    'train_freq': 1,
+    'loss_fn': torch.nn.functional.smooth_l1_loss,
 }
 
 cheetah_hparams = {
@@ -296,29 +297,27 @@ mcar_u = {
 }
 mcar_sql = {
     'batch_size': 128,
-    'beta': 0.7,
+    'beta': 10,
     'gamma': 0.99,
-    'hidden_dim': 64,
-    'learning_rate': 0.002,
-    'learning_starts': 0.09*100_000,
-    'target_update_interval': 100,
+    'hidden_dim': 512,
+    'learning_rate': 0.003,
+    'learning_starts': 10000,
+    'target_update_interval': 1000,
     'tau': 0.97,
-    'gradient_steps': 2,
-    'train_freq': 2,
+    'gradient_steps': 5,
+    'train_freq': 5,
 }
 sql_lunar = {
     'batch_size': 32,
-    'beta': 2.3,
-    'gamma': 0.98,
-    'hidden_dim': 128,
-    'learning_rate': 0.0015,
-    'learning_starts': 0.023*500_000,
-    'target_update_interval': 100,
-    'tau': 0.92,
-    'tau_theta': 0.91,
-    'theta_update_interval': 540,
+    'beta': 7.07,
+    'gamma': 0.99,
+    'hidden_dim': 256,
+    'learning_rate': 0.00014,
+    'learning_starts': 5000,
+    'target_update_interval': 10,
+    'tau': 1.0,
     'train_freq': 5,
-    'gradient_steps': 5,
+    'gradient_steps': 50,
 }
 
 pong_dqn = {
@@ -337,29 +336,45 @@ pong_dqn = {
 }
 
 sql_acro = {
-    'batch_size': 128,
-    'beta': 2.6,
-    'gamma': 0.999,
-    'hidden_dim': 32,
-    'learning_rate': 0.0066,
-    'learning_starts': 0.04*50_000,
-    'target_update_interval': 100,
-    'tau': 0.92,
-    'train_freq': 9,
-    'gradient_steps': 9,
+    'batch_size': 64,
+    'beta': 4.5,
+    'gamma': 0.99,
+    'hidden_dim': 256,
+    'learning_rate': 0.0005,
+    'learning_starts': 0,
+    'target_update_interval': 10,
+    'tau': 1.0,
+    'train_freq': 2,
+    'gradient_steps': 20,
 }
 
 sql_cpole = {
     'batch_size': 64,
-    'beta': 0.1,
-    'gamma': 0.98,
-    'hidden_dim': 64,
-    'learning_rate': 0.02,
-    'learning_starts': 0.02*50_000,
-    'target_update_interval': 100,
-    'tau': 0.95,
-    'train_freq': 9,
-    'gradient_steps': 9,
+    'beta': 0.02,
+    'gamma': 0.99,
+    'hidden_dim': 256,
+    'learning_rate': 0.016,
+    'learning_starts': 0,
+    'target_update_interval': 1,
+    'tau': 1.0,
+    'train_freq': 2,
+    'gradient_steps': 16,
+}
+
+lunar_u2 = {
+    'batch_size': 32,
+    'beta': 0.06,
+    'hidden_dim': 128,
+    'learning_rate': 0.0082,
+    'learning_starts': 0.05*250_000,
+    'loss_fn': torch.nn.functional.smooth_l1_loss,
+    'target_update_interval': 10,
+    'tau': 0.69,
+    'tau_theta': 0.85,
+    'theta_update_interval': 50,
+    'train_freq': 4,
+    'gradient_steps': 4,
+    'aggregator': 'max',
 }
 
 lunar_u = {
@@ -425,3 +440,17 @@ id_to_hparam_dicts = {
     'LunarLander-v2': lunars,
     'PongNoFrameskip-v4': pongs
 }
+
+# naming convention:
+# hparams/env/algo.yaml
+
+if __name__ == '__main__':
+    import yaml
+    import os
+    # export dicts to files:
+    for env, env_hparams in id_to_hparam_dicts.items():
+        for algo, hparams in env_hparams.items():
+            os.makedirs(f'hparams/{env}', exist_ok=True)
+            with open(f'hparams/{env}/{algo}.yaml', 'w') as f:
+                yaml.dump(hparams, f)
+        

@@ -32,7 +32,8 @@ echo "Start Run"
 echo `date`
 
 # python experiments/wandb_job.py -d cpu -env LunarLander-v2 -a sql
-python experiments/wandb_job.py -d cuda -env PongNoFrameskip-v4 -a u
+# python experiments/wandb_job.py -d cuda -env PongNoFrameskip-v4 -a u
+python experiments/local_finetuned_runs.py --env PongNoFrameskip-v4 -a u -d cuda
 
 # python darer/LogUAgent.py
 # python experiments/wandb_job.py -env CartPole-v1 -a u

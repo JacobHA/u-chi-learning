@@ -46,21 +46,21 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             continue
         
         # Require only one log file per folder:
-        assert len(log_files) == 1
-        log_file = log_files[0]
+        # assert len(log_files) == 1
         print("Processing", os.path.basename(subfolder))
 
         try:
-            reader = SummaryReader(log_file)
-            df = reader.scalars
-            df = df[df['tag'].isin(metrics + [x_axis])]
-            # Add a new column with the algo name:
-            df['algo'] = algo_name
-            # Add run number:
-            df['run'] = os.path.basename(subfolder).split('_')[1]
-            algo_data = pd.concat([algo_data, df])
+            for log_file in log_files:
+                reader = SummaryReader(log_file)
+                df = reader.scalars
+                df = df[df['tag'].isin(metrics + [x_axis])]
+                # Add a new column with the algo name:
+                df['algo'] = algo_name
+                # Add run number:
+                df['run'] = os.path.basename(subfolder).split('_')[1]
+                algo_data = pd.concat([algo_data, df])
         except Exception as e:
-            print("Error processing", log_file)
+            print(f"Error processing: {e}", log_file)
             continue
 
     # Now, loop over all the metrics and plot them individually:
@@ -118,21 +118,29 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--env', type=str, default='MountainCar-v0')
+    parser.add_argument('-e', '--env', type=str, default='')
+    parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
     args = parser.parse_args()
     env = args.env
+    if env == '':
+        envs = ['Acrobot-v1', 'CartPole-v1', 'MountainCar-v0', 'LunarLander-v2']
+    else:
+        envs = [env]
 
-    folder = f'experiments/ft/{env}/'
-    # env_to_settings = {
-    
+    for env in envs:
+        print(f"Plotting for {env} env.")
+        # folder = f'experiments/ft/{env}/'
+        folder = f'ft_logs/{args.experiment_name}/{env}'
+        # folder = f'experiments/ablations/{env}/'
+        # env_to_settings = {
+        
 
-    # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
-    # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
+        # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
+        # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
-    plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
-    # plotter(env=env, folder=folder, metrics=['rollout/ep_reward'])
-    # plotter(env=env, folder=folder, metrics=['rollout/avg_entropy'], exclude_algos=['Acrobot-v1-U', 'Acrobot-v1-SQL'], title=r'Relative Entropy $\mathrm{KL}\left(\pi|\pi_0\right)$')
+        try:
+            plotter(env=env, folder=folder, metrics=['eval/avg_reward'], title=env)
+        except KeyError:
+            print("No data to plot.")
 
-
-    # plotter(folder=folder, metrics=['step', 'train/theta', 'theta'])
-    # plotter(folder=folder, metrics=['step', 'train/avg logu', 'avg logu'])
+        # Run from u-chi-learning directory: "python experiments/comparison_plotter.py -e ..."

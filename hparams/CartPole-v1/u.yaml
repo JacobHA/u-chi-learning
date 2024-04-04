@@ -1,0 +1,14 @@
+aggregator: max
+batch_size: 64
+beta: 0.44
+buffer_size: 50000
+gradient_steps: 9
+hidden_dim: 256
+learning_rate: 0.0024
+learning_starts: 0
+prior_tau: 0.88
+prior_update_interval: 5000
+target_update_interval: 10
+tau: 1.0
+tau_theta: 0.83
+train_freq: 1

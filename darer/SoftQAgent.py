@@ -90,7 +90,15 @@ class SoftQAgent(BaseAgent):
         # Calculate the softq ("critic") loss:
         loss = 0.5*sum(self.loss_fn(softq, expected_curr_softq)
                        for softq in curr_softq.T)
-        return loss
+        
+        self.optimizers.zero_grad()
+
+        # Clip gradient norm
+        loss.backward()
+        self.model.clip_grad_norm(self.max_grad_norm)
+        self.optimizers.step()
+        
+        return None
 
     def _update_target(self):
         # Do a Polyak update of parameters:
