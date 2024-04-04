@@ -3,7 +3,7 @@ gymnasium
 wandb
 scipy
 swig
-gymnasium[box2d]
+gymnasium[box2d, atari]
 shimmy[dm-control]
 tensorboard
 typeguard
