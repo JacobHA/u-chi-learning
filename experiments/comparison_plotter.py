@@ -129,7 +129,8 @@ if __name__ == "__main__":
     for env in envs:
         print(f"Plotting for {env} env.")
         # folder = f'experiments/ft/{env}/'
-        folder = f'ft_logs/{env}'
+        # folder = f'ft_logs/{env}'
+        folder = 'pend'
         # folder = f'experiments/ablations/{env}/'
         # env_to_settings = {
         

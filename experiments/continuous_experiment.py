@@ -69,9 +69,9 @@ def main(sweep_config=None, project=None, ft_params=None, log_dir='tf_logs', dev
                 algo = full_config.pop('algo_name')
             agent = NewUAC(env, **full_config,
                                 device=device, log_interval=100,
-                                tensorboard_log=log_dir, num_nets=1,
+                                tensorboard_log=log_dir, num_nets=2,
                                 render=False,)
-
+            wandb.log({'num_nets': agent.num_nets})
             # Measure the time it takes to learn:
             agent.learn(total_timesteps=total_timesteps)
             avg_auc += agent.eval_auc
