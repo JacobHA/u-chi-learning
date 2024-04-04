@@ -68,7 +68,7 @@ for i in range(args.count):
 
     agent = AgentClass(env_id, **full_config,
                         device='auto', log_interval=env_to_logfreq[env_id],
-                        tensorboard_log=f'ft_logs/{experiment_name}/{env_id}', num_nets=2,
+                        tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         render=False,
                         )
 
