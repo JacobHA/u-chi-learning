@@ -9,7 +9,7 @@ sys.path.append('darer')
 from UAgent import UAgent
 from LogUAgent import LogUAgent
 from arSAC import arSAC
-from utils import sample_wandb_hyperparams
+from utils import safe_open, sample_wandb_hyperparams
 
 
 env_to_steps = {
@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     # Run a hyperparameter sweep with w&b:
     print("Running a sweep on wandb...")
-    sweep_cfg = yaml.safe_load(open(f'sweeps/{args.exp_name}.yaml'))
+    sweep_cfg = safe_open(f'sweeps/{args.exp_name}.yaml')
 
     for i in range(args.count):
         main(sweep_cfg, env_id=args.env_id, algo=args.algo, project=args.project, device=args.device)

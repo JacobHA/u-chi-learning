@@ -1,6 +1,6 @@
 import os
 import random
-
+import yaml
 import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.logger import configure
@@ -18,6 +18,10 @@ from wrappers import FrameStack
 # from gym.wrappers.monitoring.video_recorder import VideoRecorder
 from gymnasium.wrappers import RecordVideo
 
+def safe_open(path):
+    with open(path) as f:
+        yaml_contents = yaml.load(f, yaml.FullLoader)
+    return yaml_contents
 
 def logger_at_folder(log_dir=None, algo_name=None):
     # ensure no _ in algo_name:

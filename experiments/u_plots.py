@@ -9,6 +9,8 @@ import argparse
 import yaml
 import sys
 
+from utils import safe_open
+
 sys.path.append('darer')
 from SoftQAgent import SoftQAgent
 from CustomDQN import CustomDQN
@@ -23,7 +25,7 @@ env_to_steps = {
 }
 
 full_config = {}
-default_params = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
+default_params = safe_open(f'hparams/{env_id}/{algo}.yaml')
 full_config.update(default_params)
 AGG = 'max'
 full_config['aggregator'] = AGG
