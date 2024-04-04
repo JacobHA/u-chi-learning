@@ -6,6 +6,7 @@ sys.path.append('darer')
 from SoftQAgent import SoftQAgent
 from CustomDQN import CustomDQN
 from UAgent import UAgent
+from dm_control import suite
 
 
 env_to_steps = {
@@ -31,6 +32,12 @@ args.add_argument('--exp-name', type=str, default='EVAL')
 
 args = args.parse_args()
 env_id = args.env_id
+if 'dmc:' in env_id:
+    env_id = env_id.split(':')[-1]
+    domain_name, task_name, _ = env_id.split('-')
+    # e.g. dmc:cartpole-swingup-v1
+    env_id = suite.load(domain_name=domain_name, task_name=task_name)
+
 experiment_name = args.exp_name
 device = args.device
 
@@ -52,7 +59,6 @@ elif algo == 'sql':
     AgentClass = SoftQAgent
 
 for i in range(args.count):
-    
     full_config = {}
     default_params = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
     full_config.update(hparams)
