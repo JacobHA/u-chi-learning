@@ -7,6 +7,8 @@ import os
 
 sys.path.append('darer')
 from UAgent import UAgent
+from LogUAgent import LogUAgent
+from arSAC import arSAC
 from utils import sample_wandb_hyperparams
 
 
@@ -24,6 +26,12 @@ env_to_logfreq = {
     'MountainCar-v0': 100,
 }
 
+algo_to_agent = {
+    'u': UAgent,
+    'arSAC': arSAC,
+    'logu': LogUAgent
+}
+
 int_hparams = {'train_freq', 'gradient_steps'}
 
 # load text from settings file:
@@ -33,8 +41,8 @@ except KeyError:
     WANDB_DIR = None
     
 def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu'):
-    env = gymnasium.make(env_id)
-    total_timesteps = env_to_steps[env_id]
+    # env = gymnasium.make(env_id)
+    total_timesteps = env_to_steps.get(env_id, 100_000)
     runs_per_hparam = 3
     avg_auc = 0
     unique_id = wandb.util.generate_id()
@@ -79,8 +87,11 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
             for k in int_hparams:
                 full_config[k] = int(full_config[k])
 
-            agent = UAgent(env, **full_config,
-                                device=device, log_interval=env_to_logfreq[env_id],
+            # Choose the algo appropriately
+            Agent = algo_to_agent.get(algo, UAgent)
+
+            agent = Agent(env_id, **full_config,
+                                device=device, log_interval=env_to_logfreq.get(env_id, 500),
                                 tensorboard_log=log_dir,
                                 render=False,)
 
@@ -97,8 +108,8 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
     args.add_argument('--project', type=str, default='eval-full-ft')
-    args.add_argument('--env_id', type=str, default='Acrobot-v1')
-    args.add_argument('--algo', type=str, default='u')
+    args.add_argument('--env_id', type=str, default='dmc:cartpole-swingup-v1')
+    args.add_argument('--algo', type=str, default='arSAC')
     args.add_argument('--device', type=str, default='cpu')
     args.add_argument('--exp-name', type=str, default='EVAL')
 
