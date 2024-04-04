@@ -157,7 +157,7 @@ class UAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_us = torch.stack(target_next_us, dim=1)
-            target_next_u = self.aggregator_fn(target_next_us, dim=1)
+            target_next_u = self.aggregator_fn(target_next_us, dim=1).squeeze(1)
 
             next_chis = (target_next_u * target_prior_next).sum(dim=-1)
 

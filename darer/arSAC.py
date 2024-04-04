@@ -1,9 +1,7 @@
 from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape, get_flattened_obs_dim, preprocess_obs
-import gymnasium as gym
 import numpy as np
 import torch
 from torch.nn import functional as F
-import time
 from stable_baselines3.common.utils import get_parameters_by_name, polyak_update
 
 # import wandb
@@ -11,8 +9,7 @@ import sys
 sys.path.append('darer')
 from Models import LogUsa, OnlineUNets, Optimizers, TargetNets,  GaussianPolicy, Usa
 from BaseAgent import BaseAgent
-from utils import env_id_to_envs, log_class_vars, logger_at_folder
-from stable_baselines3.common.buffers import ReplayBuffer
+from utils import logger_at_folder
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
 from stable_baselines3.sac.policies import Actor
 import torch as th
@@ -22,7 +19,7 @@ torch.backends.cudnn.benchmark = True
 # raise warning level for debugger:
 import warnings
 warnings.filterwarnings("error")
-class OurSAC(BaseAgent):
+class arSAC(BaseAgent):
     def __init__(self,
                  *args,
                  actor_learning_rate: float = 1e-3,
@@ -226,7 +223,7 @@ def main():
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     # from simple_env import SimpleEnv
-    agent = OurSAC(env_id, **config, device='cuda',
+    agent = arSAC(env_id, **config, device='cuda',
                     num_nets=2, tensorboard_log='pend', 
                     actor_learning_rate=1e-4, 
                     render=False, max_grad_norm=10, log_interval=2000,
