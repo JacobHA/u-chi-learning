@@ -8,6 +8,8 @@ from CustomDQN import CustomDQN
 from UAgent import UAgent
 from arSAC import arSAC
 from LogUAgent import LogUAgent
+from utils import safe_open
+
 
 env_to_steps = {
     'CartPole-v1': 10_000,
@@ -39,7 +41,7 @@ print("Running finetuned hyperparameters...")
 algo = args.algo
 print(algo)
 
-hparams = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
+hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
 # Drop the gamma hparam:
 if algo == 'u': 
     try:
@@ -58,7 +60,9 @@ elif algo == 'logu':
 
 for i in range(args.count):
     full_config = {}
-    default_params = yaml.safe_load(open(f'hparams/{env_id}/{algo}.yaml'))
+    with open(f'hparams/{env_id}/{algo}.yaml') as f:
+        default_params = yaml.load(f, yaml.FullLoader)
+    #  = yaml.load(open(f'hparams/{env_id}/{algo}.yaml'), yaml.FullLoader)
     full_config.update(hparams)
     full_config.update(default_params)
 
