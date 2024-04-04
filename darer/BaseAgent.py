@@ -7,7 +7,7 @@ import gymnasium as gym
 from typing import Optional, Union, List, Tuple, Dict, Any, get_type_hints
 from typeguard import typechecked
 import wandb
-from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, logger_at_folder, get_eigvec_values
+from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, get_eigvec_values
 
 HPARAM_ATTRS = {
     'beta': 'beta',
@@ -73,8 +73,8 @@ class BaseAgent:
                  max_grad_norm: float = 10,
                  learning_starts=5_000,
                  aggregator: str = 'max',
-                 # torch.nn.functional.HuberLoss(),
-                 loss_fn: torch.nn.modules.loss = torch.nn.functional.mse_loss,
+                 # F.HuberLoss(),
+                 loss_fn: torch.nn.modules.loss = F.mse_loss,
                  device: Union[torch.device, str] = "auto",
                  render: bool = False,
                  tensorboard_log: Optional[str] = None,
