@@ -1,0 +1,17 @@
+method: random
+metric:
+  goal: maximize
+  name: eval/auc
+parameters:
+  tau_theta:
+    distribution: uniform
+    max: 1.0
+    min: 0.999
+  actor_learning_rate:
+    distribution: log_uniform_values
+    max: 0.001
+    min: 0.00001
+  beta:
+    distribution: log_uniform_values
+    max: 0.01
+    min: 2
