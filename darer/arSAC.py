@@ -1,13 +1,12 @@
-from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape, get_flattened_obs_dim, preprocess_obs
+from stable_baselines3.common.preprocessing import get_action_dim, get_flattened_obs_dim
 import numpy as np
 import torch
 from torch.nn import functional as F
-from stable_baselines3.common.utils import get_parameters_by_name, polyak_update
 
 # import wandb
 import sys
 sys.path.append('darer')
-from Models import LogUsa, OnlineUNets, Optimizers, TargetNets,  GaussianPolicy, Usa
+from Models import LogUsa, OnlineUNets, Optimizers, TargetNets
 from BaseAgent import BaseAgent
 from utils import logger_at_folder
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
@@ -27,7 +26,7 @@ class arSAC(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = 'arSAC-nodone-autotemp'
+        self.algo_name = 'arSAC-nodone'
 
         self.actor_learning_rate = actor_learning_rate
         self.nA = get_action_dim(self.env.action_space)        
