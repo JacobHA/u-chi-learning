@@ -157,7 +157,7 @@ class UAgent(BaseAgent):
 
             # logsumexp over actions:
             target_next_us = torch.stack(target_next_us, dim=1)
-            target_next_u = self.aggregator_fn(target_next_us, dim=1)
+            target_next_u = self.aggregator_fn(target_next_us, dim=1).squeeze(1)
 
             next_chis = (target_next_u * target_prior_next).sum(dim=-1)
 
@@ -170,6 +170,8 @@ class UAgent(BaseAgent):
             in_exp = torch.clamp(in_exp, max=30)
             expected_curr_u = torch.exp(self.beta * (in_exp)) * next_chis
             expected_curr_u = expected_curr_u
+            # Do batch normalization:
+            # expected_curr_u = expected_curr_u / expected_curr_u.max()#dim=-1, keepdim=True)
 
         # self.logger.record("train/u-avg", torch.mean(curr_u, dim=0))
 

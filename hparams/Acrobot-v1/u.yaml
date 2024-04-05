@@ -11,5 +11,5 @@ prior_update_interval: 500
 target_update_interval: 10
 tau: 1.0
 tau_theta: 0.56
-theta_update_interval: 100
 train_freq: 3
+num_nets: 2

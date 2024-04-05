@@ -1,12 +1,13 @@
-batch_size: 650
-beta: 0.25
 buffer_size: 100000
-gradient_steps: 1
-hidden_dim: 256
-learning_rate: 0.00055
-learning_starts: 5000
-target_update_interval: 2000
-tau: 0.25
 tau_theta: 0.7
-theta_update_interval: 1
-train_freq: 1
+loss_fn: !!python/name:torch.nn.functional.smooth_l1_loss ''
+batch_size: 32
+beta: 7.07
+gradient_steps: 30
+hidden_dim: 256
+learning_rate: 0.00014
+learning_starts: 5000
+target_update_interval: 1000
+tau: 1.0
+train_freq: 5
+num_nets: 2
