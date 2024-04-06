@@ -30,11 +30,11 @@ parameters:
       - 1000
       - 2000
   gradient_steps:
-    distribution: log_uniform_values
+    distribution: q_log_uniform_values
     max: 50
     min: 1
   train_freq:
-    distribution: log_uniform_values
+    distribution: q_log_uniform_values
     max: 50
     min: 1
   hidden_dim:

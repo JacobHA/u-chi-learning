@@ -1,3 +1,8 @@
+import hashlib
+import json
+import time
+from traceback import print_tb
+
 import gymnasium
 import wandb
 import argparse
@@ -7,7 +12,6 @@ import os
 
 sys.path.append('darer')
 from UAgent import UAgent
-from utils import sample_wandb_hyperparams
 
 
 env_to_steps = {
@@ -26,6 +30,8 @@ env_to_logfreq = {
 
 int_hparams = {'train_freq', 'gradient_steps'}
 
+SEMAPHORE_FN = "creating_sweep"
+SWEEP_ID_FN = "sweep_id"
 env_id = 'Acrobot-v1'
 # load text from settings file:
 try:
@@ -34,32 +40,66 @@ except KeyError:
     WANDB_DIR = None
 
 
-def main(sweep_config=None, algo=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu'):
+def try_get_sweep_id(sweep_cfg_fn, offline=False):
+    with open(sweep_cfg_fn, "r") as f:
+        sweep_config = yaml.load(f, Loader=yaml.FullLoader)
+    if offline:
+        print("using a local controller type")
+        sweep_config["controller"] = {'type': 'local'}
+    current_cfg_hash = hashlib.sha256(json.dumps(sweep_config, sort_keys=True).encode()).hexdigest()
+    # see if the sweep for the config already exists
+    if os.path.exists(SWEEP_ID_FN):
+        with open(SWEEP_ID_FN, "r") as f:
+            saved_sweep_hash = f.readline()[:-1]
+            saved_sweep_id = f.readline()
+        if current_cfg_hash == saved_sweep_hash:
+            print('continuing the existing sweep')
+            return saved_sweep_id
+    # otherwise create an updated sweep
+    if os.path.exists(SEMAPHORE_FN):
+        time.sleep(2)
+        print("config already being created")
+    else:
+        try:
+            with open(SEMAPHORE_FN, "w") as f:
+                f.write("creating config")
+            sweep_id = wandb.sweep(sweep_config)
+            with open(SWEEP_ID_FN, "w") as f:
+                f.writelines([str(current_cfg_hash), '\n', sweep_id])
+            print("sweep started")
+        except Exception as e:
+            print(e)
+            print_tb(e.__traceback__)
+        finally:
+            os.remove(SEMAPHORE_FN)
+    with open(SWEEP_ID_FN, "r") as f:
+        f.readline()
+        sweep_id = f.readline()
+    return sweep_id
+
+
+def main(algo=None, env_id=None, group=None, ft_params=None, log_dir='tf_logs', device='cpu'):
     env = gymnasium.make(env_id)
     total_timesteps = env_to_steps[env_id]
     runs_per_hparam = 3
     avg_auc = 0
-    unique_id = wandb.util.generate_id()
 
     # sample the hyperparameters from wandb locally
-    wandb_kwargs = {"project": project}
-    if sweep_config:
-        sweep_config["controller"] = {'type': 'local'}
-        sampled_params = sample_wandb_hyperparams(sweep_config["parameters"], int_hparams=int_hparams)
-        print(f"locally sampled params: {sampled_params}")
-        wandb_kwargs['config'] = sampled_params
-
+    wandb_kwargs = {}
     with open(f'hparams/{env_id}/{algo}.yaml') as f:
         default_params = yaml.load(f, Loader=yaml.FullLoader)
 
+    _unique_id = wandb.util.generate_id()
+
     for i in range(runs_per_hparam):
-        unique_id = unique_id[:-1] + f"{i}"
+        unique_id = _unique_id + f"{i}"
         with wandb.init(sync_tensorboard=True,
                         id=unique_id,
+                        group=group,
                         dir=WANDB_DIR,
                         **wandb_kwargs) as run:
-            cfg = run.config
             print(run.id)
+            cfg = wandb.config
             config = cfg.as_dict()
             # save the first config if sampled from wandb to use in the following runs_per_hparam
             wandb_kwargs['config'] = config
@@ -75,10 +115,6 @@ def main(sweep_config=None, algo=None, project=None, ft_params=None, log_dir='tf
                 full_config.update(config)
 
             wandb.log({'env_id': env_id})
-
-            # cast sampled params to int if they are in int_hparams
-            for k in int_hparams:
-                full_config[k] = int(full_config[k])
 
             agent = UAgent(env, **full_config,
                            device=device, log_interval=env_to_logfreq[env_id],
@@ -101,17 +137,18 @@ if __name__ == '__main__':
     args.add_argument('--env_id', type=str, default='LunarLander-v2')
     args.add_argument('--algo', type=str, default='logu')
     args.add_argument('--device', type=str, default='cpu')
+    args.add_argument('--offline', action='store_true')
     args.add_argument('--exp-name', type=str, default='EVAL-mean')
 
     args = args.parse_args()
-    env_id = args.env_id
-    experiment_name = args.exp_name
-    device = args.device
-
     # Run a hyperparameter sweep with w&b:
     print("Running a sweep on wandb...")
-    sweep_cfg = yaml.safe_load(open(f'sweeps/{experiment_name}.yaml'))
 
-    for i in range(args.count):
-        main(sweep_cfg, algo=args.algo, project=args.project, device=device)
+    sweep_id = try_get_sweep_id(f'sweeps/{args.exp_name}.yaml', offline=args.offline)
 
+    wandb.agent(
+        sweep_id,
+        function=main(algo=args.algo, env_id=args.env_id, device=args.device, group=args.exp_name),
+        count=args.count,
+        project=args.project
+    )
