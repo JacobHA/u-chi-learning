@@ -14,10 +14,10 @@ from stable_baselines3.sac.policies import Actor
 import torch as th
 
 
-torch.backends.cudnn.benchmark = True
+# torch.backends.cudnn.benchmark = True
 # raise warning level for debugger:
-import warnings
-warnings.filterwarnings("error")
+# import warnings
+# warnings.filterwarnings("error")
 class arSAC(BaseAgent):
     def __init__(self,
                  *args,

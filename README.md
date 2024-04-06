@@ -8,6 +8,7 @@ EVAL (EigenVector-based Average-reward Learning) implementation in Gymnasium's c
 - [x] Batch theta overrides: Same w/ periodic updates of ref s,a,s'
 - [x] Implement LR schedule
 - [x] Create a folder when one is missing for logging
+- [ ] Make custom FPS for rendering envs (esp. Atari)
 
 # New Features:
 - [ ] Possibly use SB3 style: :param train_freq: Update the model every ``train_freq`` steps. Alternatively pass a tuple of frequency and unit
