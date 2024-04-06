@@ -31,7 +31,6 @@ env_id = None
 
 
 def wandb_train():
-    """:param local_cfg: pass config sweep if running locally to sample without wandb"""
     wandb_kwargs = {"group": experiment_name}
     for i in range(n_hparam_runs):
         with wandb.init(**wandb_kwargs, sync_tensorboard=True) as run:
@@ -67,10 +66,8 @@ if __name__ == "__main__":
     args.add_argument("--sweep", type=str, default=None)
     args.add_argument("--n_runs", type=int, default=100)
     args.add_argument("--proj", type=str, default="u-chi-learning")
-    args.add_argument("--local-wandb", type=bool, default=True)
     args.add_argument("--device", type=str, default='cuda')
     args.add_argument("--n-hparam-runs", type=int, default=3, help="number of times to re-train with a single set of hyperparameters")
-    args.add_argument("--entity", type=str, default=None)
     args = args.parse_args()
     project = args.proj
     envs = os.listdir('hparams')

@@ -119,8 +119,6 @@ def plot():
     plt.savefig(f'tabular/tabular_expt/results/{map_name}tabular_vs_FA.png')
 
 
-
-
 if __name__ == '__main__':
     import multiprocessing as mp
 

@@ -21,4 +21,4 @@ wandb offline
 # Start the evaluations
 ENVNAME=${1:-"LunarLander-v2"}
 DEVICE=${2:-"cuda"}
-python experiments/classic_sweep.py --n_runs=1 --proj=u-chi-learning --algo="logu" --exp-name="EVAL-mean" --env_id=$ENVNAME --device=$DEVICE
+python experiments/sweep.py --count=1 --proj="u-chi-learning" --algo="logu" --sweep="sweeps/EVAL-mean.yaml" --env_id=$ENVNAME --device=$DEVICE
