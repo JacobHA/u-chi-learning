@@ -188,8 +188,7 @@ class BaseAgent:
         Sample the replay buffer and do the updates
         (gradient descent and update target networks)
         """
-        self.new_theta_pending = 0
-        self.new_theta_counter = 1
+        
         # Increase update counter
         self._n_updates += gradient_steps
         # average self.theta over multiple gradient steps
@@ -197,31 +196,17 @@ class BaseAgent:
         for grad_step in range(gradient_steps):
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(batch_size)
-            # loss = 
             self.gradient_descent(batch, grad_step)
-            # self.optimizers.zero_grad()
 
-            # # Clip gradient norm
-            # loss.backward()
-            # self.model.clip_grad_norm(self.max_grad_norm)
-            # self.optimizers.step()
-
-        # TODO: Clamp based on reward range
-        # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
         self.new_thetas = torch.clamp(self.new_thetas, min=-50, max=50)
         new_theta = self.new_thetas.mean(dim=0)
         self.logger.record(f"train/new_theta", new_theta.item())
 
         # Can't use env_steps b/c we are inside the learn function which is called only
         # every train_freq steps:
-        # new_theta = self.new_theta_pending / self.new_theta_counter
         self.theta = self.tau_theta * self.theta + \
             (1 - self.tau_theta) * new_theta
-        # else:
-        #     self.new_theta_pending += new_theta
-        #     self.new_theta_counter += 1
-        #     self.logger.record("train/theta_buffer", self.new_theta_pending.item() / self.new_theta_counter)
-
+        
         # # Log info from this training cycle:
         # self.logger.record("train/avg logu", curr_logu.mean().item())
         # self.logger.record("train/min logu", curr_logu.min().item())
@@ -272,7 +257,7 @@ class BaseAgent:
                 # action = self.env.action_space.sample()
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
-                    action.item())
+                    action)
                 self._on_step()
                 avg_ep_len += 1
                 done = terminated or truncated
@@ -399,7 +384,7 @@ class BaseAgent:
                 n_steps += 1
 
                 next_state, reward, terminated, truncated, info = self.eval_env.step(
-                    action.item())
+                    action)
                 avg_reward += reward
                 state = next_state
                 done = terminated or truncated
