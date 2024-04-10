@@ -1,6 +1,6 @@
 import os
 import random
-
+import yaml
 import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.logger import configure
@@ -18,6 +18,10 @@ from wrappers import FrameStack
 # from gym.wrappers.monitoring.video_recorder import VideoRecorder
 from gymnasium.wrappers import RecordVideo
 
+def safe_open(path):
+    with open(path) as f:
+        yaml_contents = yaml.load(f, yaml.FullLoader)
+    return yaml_contents
 
 def logger_at_folder(log_dir=None, algo_name=None):
     # ensure no _ in algo_name:
@@ -53,30 +57,6 @@ def logger_at_folder(log_dir=None, algo_name=None):
 
     return logger
 
-
-# class AtariAdapter(gym.Wrapper):
-#     """
-#     Wrapper for atari-preprocessed environments to make them consistent with unprocessed environments.
-#     Observation space has to include a channel dimension.
-#     """
-#     def __init__(self, env):
-#         super().__init__(env)
-#         self.env = env
-#         obs_space_kwargs = env.observation_space.__dict__
-#         obs_space_kwargs['shape'] = (*obs_space_kwargs['_shape'], 1)
-#         for key in ['bounded_below', 'bounded_above', '_shape', 'low_repr', 'high_repr', '_np_random']:
-#             obs_space_kwargs.pop(key)
-#         obs_space_kwargs["low"] = obs_space_kwargs["low"][...,np.newaxis]
-#         obs_space_kwargs["high"] = obs_space_kwargs["high"][...,np.newaxis]
-#         self.observation_space = gym.spaces.Box(**obs_space_kwargs)
-#         self.action_space = env.action_space
-#
-#     def step(self, action):
-#         obs, rew, term, trunk, info = self.env.step(action)
-#         obs = obs[..., np.newaxis]
-#         return obs, rew, term, trunk, info
-
-
 class PermuteAtariObs(gym.Wrapper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,7 +80,6 @@ class PermuteAtariObs(gym.Wrapper):
         res, info = self.env.reset(*args, **kwargs)
         res = np.transpose(res, [2,1,0])
         return res, info
-
 
 def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False):
     if isinstance(env_id, gym.Env):

@@ -1,7 +1,5 @@
 import hashlib
 import json
-import time
-from traceback import print_tb
 
 import gymnasium
 import wandb
@@ -12,6 +10,9 @@ import os
 
 sys.path.append('darer')
 from UAgent import UAgent
+from LogUAgent import LogUAgent
+from arSAC import arSAC
+from utils import safe_open, sample_wandb_hyperparams
 
 
 env_to_steps = {
@@ -19,6 +20,7 @@ env_to_steps = {
     'Acrobot-v1': 5_000,
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 500_000,
+    'HalfCheetah-v4': 1_000_000,
 }
 
 env_to_logfreq = {
@@ -26,6 +28,13 @@ env_to_logfreq = {
     'Acrobot-v1': 200,
     'LunarLander-v2': 1000,
     'MountainCar-v0': 100,
+    'HalfCheetah-v4': 2500,
+}
+
+algo_to_agent = {
+    'u': UAgent,
+    'arSAC': arSAC,
+    'logu': LogUAgent
 }
 
 int_hparams = {'train_freq', 'gradient_steps'}

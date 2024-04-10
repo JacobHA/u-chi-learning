@@ -226,20 +226,20 @@ acrobot_u = {
 }
 
 pendulum_logu = {
-    'aggregator': 'max',
+    'aggregator': 'mean',
     'batch_size': 256,#0,
-    'beta': 4.5,
+    'beta': 'auto',#3.,
     'beta_schedule': 'none',
-    'buffer_size': 100_000,
-    # 'final_beta_multiplier': 6,
+    'buffer_size': 1_000_000,
+    # 'final_beta_multiplier': 6
     'gradient_steps': 1,
     'hidden_dim': 256,
-    'learning_rate': 1e-4,
-    'learning_starts': 1_000,
+    'learning_rate': 3e-4,
+    'learning_starts': 10000,
     'target_update_interval': 1,
     'tau': 0.005,
-    'tau_theta': 0.98,
-    'theta_update_interval': 200,
+    'tau_theta': 0.9995,
+    'theta_update_interval': 1,
     'train_freq': 1,
     'loss_fn': torch.nn.functional.smooth_l1_loss,
 }
