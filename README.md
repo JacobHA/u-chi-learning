@@ -103,3 +103,12 @@ the contents of requirements.txt are a bit sensitive for the git actions testing
 
 install the requirements (tested with cuda 11.8):
 `pip install -r requirements.txt`
+
+## Running sweeps
+
+1. Register a sweep config for an experiment and hold on to the generated sweep id. This requires online connection.
+Experiment names should be the filenames in `sweeps/` without the extensions. You should add the `--offline` flag if the connection is not available on compute nodes
+`python experiments/register_sweep.py --project=<project_id> --exp-name=<experiment_name> [ --offline]`
+2. Run the sweep agents. Set count to 1 if running multiple parallel slurm jobs.
+`python experiments/sweep.py --count=1 --sweep_id=<sweep_id> --exp-name=<experiment_name> --project=<project_id> --algo=<algo_name> --env_id=<env_name> --device=<cuda|cpu>`
+3. If ran in offline mode, upload the logs to wandb `wandb sync --sync-all`
