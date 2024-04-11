@@ -33,7 +33,7 @@ algo_to_agent = {
     'logu': LogUAgent
 }
 
-int_hparams = {'train_freq', 'gradient_steps'}
+complements = {'tau_theta'}
 
 env_id = 'Acrobot-v1'
 # load text from settings file:
@@ -43,56 +43,53 @@ except KeyError:
     WANDB_DIR = None
 
 
-def main(algo=None, env_id=None, group=None, ft_params=None, log_dir='tf_logs', device='cpu'):
-    env = gymnasium.make(env_id)
-    total_timesteps = env_to_steps[env_id]
-    runs_per_hparam = 3
-    avg_auc = 0
+def main(algo=None, env_id=None, group=None, log_dir='tf_logs', device='cpu'):
+    def fn():
+        env = gymnasium.make(env_id)
+        total_timesteps = env_to_steps[env_id]
+        runs_per_hparam = 3
+        avg_auc = 0
 
-    # sample the hyperparameters from wandb locally
-    wandb_kwargs = {}
-    default_params = safe_open(f'hparams/{env_id}/{algo}.yaml')
+        # sample the hyperparameters from wandb locally
+        wandb_kwargs = {}
+        default_params = safe_open(f'hparams/{env_id}/{algo}.yaml')
 
-    _unique_id = wandb.util.generate_id()
+        _unique_id = wandb.util.generate_id()
 
-    for i in range(runs_per_hparam):
-        unique_id = _unique_id + f"{i}"
-        with wandb.init(sync_tensorboard=True,
-                        id=unique_id,
-                        group=group,
-                        dir=WANDB_DIR,
-                        **wandb_kwargs) as run:
-            print(run.id)
-            cfg = wandb.config
-            config = cfg.as_dict()
-            # save the first config if sampled from wandb to use in the following runs_per_hparam
-            wandb_kwargs['config'] = config
+        for i in range(runs_per_hparam):
+            unique_id = _unique_id + f"{i}"
+            with wandb.init(sync_tensorboard=True,
+                            id=unique_id,
+                            group=group,
+                            dir=WANDB_DIR,
+                            **wandb_kwargs) as run:
+                print(run.id)
+                cfg = wandb.config
+                config = cfg.as_dict()
+                # save the first config if sampled from wandb to use in the following runs_per_hparam
+                wandb_kwargs['config'] = config
 
-            full_config = {}
-            full_config.update(default_params)
-            if ft_params is not None:
-                # Overwrite the default params:
-                full_config.update(ft_params)
-                # Log the new params (for group / filtering):
-                wandb.log(ft_params)
-            else:
-                full_config.update(config)
+                full_config = {}
+                full_config.update(default_params)
+                wandb.log(full_config)
 
-            wandb.log({'env_id': env_id})
+                wandb.log({'env_id': env_id})
+                for var in complements:
+                    if f'{var}_comp' in full_config:
+                        full_config[var] = 1 - full_config.pop(f'{var}_comp')
+                agent = UAgent(env, **full_config,
+                               device=device, log_interval=env_to_logfreq[env_id],
+                               tensorboard_log=log_dir,
+                               render=False, )
 
-            agent = UAgent(env, **full_config,
-                           device=device, log_interval=env_to_logfreq[env_id],
-                           tensorboard_log=log_dir,
-                           render=False, )
+                # Measure the time it takes to learn:
+                agent.learn(total_timesteps=total_timesteps)
+                avg_auc += agent.eval_auc
+                wandb.log({'avg_auc': avg_auc / runs_per_hparam})
+                del agent
 
-            # Measure the time it takes to learn:
-            agent.learn(total_timesteps=total_timesteps)
-            avg_auc += agent.eval_auc
-            wandb.log({'avg_auc': avg_auc / runs_per_hparam})
-            del agent
-
-    wandb.finish()
-
+        wandb.finish()
+    return fn
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
@@ -107,7 +104,6 @@ if __name__ == '__main__':
     args = args.parse_args()
     # Run a hyperparameter sweep with w&b:
     print("Running a sweep on wandb...")
-
     wandb.agent(
         args.sweep_id,
         function=main(algo=args.algo, env_id=args.env_id, device=args.device, group=args.exp_name),

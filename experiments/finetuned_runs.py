@@ -26,11 +26,11 @@ env_to_logfreq = {
 }
 
 args = argparse.ArgumentParser()
-args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='Acrobot-v1')
-args.add_argument('--algo', type=str, default='u')
-args.add_argument('--device', type=str, default='cpu')
-args.add_argument('--exp-name', type=str, default='EVAL')
+args.add_argument('--count', type=int, default=1)
+args.add_argument('--env_id', type=str, default='LunarLander-v2')
+args.add_argument('--algo', type=str, default='logu')
+args.add_argument('--device', type=str, default='cuda')
+args.add_argument('--exp-name', type=str, default='EVAL-mean')
 
 args = args.parse_args()
 env_id = args.env_id
@@ -67,7 +67,7 @@ for i in range(args.count):
     full_config.update(default_params)
 
     agent = AgentClass(env_id, **full_config,
-                        device='auto', log_interval=env_to_logfreq[env_id],
+                        device=device, log_interval=env_to_logfreq[env_id],
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         render=False,
                         )

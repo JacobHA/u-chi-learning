@@ -1,8 +1,8 @@
 buffer_size: 100000
-tau_theta: 0.7
+tau_theta: 0.99
 loss_fn: !!python/name:torch.nn.functional.smooth_l1_loss ''
-batch_size: 32
-beta: 7.07
+batch_size: 64
+beta: 4.07
 gradient_steps: 30
 hidden_dim: 256
 learning_rate: 0.00014
