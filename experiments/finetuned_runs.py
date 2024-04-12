@@ -69,7 +69,7 @@ for i in range(args.count):
     full_config.update(default_params)
 
     agent = AgentClass(env_id, **full_config,
-                        device='auto', log_interval=env_to_logfreq[env_id],
+                        device=device, log_interval=env_to_logfreq[env_id],
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         render=False,
                         )
