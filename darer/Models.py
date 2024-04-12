@@ -322,20 +322,8 @@ class OnlineLogUNets(OnlineNets):
                 actions = np.array(actions)
                 rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
                 action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
-            # perhaps re-weight this based on pessimism?
             return action
-            # with torch.no_grad():
-            #     logus = [net(state) for net in self.nets]
-            #     logu = torch.stack(logus, dim=-1)
-            #     logu = logu.squeeze(1)
-            #     logu = torch.mean(logu, dim=-1)#[0]
-            #     baseline = (torch.max(logu) + torch.min(logu))/2
-            #     logu = logu - baseline
-            #     logu = torch.clamp(logu, min=-20, max=20)
-            #     dist = torch.exp(logu)
-            #     dist = dist / torch.sum(dist)
-            #     c = Categorical(dist)#, validate_args=True)
-            #     return c.sample()#.item()
+            
 
 class OnlineUNets(OnlineNets):
     def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
@@ -378,7 +366,7 @@ class OnlineSoftQNets(OnlineNets):
         with torch.no_grad():
             q_as = torch.stack([net.forward(state) for net in self], dim=1)
             q_as = q_as.squeeze(0)
-            q_a = self.aggregator_fn(q_as, dim=0)
+            q_a = self.aggregator_fn(q_as, dim=0).squeeze(0)
 
 
             if greedy:
@@ -392,6 +380,7 @@ class OnlineSoftQNets(OnlineNets):
                 pi = pi / torch.sum(pi)
                 a = Categorical(pi).sample()
                 action = a.cpu().numpy()
+                
         return action
 
 class LogUsa(nn.Module):
