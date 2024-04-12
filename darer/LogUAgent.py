@@ -2,7 +2,7 @@ import time
 import numpy as np
 import torch
 from BaseAgent import BaseAgent
-from Models import LogUNet, OnlineLogUNets, Optimizers, TargetNets
+from Models import LogUNet, OnlineLogUNets, Optimizers, TargetNets, CustomNet
 from utils import logger_at_folder
 
 class LogUAgent(BaseAgent):
@@ -19,7 +19,7 @@ class LogUAgent(BaseAgent):
         self._initialize_networks()
 
     def _initialize_networks(self):
-        self.online_logus = OnlineLogUNets([LogUNet(self.env,
+        self.online_logus = OnlineLogUNets([CustomNet(self.env,
                                                 hidden_dim=self.hidden_dim, 
                                                 device=self.device)
                                         for _ in range(self.num_nets)],
@@ -27,7 +27,7 @@ class LogUAgent(BaseAgent):
         # alias for compatibility as self.model:
         self.model = self.online_logus
 
-        self.target_logus = TargetNets([LogUNet(self.env, 
+        self.target_logus = TargetNets([CustomNet(self.env, 
                                                 hidden_dim=self.hidden_dim, 
                                                 device=self.device)
                                         for _ in range(self.num_nets)])

@@ -29,7 +29,7 @@ env_to_logfreq = {
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='LunarLander-v2')
+args.add_argument('--env_id', type=str, default='Acrobot-v1')
 args.add_argument('--algo', type=str, default='logu')
 args.add_argument('--device', type=str, default='cpu')
 args.add_argument('--exp-name', type=str, default='EVAL')

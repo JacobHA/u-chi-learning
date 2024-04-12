@@ -679,6 +679,38 @@ class PiNet(nn.Module):
         return y
         # return x
     
+      
+class CustomNet(nn.Module):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+        super(CustomNet, self).__init__()
+        self.env = env
+        self.nA = env.action_space.n
+        self.is_image_space = is_image_space(env.observation_space)
+        self.is_tabular = is_tabular(env)
+        self.device = device
+        # Start with an empty model:
+        if self.is_image_space:
+            raise NotImplementedError
+        else:
+            self.nS = env.observation_space.shape
+            input_dim = self.nS[0]
+            self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
+            self.fc2 = torch.nn.Linear(hidden_dim + input_dim, hidden_dim + input_dim)
+            self.fc3 = torch.nn.Linear(hidden_dim + 2*input_dim, self.nA)
+            self.relu = activation()
+
+    def forward(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
+        
+        x_in = preprocess_obs(x, self.env.observation_space)
+        x = self.relu(self.fc1(x_in))
+        x = torch.cat([x, x_in], dim=-1)
+        x = self.relu(self.fc2(x))
+        x = torch.cat([x, x_in], dim=-1)
+        x = self.fc3(x)
+
+        return x
     
 class SoftQNet(torch.nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
