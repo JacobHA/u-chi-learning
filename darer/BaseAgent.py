@@ -65,6 +65,8 @@ class BaseAgent:
                  buffer_size: int = 100_000,
                  target_update_interval: int = 10_000,
                  tau: float = 1.0,
+                 prior_update_interval: int = 1_000,
+                 prior_tau: float = 0.9,
                  hidden_dim: int = 64,
                  num_nets: int = 2,
                  tau_theta: float = 0.995,
@@ -114,6 +116,7 @@ class BaseAgent:
         self.batch_size = batch_size
         self.target_update_interval = target_update_interval
         self.tau = tau
+        self.prior_update_interval = prior_update_interval
         self.hidden_dim = hidden_dim
         self.gradient_steps = gradient_steps
         if device == "auto":
@@ -322,6 +325,9 @@ class BaseAgent:
 
         if self.env_steps % self.target_update_interval == 0:
             self._update_target()
+
+        if self.env_steps % self.prior_update_interval == 0:
+            self._update_prior()
 
         if self.env_steps % self.log_interval == 0:
             # Log info from this training cycle:
