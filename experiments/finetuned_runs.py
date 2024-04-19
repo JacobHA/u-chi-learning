@@ -13,7 +13,7 @@ from utils import safe_open
 
 env_to_steps = {
     'CartPole-v1': 10_000,
-    'Acrobot-v1': 5_000,
+    'Acrobot-v1': 100_000,
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 500_000,
     'HalfCheetah-v4': 1_000_000,
@@ -28,7 +28,7 @@ env_to_logfreq = {
 }
 
 args = argparse.ArgumentParser()
-args.add_argument('--count', type=int, default=10)
+args.add_argument('--count', type=int, default=5)
 args.add_argument('--env_id', type=str, default='Acrobot-v1')
 args.add_argument('--algo', type=str, default='logu')
 args.add_argument('--device', type=str, default='cpu')
