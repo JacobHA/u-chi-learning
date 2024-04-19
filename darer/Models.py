@@ -294,8 +294,9 @@ class OnlineLogUNets(OnlineNets):
         with torch.no_grad():
             
             if prior is None:
-                prior = 1 / self.nA
-            logprior = torch.log(torch.tensor(prior, device=self.device))
+                prior = torch.tensor([1 / self.nA], device=self.device)
+            
+            logprior = torch.log(prior)
             # Get a sample from each net, then sample uniformly over them:
             logus = torch.stack([net.forward(state) for net in self.nets], dim=1)
             logus = logus.squeeze(0)

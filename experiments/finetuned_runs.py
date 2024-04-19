@@ -17,6 +17,7 @@ env_to_steps = {
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 500_000,
     'HalfCheetah-v4': 1_000_000,
+    'Ant-v4': 1_000_000,
 }
 
 env_to_logfreq = {
@@ -30,8 +31,8 @@ env_to_logfreq = {
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=5)
 args.add_argument('--env_id', type=str, default='Acrobot-v1')
-args.add_argument('--algo', type=str, default='logu')
-args.add_argument('--device', type=str, default='cpu')
+args.add_argument('--algo', type=str, default='sql')
+args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 
 args = args.parse_args()
@@ -69,11 +70,11 @@ for i in range(args.count):
     full_config.update(default_params)
 
     agent = AgentClass(env_id, **full_config,
-                        device=device, log_interval=env_to_logfreq[env_id],
+                        device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         render=False,
                         )
 
     # Measure the time it takes to learn: 
-    agent.learn(total_timesteps=env_to_steps[env_id])
+    agent.learn(total_timesteps=env_to_steps.get(env_id, 100_000))
     del agent
