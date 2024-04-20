@@ -51,8 +51,11 @@ parameters:
     - 256
   target_update_interval:
     values:
-      - 500
-      - 1000
-      - 2000
-      - 5000
-      - 10000
+      - 1
+  tau:
+    values:
+      - 0.001
+      - 0.003
+      - 0.005
+      - 0.007
+      - 0.01
