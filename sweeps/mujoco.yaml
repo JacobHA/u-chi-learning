@@ -5,13 +5,13 @@ metric:
 parameters:
   aggregator:
     values:
-    - max
-    - min
-    - mean
+    - 'max'
+    - 'min'
+    - 'mean'
   num_nets:
     values:
     - 2
-tau_theta:
+  tau_theta:
     distribution: uniform
     max: 1.0
     min: 0.99
