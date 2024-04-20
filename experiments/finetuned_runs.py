@@ -13,7 +13,7 @@ from utils import safe_open
 
 env_to_steps = {
     'CartPole-v1': 10_000,
-    'Acrobot-v1': 5_000,
+    'Acrobot-v1': 100_000,
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 500_000,
     'HalfCheetah-v4': 1_000_000,
