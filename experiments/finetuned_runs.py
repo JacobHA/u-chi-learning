@@ -30,8 +30,8 @@ env_to_logfreq = {
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='Acrobot-v1')
-args.add_argument('--algo', type=str, default='sql')
+args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
+args.add_argument('--algo', type=str, default='arSAC')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 
@@ -63,13 +63,13 @@ elif algo == 'logu':
 
 for i in range(args.count):
     full_config = {}
-    with open(f'hparams/{env_id}/{algo}.yaml') as f:
-        default_params = yaml.load(f, yaml.FullLoader)
-    #  = yaml.load(open(f'hparams/{env_id}/{algo}.yaml'), yaml.FullLoader)
-    full_config.update(hparams)
-    full_config.update(default_params)
+    # with open(f'hparams/{env_id}/{algo}.yaml') as f:
+    #     default_params = yaml.load(f, yaml.FullLoader)
+    # #  = yaml.load(open(f'hparams/{env_id}/{algo}.yaml'), yaml.FullLoader)
+    # full_config.update(hparams)
+    # full_config.update(default_params)
 
-    agent = AgentClass(env_id, **full_config,
+    agent = AgentClass(env_id, **hparams,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         render=False,
