@@ -20,6 +20,9 @@ env_to_steps = {
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
     'Humanoid-v4': 1_000_000,
+    'Hopper-v4': 1_000_000,
+    'Swimmer-v4': 1_000_000,
+    'Reacher-v4': 1_000_000,
 }
 
 env_to_logfreq = {
@@ -30,6 +33,8 @@ env_to_logfreq = {
     'HalfCheetah-v4': 2500,
     'Ant-v4': 2500,
     'Humanoid-v4': 2500,
+    'Swimmer-v4': 2500,
+    'Reacher-v4': 2500,
 }
 
 algo_to_agent = {
