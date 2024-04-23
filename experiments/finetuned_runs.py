@@ -5,6 +5,7 @@ import sys
 sys.path.append('darer')
 from SoftQAgent import SoftQAgent
 from CustomDQN import CustomDQN
+from CustomSAC import CustomSAC
 from UAgent import UAgent
 from arSAC import arSAC
 from LogUAgent import LogUAgent
@@ -18,6 +19,7 @@ env_to_steps = {
     'MountainCar-v0': 500_000,
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
+    'Swimmer-v4': 250_000
 }
 
 env_to_logfreq = {
@@ -26,12 +28,13 @@ env_to_logfreq = {
     'LunarLander-v2': 1000,
     'MountainCar-v0': 100,
     'HalfCheetah-v4': 2500,
+    'Swimmer-v4': 5000
 }
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
 args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
-args.add_argument('--algo', type=str, default='arSAC')
+args.add_argument('--algo', type=str, default='SAC')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 
@@ -42,6 +45,7 @@ device = args.device
 
 print("Running finetuned hyperparameters...")
 algo = args.algo
+algo = algo.lower()
 print(algo)
 
 hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
@@ -56,10 +60,12 @@ elif algo == 'dqn':
     AgentClass = CustomDQN
 elif algo == 'sql':
     AgentClass = SoftQAgent
-elif algo == 'arSAC':
+elif algo == 'arsac':
     AgentClass = arSAC
 elif algo == 'logu':
     AgentClass = LogUAgent
+elif algo == 'sac':
+    AgentClass = CustomSAC
 
 for i in range(args.count):
     full_config = {}
@@ -72,7 +78,7 @@ for i in range(args.count):
     agent = AgentClass(env_id, **hparams,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
-                        render=False,
+                        # render=False, use_dones=True,
                         )
 
     # Measure the time it takes to learn: 
