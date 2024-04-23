@@ -124,6 +124,8 @@ if __name__ == "__main__":
     env = args.env
     if env == '':
         envs = ['Acrobot-v1', 'CartPole-v1', 'MountainCar-v0', 'LunarLander-v2']
+
+        envs += ['Swimmer-v4', 'Reacher-v4', 'Ant-v4', 'HalfCheetah-v4']
     else:
         envs = [env]
 
