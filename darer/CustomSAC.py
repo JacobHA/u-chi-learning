@@ -1,13 +1,24 @@
+import time
 import numpy as np
 import torch as th
 from torch.nn import functional as F
 from stable_baselines3.common.utils import get_parameters_by_name, polyak_update
-
+import gymnasium as gym
 from stable_baselines3 import SAC
 
+from BaseAgent import LOG_PARAMS
+from utils import log_class_vars
+
 class CustomSAC(SAC):
-    def __init__(self, *args, log_interval=500, hidden_dim=64, log_dir='', **kwargs):
-        super().__init__(*args, verbose=4, **kwargs)
+    def __init__(self, env_id, log_interval=500, hidden_dim=64, log_dir='', **kwargs):
+        super().__init__(policy='MlpPolicy', env=env_id, verbose=4, **kwargs)
+        
+        self.log_interval = log_interval
+        self.eval_auc = 0
+        self.eval_time = 0
+        self.initial_time = time.thread_time_ns()
+        self.eval_env = gym.make(env_id)
+
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
@@ -57,14 +68,16 @@ class CustomSAC(SAC):
 
             with th.no_grad():
                 # Select action according to policy
-                _, next_log_prob = self.actor.action_log_prob(replay_data.next_observations)
+                next_actions, next_log_prob = self.actor.action_log_prob(replay_data.next_observations)
                 # sample 20 actions for each next state
-                next_actions, next_log_prob = [self.actor.predict(replay_data.next_observations, 
+                do_sampling = False
+                if do_sampling:
+                    next_actions, next_log_prob = [self.actor.predict(replay_data.next_observations, 
                                                                   deterministic=False, 
                                                                   deterministic_with_noise=False)
                                                   for _ in range(20)]
-                next_actions = th.cat(next_actions, dim=0)
-                # mean over 20 actions
+                    next_actions = th.cat(next_actions, dim=0)
+                    # mean over 20 actions
                 
                 # Compute the next Q values: min over all critics targets
                 next_q_values = th.cat(self.critic_target(replay_data.next_observations, next_actions), dim=1)
@@ -116,10 +129,84 @@ class CustomSAC(SAC):
         if len(ent_coef_losses) > 0:
             self.logger.record("train/ent_coef_loss", np.mean(ent_coef_losses))
 
+
+    def _log_stats(self):
+        # end timer:
+        t_final = time.thread_time_ns()
+        # fps averaged over log_interval steps:
+        self.fps = self.log_interval / \
+            ((t_final - self.initial_time + 1e-16) / 1e9)
+
+        if self.num_timesteps > 0:
+            self.avg_eval_rwd = self.evaluate()
+            self.eval_auc += self.avg_eval_rwd
+        
+        self.lr = 0#self.optimzers.get_lr()
+        log_class_vars(self, self.logger, LOG_PARAMS, use_wandb=False)
+
+        
+        self.logger.dump(step=self.env_steps)
+        self.initial_time = time.thread_time_ns()
+
+    def evaluate(self, n_episodes=10) -> float:
+        # run the current policy and return the average reward
+        self.initial_time = time.process_time_ns()
+        avg_reward = 0.
+        n_steps = 0
+        for ep in range(n_episodes):
+            state, _ = self.eval_env.reset()
+            done = False
+            while not done:
+                action = self.evaluation_policy(state)
+                n_steps += 1
+
+                next_state, reward, terminated, truncated, info = self.eval_env.step(
+                    action)
+                avg_reward += reward
+                state = next_state
+                done = terminated or truncated
+
+        avg_reward /= n_episodes
+        
+        self.logger.record('eval/avg_episode_length', n_steps / n_episodes)
+        final_time = time.process_time_ns()
+        eval_time = (final_time - self.initial_time + 1e-12) / 1e9
+        eval_fps = n_steps / eval_time
+        self.logger.record('eval/time', eval_time)
+        self.logger.record('eval/fps', eval_fps)
+        self.eval_time = eval_time
+        self.eval_fps = eval_fps
+        self.avg_eval_rwd = avg_reward
+        # self.step_to_avg_eval_rwd[self.env_steps] = avg_reward
+        return avg_reward
+    
+    def evaluation_policy(self, state):
+        return self.predict(state, deterministic=True)[0]
+
+    # overwrite the on_step method to log stats proper intervals:
+    def _on_step(self) -> None:
+        super()._on_step()
+        self.env_steps = self.num_timesteps
+        self.num_episodes = self._episode_num
+        if isinstance(self.ent_coef, str):
+            self.beta = 1
+        else:
+            self.beta = 1 / self.ent_coef.detach().item() 
+        if self.num_timesteps % self.log_interval == 0:
+            self._log_stats()
+
+
 def main():
     env = 'Pendulum-v1'
-    agent = CustomSAC('MlpPolicy', env)
-    agent.learn(10000)
+    env = 'HalfCheetah-v4'
+    kwargs = {
+        'learning_starts': 10_000,
+        'batch_size': 256,
+        'buffer_size': 100_000,
+        'ent_coef': '0.2',
+    }
+    agent = CustomSAC('MlpPolicy', env, device='auto', **kwargs, log_dir='ft_logs', tensorboard_log='ft_logs/EVAL')
+    agent.learn(1000000)
 
 if __name__ == '__main__':
     main()
