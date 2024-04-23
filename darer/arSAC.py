@@ -24,10 +24,12 @@ class arSAC(BaseAgent):
                  actor_learning_rate: float = 1e-3,
                 #  beta = 'auto',
                  use_rawlik: bool = False,
+                 use_dones: bool = True,
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = 'arSAC-nodone'
+        self.algo_name = f'arSAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'min'
+        self.use_dones = use_dones
         self.use_rawlik = use_rawlik
         self.actor_learning_rate = actor_learning_rate
         self.nA = get_action_dim(self.env.action_space)        
@@ -39,7 +41,10 @@ class arSAC(BaseAgent):
         self.log_hparams(self.logger)
         self.logpi0 = th.log(th.tensor(1/self.nA, device=self.device))
         # self.ent_coef_optimizer: Optional[th.optim.Adam] = None
-        self.ent_coef = self.beta**(-1)
+        if self.beta != 'auto':
+            self.ent_coef = self.beta**(-1)
+        else:
+            self.ent_coef = 'auto'
         self._initialize_networks()
         self.target_entropy = float(-np.prod(self.env.action_space.shape).astype(np.float32))
 
@@ -164,7 +169,10 @@ class arSAC(BaseAgent):
             next_v_values = next_q_values - ent_coef * (next_log_prob.reshape(-1, 1) - self.logpi0)
             # td error + entropy term
             # target_q_values = rewards +  * self.gamma * next_q_values
-            target_q_values = rewards - self.theta + next_v_values * (1 - dones)
+            if self.use_dones:
+                next_v_values = next_v_values * (1 - dones)
+
+            target_q_values = rewards - self.theta + next_v_values 
 
             min_q_values = th.cat(current_q_values, dim=1)
             min_q_values = self.aggregator_fn(min_q_values, dim=1)
