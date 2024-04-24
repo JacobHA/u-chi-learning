@@ -59,12 +59,14 @@ class BaseAgent:
     def __init__(self,
                  env_id: Union[str, gym.Env],
                  learning_rate: float = 1e-3,
-                 beta: float = 0.1,
+                 beta: Union[float, str] = 0.1,
                  beta_schedule: str = 'none',
                  batch_size: int = 64,
                  buffer_size: int = 100_000,
                  target_update_interval: int = 10_000,
                  tau: float = 1.0,
+                 prior_update_interval: int = 1_000,
+                 prior_tau: float = 0.9,
                  hidden_dim: int = 64,
                  num_nets: int = 2,
                  tau_theta: float = 0.995,
@@ -114,6 +116,7 @@ class BaseAgent:
         self.batch_size = batch_size
         self.target_update_interval = target_update_interval
         self.tau = tau
+        self.prior_update_interval = prior_update_interval
         self.hidden_dim = hidden_dim
         self.gradient_steps = gradient_steps
         if device == "auto":
@@ -188,25 +191,21 @@ class BaseAgent:
         Sample the replay buffer and do the updates
         (gradient descent and update target networks)
         """
-
+        
         # Increase update counter
         self._n_updates += gradient_steps
         # average self.theta over multiple gradient steps
-        self.new_thetas = torch.zeros(gradient_steps).to(self.device)
         for grad_step in range(gradient_steps):
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(batch_size)
             self.gradient_descent(batch, grad_step)
 
-        self.new_thetas = torch.clamp(self.new_thetas, min=-50, max=50)
-        new_theta = self.new_thetas.mean(dim=0)
-        self.logger.record(f"train/new_theta", new_theta.item())
 
         # Can't use env_steps b/c we are inside the learn function which is called only
-        # every train_freq steps:
-        self.theta = self.tau_theta * self.theta + \
-            (1 - self.tau_theta) * new_theta
-
+        # # every train_freq steps:
+        # self.theta = self.tau_theta * self.theta + \
+        #     (1 - self.tau_theta) * new_theta
+        
         # # Log info from this training cycle:
         # self.logger.record("train/avg logu", curr_logu.mean().item())
         # self.logger.record("train/min logu", curr_logu.min().item())
@@ -323,6 +322,9 @@ class BaseAgent:
         if self.env_steps % self.target_update_interval == 0:
             self._update_target()
 
+        if self.env_steps % self.prior_update_interval == 0:
+            self._update_prior()
+
         if self.env_steps % self.log_interval == 0:
             # Log info from this training cycle:
             self.logger.record("train/theta", self.theta.item())
@@ -342,7 +344,7 @@ class BaseAgent:
             torch.save(self.online_logu.state_dict(),
                        'sql-policy.para')
         # Get the current learning rate from the optimizer:
-        self.lr = 0#self.u_optimizers.get_lr()
+        self.lr = 0#self.optimzers.get_lr()
         log_class_vars(self, self.logger, LOG_PARAMS, use_wandb=self.use_wandb)
 
         if self.is_tabular:
@@ -418,8 +420,10 @@ class BaseAgent:
             self.betas = torch.linspace(
                 self.beta, self.beta_end, total_timesteps).to(self.device)
         elif beta_schedule == 'none':
-            self.betas = torch.tensor(
-                [self.beta] * total_timesteps).to(self.device)
+            if self.beta == 'auto':
+                self.betas = torch.tensor([1.0] * total_timesteps).to(self.device)
+            else:
+                self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
         else:
             raise NotImplementedError(
                 f"Unknown beta schedule: {beta_schedule}")
