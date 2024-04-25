@@ -18,7 +18,7 @@ import torch as th
 # raise warning level for debugger:
 # import warnings
 # warnings.filterwarnings("error")
-class arSAC(BaseAgent):
+class ASAC(BaseAgent):
     def __init__(self,
                  *args,
                  actor_learning_rate: float = 1e-3,
@@ -28,7 +28,7 @@ class arSAC(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = f'arSAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'min'
+        self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'max'
         self.use_dones = use_dones
         self.use_rawlik = use_rawlik
         self.actor_learning_rate = actor_learning_rate
@@ -236,7 +236,7 @@ def main():
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     # from simple_env import SimpleEnv
-    agent = arSAC(env_id, **config, device='cuda',
+    agent = ASAC(env_id, **config, device='cuda',
                     num_nets=2, tensorboard_log='pend', 
                     actor_learning_rate=1e-4, 
                     render=False, max_grad_norm=10, log_interval=2000,

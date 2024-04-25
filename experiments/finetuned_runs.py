@@ -7,7 +7,7 @@ from SoftQAgent import SoftQAgent
 from CustomDQN import CustomDQN
 from CustomSAC import CustomSAC
 from UAgent import UAgent
-from arSAC import arSAC
+from ASAC import ASAC
 from LogUAgent import LogUAgent
 from utils import safe_open
 
@@ -60,8 +60,8 @@ elif algo == 'dqn':
     AgentClass = CustomDQN
 elif algo == 'sql':
     AgentClass = SoftQAgent
-elif algo == 'arsac':
-    AgentClass = arSAC
+elif algo == 'asac':
+    AgentClass = ASAC
 elif algo == 'logu':
     AgentClass = LogUAgent
 elif algo == 'sac':
@@ -69,11 +69,6 @@ elif algo == 'sac':
 
 for i in range(args.count):
     full_config = {}
-    # with open(f'hparams/{env_id}/{algo}.yaml') as f:
-    #     default_params = yaml.load(f, yaml.FullLoader)
-    # #  = yaml.load(open(f'hparams/{env_id}/{algo}.yaml'), yaml.FullLoader)
-    # full_config.update(hparams)
-    # full_config.update(default_params)
 
     agent = AgentClass(env_id, **hparams,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
