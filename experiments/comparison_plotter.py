@@ -141,7 +141,11 @@ if __name__ == "__main__":
         # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
         try:
-            plotter(env=env, folder=folder, metrics=['eval/avg_reward','rollout/ep_reward'], title=env)
+            plotter(env=env, 
+                    folder=folder, 
+                    metrics=['eval/avg_reward','rollout/ep_reward', 'train/theta', 'rollout/neg_free_energy'], 
+                    title=env,
+                    exclude_algos=[f'{env}-arSAC-autoauto', f'{env}-arSAC-min', f'{env}-arSAC-autonewhauto', f'{env}-arSAC'])
         except KeyError:
             print("No data to plot.")
 
