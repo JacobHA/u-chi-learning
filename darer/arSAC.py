@@ -28,7 +28,7 @@ class arSAC(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = f'arSAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'min'
+        self.algo_name = f'arSAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto')
         self.use_dones = use_dones
         self.use_rawlik = use_rawlik
         self.actor_learning_rate = actor_learning_rate
@@ -37,7 +37,7 @@ class arSAC(BaseAgent):
 
         # Set up the logger:
         self.logger = logger_at_folder(self.tensorboard_log,
-                                       algo_name=f'{self.env_str}-{self.algo_name}{self.beta if self.beta == "auto" else ""}')
+                                       algo_name=f'{self.env_str}-{self.algo_name}')
         self.log_hparams(self.logger)
         self.logpi0 = th.log(th.tensor(1/self.nA, device=self.device))
         # self.ent_coef_optimizer: Optional[th.optim.Adam] = None
@@ -178,6 +178,11 @@ class arSAC(BaseAgent):
             min_q_values = self.aggregator_fn(min_q_values, dim=1)
 
             # new_theta = th.mean(rewards + next_v_values - min_q_values)
+            # recent batch:
+            # recent_batch = self.replay_buffer._get_samples(np.arange(-self.batch_size,0))
+            # recent_s, recent_a, recent_ns, recent_d, recent_r = recent_batch
+            # new_theta = th.mean(recent_r - ent_coef * (self.actor.action_log_prob(recent_s)[1].reshape(-1, 1) - self.logpi0))
+
             new_theta = th.mean(rewards - ent_coef * (log_prob.reshape(-1, 1) - self.logpi0))
             self.logger.record(f"train/new_theta", new_theta.item())
 
@@ -192,7 +197,33 @@ class arSAC(BaseAgent):
         # Optimize the critic
         self.q_optimizers.zero_grad()
         critic_loss.backward()
+        self.online_critics.clip_grad_norm(self.max_grad_norm)
+        # After computing the gradients and before performing the optimization step, calculate the gradient norms
+        # Initialize a list to store gradient norms
+        grad_norms = []
+
+        # Iterate over the parameters of the online critics
+        for param in self.online_critics.parameters():
+            for p in param:
+                # Check if the parameter has a gradient (i.e., it's trainable)
+                if p.grad is not None:
+                    # Calculate and store the gradient norm
+                    grad_norms.append(torch.norm(p.grad).item())
+            
+        # Check if any gradients were found
+        if grad_norms:
+            # Compute the maximum gradient norm
+            max_grad_norm = max(grad_norms)
+        else:
+            # No gradients found, set max_grad_norm to 0
+            max_grad_norm = 0.0
+
+        # Log the maximum gradient norm
+        self.logger.record("train/max_grad_norm", max_grad_norm)
+
+
         self.q_optimizers.step()
+
 
         # Compute actor loss
         # Min over all critic networks
