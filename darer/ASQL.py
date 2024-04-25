@@ -93,8 +93,7 @@ class ASQL(BaseAgent):
                 # target_priora /= target_priora.sum(dim=-1, keepdim=True)
 
                 target_prior_next = self.target_prior.nets[0](next_states).squeeze()
-                target_prior_next /= target_prior_next.sum(
-                    dim=-1, keepdim=True)
+                target_prior_next /= target_prior_next.sum(dim=-1, keepdim=True)
 
             else:
                 target_priora = torch.ones(self.batch_size, self.nA, device=self.device) * (1/self.nA)
@@ -111,7 +110,7 @@ class ASQL(BaseAgent):
 
             # new_theta = -torch.mean( rewards + (online_log_chi - online_curr_q) / self.beta, dim=0)
             new_theta = torch.mean(rewards + self.beta**(-1) * online_next_v - online_curr_q , dim=0)
-            self.theta += self.tau_theta * (new_theta - self.theta)
+            self.theta = (1 - self.tau_theta) * self.theta + self.tau_theta * new_theta
 
             target_next_qs = [target_q(next_states)
                                  for target_q in self.target_qs]
@@ -119,27 +118,25 @@ class ASQL(BaseAgent):
             # logsumexp over actions:
             target_next_qs = torch.stack(target_next_qs, dim=1)
             target_next_q = self.aggregator_fn(target_next_qs, dim=1).squeeze(1)
-            next_q = torch.logsumexp(target_next_q + log_prior_next, dim=-1)
+            next_v = self.beta**(-1) * torch.logsumexp(self.beta * target_next_q + log_prior_next, dim=-1)
 
-            next_q = next_q.reshape(-1, 1)
-            assert next_q.shape == dones.shape
-            next_q = next_q * (1 - dones)  # + self.theta * dones
+            next_v = next_v.reshape(-1, 1)
+            assert next_v.shape == dones.shape
+            next_v = next_v * (1 - dones)  # + self.theta * dones
 
             # "Backup" eigenvector equation:
-            expected_curr_q = self.beta * (rewards + self.theta) + next_q
+            expected_curr_q = rewards + self.theta + next_v
             expected_curr_q = expected_curr_q.squeeze(1)
 
         # Calculate the q ("critic") loss:
-        loss = 0.5*sum(self.loss_fn(q, expected_curr_q)
-                       for q in curr_q.T)
+        loss = 0.5*sum(self.loss_fn(q, expected_curr_q) for q in curr_q.T)
         
         if self.use_ppi:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
-            pistar = torch.exp(self.aggregator_fn(online_curr_q, dim=0)) * target_priora
+            pistar = torch.exp(self.beta * self.aggregator_fn(online_curr_q, dim=0)) * target_priora
             pistar /= pistar.sum(dim=-1, keepdim=True)
 
-            prior_loss = F.kl_div(curr_priora.squeeze().log(
-            ), pistar, reduction='batchmean', log_target=False)
+            prior_loss = F.kl_div(curr_priora.squeeze().log(), pistar, reduction='batchmean', log_target=False)
 
             self.logger.record("train/prior_loss", prior_loss.item())
             # prior_loss.backward()

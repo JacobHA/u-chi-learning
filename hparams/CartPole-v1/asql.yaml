@@ -1,5 +1,5 @@
 batch_size: 64
-beta: 10
+beta: 6
 buffer_size: 10000
 gradient_steps: 4
 hidden_dim: 64
@@ -10,4 +10,4 @@ tau: 1.0
 tau_theta: 0.01
 train_freq: 1
 num_nets: 2
-aggregator: 'mean'
+aggregator: 'min'

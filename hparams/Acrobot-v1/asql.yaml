@@ -1,13 +1,13 @@
 batch_size: 64
 beta: 1.5
 buffer_size: 30000
-gradient_steps: 5
+gradient_steps: 4
 hidden_dim: 64
 learning_rate: 0.001
-learning_starts: 0
+learning_starts: 500
 target_update_interval: 100
 tau: 1.0
-tau_theta: 0.95
+tau_theta: 0.05
 train_freq: 1
 num_nets: 2
 aggregator: 'max'
