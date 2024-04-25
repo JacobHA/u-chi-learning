@@ -12,18 +12,18 @@ from utils import logger_at_folder
 class UAgent(BaseAgent):
     def __init__(self,
                  *args,
-                 use_rawlik=False,
+                 use_ppi=False,
                  prior_update_interval: int = 1_000,
                  prior_tau: float = 0.9,
                  name: Optional[str] = None,
                  **kwargs,
                  ):
         self.algo_name = 'U' if name is None else name
-        if use_rawlik:
-            self.algo_name += '-rawlik'
+        if use_ppi:
+            self.algo_name += '-ppi'
         self.prior_update_interval = prior_update_interval
         self.prior_tau = prior_tau
-        self.use_rawlik = use_rawlik
+        self.use_ppi = use_ppi
         super().__init__(*args, **kwargs)
 
         # Set up the logger:
@@ -49,7 +49,7 @@ class UAgent(BaseAgent):
         # Make (all) Us learnable:
         opts = [torch.optim.Adam(u.parameters(), lr=self.learning_rate)
                 for u in self.online_us]
-        if self.use_rawlik:
+        if self.use_ppi:
             self.online_prior = OnlineUNets(
                 [PiNet(self.env, hidden_dim=self.hidden_dim, device=self.device)],
                 aggregator_fn=self.aggregator_fn)
@@ -66,7 +66,7 @@ class UAgent(BaseAgent):
         with torch.no_grad():
 
             # return self.env.action_space.sample()
-            if self.use_rawlik:
+            if self.use_ppi:
                 pi0 = self.target_prior.nets[0](state).squeeze()
                 # pi0 /= pi0.sum()
             else:
@@ -85,7 +85,7 @@ class UAgent(BaseAgent):
 
     def evaluation_policy(self, state: np.ndarray) -> int:
         with torch.no_grad():
-            if self.use_rawlik:
+            if self.use_ppi:
                 pi0 = self.target_prior.nets[0](state).squeeze()
                 # pi0 /= pi0.sum()
             else:
@@ -100,7 +100,7 @@ class UAgent(BaseAgent):
     def _on_step(self):
         super()._on_step()
         #TODO: put this in _update_target
-        if self.use_rawlik:
+        if self.use_ppi:
             if self.env_steps % self.prior_update_interval == 0:
                 self.target_prior.polyak(self.online_prior, self.prior_tau)
 
@@ -113,7 +113,7 @@ class UAgent(BaseAgent):
         #                     for online_u in self.online_us], dim=1)
         curr_u = torch.stack([online_u(states).squeeze().gather(1, actions.long())
                             for online_u in self.online_us], dim=1)
-        if self.use_rawlik:
+        if self.use_ppi:
             curr_priora = self.online_prior.nets[0](states).squeeze()
 
         with torch.no_grad():
@@ -124,7 +124,7 @@ class UAgent(BaseAgent):
             #TODO: collapse these into one call
             online_curr_ua = torch.stack([u(states)
                                           for u in self.online_us], dim=0)
-            if self.use_rawlik:
+            if self.use_ppi:
                 target_priora = self.target_prior.nets[0](states).squeeze()
                 # target_priora /= target_priora.sum(dim=-1, keepdim=True)
 
@@ -178,7 +178,7 @@ class UAgent(BaseAgent):
         # Calculate the u ("critic") loss:
         loss = 0.5*sum(self.loss_fn(u, expected_curr_u) for u in curr_u.permute(1, 0, 2))
         self.logger.record("train/loss", loss.item())
-        if self.use_rawlik:
+        if self.use_ppi:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
             pistar = self.aggregator_fn(online_curr_ua, dim=0) * target_priora
             pistar /= pistar.sum(dim=-1, keepdim=True)
@@ -223,10 +223,10 @@ def main():
 
     agent = UAgent(env_id, **config, device='cuda', log_interval=500,
                    tensorboard_log='pong', num_nets=2, render=False, #aggregator='min',
-                   beta_schedule='none', use_rawlik=False,
+                   beta_schedule='none', use_ppi=False,
                    beta_end=5)
     #    scheduler_str='none')  # , beta_schedule='none', beta_end=2.4,
-    # use_rawlik=True)
+    # use_ppi=True)
     # Measure the time it takes to learn:
     t0 = time.thread_time_ns()
     agent.learn(total_timesteps=500_000)

@@ -8,7 +8,7 @@ import os
 sys.path.append('darer')
 from UAgent import UAgent
 from LogUAgent import LogUAgent
-from arSAC import arSAC
+from ASAC import ASAC
 from utils import safe_open, sample_wandb_hyperparams
 
 
@@ -39,7 +39,7 @@ env_to_logfreq = {
 
 algo_to_agent = {
     'u': UAgent,
-    'arSAC': arSAC,
+    'asac': ASAC,
     'logu': LogUAgent
 }
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     args.add_argument('--count', type=int, default=10)
     args.add_argument('--project', type=str, default='mj-sweep')
     args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
-    args.add_argument('--algo', type=str, default='arSAC')
+    args.add_argument('--algo', type=str, default='asac')
     args.add_argument('--device', type=str, default='auto')
     args.add_argument('--exp-name', type=str, default='mujoco')
 
