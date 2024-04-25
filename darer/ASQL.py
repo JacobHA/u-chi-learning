@@ -2,10 +2,10 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 from BaseAgent import BaseAgent
-from Models import LogUNet, OnlineLogUNets, OnlineUNets, Optimizers, PiNet, TargetNets
+from Models import QNet, OnlineQNets, OnlineUNets, Optimizers, PiNet, TargetNets
 from utils import logger_at_folder
 
-class LogUAgent(BaseAgent):
+class ASQL(BaseAgent):
     def __init__(self,
                  *args,
                  use_rawlik=False,
@@ -14,7 +14,7 @@ class LogUAgent(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = 'LogU' + ('-PPI' if use_rawlik else '')
+        self.algo_name = 'ASQL' + ('-PPI' if use_rawlik else '')
         self.use_rawlik = use_rawlik
         self.prior_update_interval = prior_update_interval
         self.prior_tau = prior_tau
@@ -25,23 +25,23 @@ class LogUAgent(BaseAgent):
         self._initialize_networks()
 
     def _initialize_networks(self):
-        self.online_logus = OnlineLogUNets([LogUNet(self.env,
-                                                hidden_dim=self.hidden_dim, 
-                                                device=self.device)
+        self.online_qs = OnlineQNets([QNet(self.env,
+                                           hidden_dim=self.hidden_dim, 
+                                           device=self.device)
                                         for _ in range(self.num_nets)],
-                                       aggregator_fn=self.aggregator_fn)
+                                        aggregator_fn=self.aggregator_fn)
         # alias for compatibility as self.model:
-        self.model = self.online_logus
+        self.model = self.online_qs
 
-        self.target_logus = TargetNets([LogUNet(self.env, 
+        self.target_qs = TargetNets([QNet(self.env, 
                                                 hidden_dim=self.hidden_dim, 
                                                 device=self.device)
                                         for _ in range(self.num_nets)])
-        self.target_logus.load_state_dicts(
-            [logu.state_dict() for logu in self.online_logus])
-        # Make (all) LogUs learnable:
-        opts = [torch.optim.Adam(logu.parameters(), lr=self.learning_rate)
-                for logu in self.online_logus]
+        self.target_qs.load_state_dicts(
+            [q.state_dict() for q in self.online_qs])
+        # Make (all) q+s learnable:
+        opts = [torch.optim.Adam(q.parameters(), lr=self.learning_rate)
+                for q in self.online_qs]
 
         if self.use_rawlik:
             self.online_prior = OnlineUNets(
@@ -64,29 +64,29 @@ class LogUAgent(BaseAgent):
         if self.use_rawlik:
             pi0 = self.target_prior.nets[0](state).squeeze()
 
-        return self.online_logus.choose_action(state, greedy=False, prior=pi0), kl
+        return self.online_qs.choose_action(state, self.beta, greedy=False, prior=pi0), kl
 
     def evaluation_policy(self, state: np.ndarray) -> int:
         pi0 = None
         if self.use_rawlik:
             pi0 = self.target_prior.nets[0](state).squeeze()
                 
-        return self.online_logus.choose_action(state, greedy=True, prior=pi0)
+        return self.online_qs.choose_action(state, self.beta, greedy=True, prior=pi0)
 
     def gradient_descent(self, batch, grad_step: int):
         states, actions, next_states, dones, rewards = batch
         if self.use_rawlik:
             curr_priora = self.online_prior.nets[0](states).squeeze()
 
-        # Calculate the current logu values (feedforward):
-        curr_logu = torch.cat([online_logu(states).squeeze().gather(1, actions.long())
-                               for online_logu in self.online_logus], dim=1)
+        # Calculate the current q values (feedforward):
+        curr_q = torch.cat([online_q(states).squeeze().gather(1, actions.long())
+                               for online_q in self.online_qs], dim=1)
 
         with torch.no_grad():
-            online_logu_next = torch.stack([logu(next_states)
-                                            for logu in self.online_logus], dim=0)
-            online_curr_logu = torch.stack([logu(states).gather(1, actions)
-                                            for logu in self.online_logus], dim=0)
+            online_q_next = torch.stack([q(next_states)
+                                            for q in self.online_qs], dim=0)
+            online_curr_q = torch.stack([q(states).gather(1, actions)
+                                            for q in self.online_qs], dim=0)
 
             if self.use_rawlik:
                 target_priora = self.target_prior.nets[0](states).squeeze()
@@ -103,39 +103,39 @@ class LogUAgent(BaseAgent):
 
             log_prior_next = torch.log(target_prior_next + 1e-8)
 
-            # Aggregate the logus:
-            online_logu_next = self.aggregator_fn(online_logu_next, dim=0).squeeze(0)
-            online_curr_logu = self.aggregator_fn(online_curr_logu, dim=0).squeeze(0)
-            online_log_chi = torch.logsumexp(online_logu_next + log_prior_next.repeat(1, 1), dim=-1, keepdim=True)
-            # online_curr_logu = online_curr_logu.unsqueeze(-1)
+            # Aggregate the qs:
+            online_q_next = self.aggregator_fn(online_q_next, dim=0).squeeze(0)
+            online_curr_q = self.aggregator_fn(online_curr_q, dim=0).squeeze(0)
+            online_log_chi = torch.logsumexp(online_q_next + log_prior_next.repeat(1, 1), dim=-1, keepdim=True)
+            # online_curr_q = online_curr_q.unsqueeze(-1)
 
             # TODO: beta missing on the rewards?
-            new_theta = -torch.mean( rewards + (online_log_chi - online_curr_logu) / self.beta, dim=0)
+            new_theta = -torch.mean( rewards + (online_log_chi - online_curr_q) / self.beta, dim=0)
             self.theta += self.tau_theta * (new_theta - self.theta)
 
-            target_next_logus = [target_logu(next_states)
-                                 for target_logu in self.target_logus]
+            target_next_qs = [target_q(next_states)
+                                 for target_q in self.target_qs]
 
             # logsumexp over actions:
-            target_next_logus = torch.stack(target_next_logus, dim=1)
-            target_next_logu = self.aggregator_fn(target_next_logus, dim=1).squeeze(1)
-            next_logu = torch.logsumexp(target_next_logu + log_prior_next, dim=-1)
+            target_next_qs = torch.stack(target_next_qs, dim=1)
+            target_next_q = self.aggregator_fn(target_next_qs, dim=1).squeeze(1)
+            next_q = torch.logsumexp(target_next_q + log_prior_next, dim=-1)
 
-            next_logu = next_logu.reshape(-1, 1)
-            assert next_logu.shape == dones.shape
-            next_logu = next_logu * (1 - dones)  # + self.theta * dones
+            next_q = next_q.reshape(-1, 1)
+            assert next_q.shape == dones.shape
+            next_q = next_q * (1 - dones)  # + self.theta * dones
 
             # "Backup" eigenvector equation:
-            expected_curr_logu = self.beta * (rewards + self.theta) + next_logu
-            expected_curr_logu = expected_curr_logu.squeeze(1)
+            expected_curr_q = self.beta * (rewards + self.theta) + next_q
+            expected_curr_q = expected_curr_q.squeeze(1)
 
-        # Calculate the logu ("critic") loss:
-        loss = 0.5*sum(self.loss_fn(logu, expected_curr_logu)
-                       for logu in curr_logu.T)
+        # Calculate the q ("critic") loss:
+        loss = 0.5*sum(self.loss_fn(q, expected_curr_q)
+                       for q in curr_q.T)
         
         if self.use_rawlik:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
-            pistar = torch.exp(self.aggregator_fn(online_curr_logu, dim=0)) * target_priora
+            pistar = torch.exp(self.aggregator_fn(online_curr_q, dim=0)) * target_priora
             pistar /= pistar.sum(dim=-1, keepdim=True)
 
             prior_loss = F.kl_div(curr_priora.squeeze().log(
@@ -154,7 +154,7 @@ class LogUAgent(BaseAgent):
 
     def _update_target(self):
         # Do a Polyak update of parameters:
-        self.target_logus.polyak(self.online_logus, self.tau)
+        self.target_qs.polyak(self.online_qs, self.tau)
 
 
     def _update_prior(self):

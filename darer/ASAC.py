@@ -6,7 +6,7 @@ from torch.nn import functional as F
 # import wandb
 import sys
 sys.path.append('darer')
-from Models import LogUsa, OnlineUNets, Optimizers, TargetNets
+from Models import Qsa, OnlineUNets, Optimizers, TargetNets
 from BaseAgent import BaseAgent
 from utils import logger_at_folder
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
@@ -50,12 +50,12 @@ class ASAC(BaseAgent):
 
 
     def _initialize_networks(self):
-        self.online_critics = OnlineUNets([LogUsa(self.env,
+        self.online_critics = OnlineUNets([Qsa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)],
                                         aggregator_fn=self.aggregator_fn)
-        self.target_critics = TargetNets([LogUsa(self.env,
+        self.target_critics = TargetNets([Qsa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)])
