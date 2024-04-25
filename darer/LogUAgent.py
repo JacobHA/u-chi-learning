@@ -110,8 +110,8 @@ class LogUAgent(BaseAgent):
             # online_curr_logu = online_curr_logu.unsqueeze(-1)
 
             # TODO: beta missing on the rewards?
-            self.new_thetas[grad_step] = -torch.mean( rewards + (
-                online_log_chi - online_curr_logu) / self.beta, dim=0)
+            new_theta = -torch.mean( rewards + (online_log_chi - online_curr_logu) / self.beta, dim=0)
+            self.theta += self.tau_theta * (new_theta - self.theta)
 
             target_next_logus = [target_logu(next_states)
                                  for target_logu in self.target_logus]
