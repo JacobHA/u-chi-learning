@@ -1,0 +1,16 @@
+buffer_size: 200000
+tau_theta: 0.9972
+batch_size: 512
+beta: 2.3
+gradient_steps: 5
+hidden_dim: 256
+learning_rate: 0.0066
+learning_starts: 5000
+target_update_interval: 2000
+tau: 1.0
+train_freq: 21
+num_nets: 2
+aggregator: 'min'
+use_rawlik: True
+prior_update_interval: 1000
+prior_tau: 0.5

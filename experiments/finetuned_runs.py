@@ -28,13 +28,14 @@ env_to_logfreq = {
     'LunarLander-v2': 1000,
     'MountainCar-v0': 100,
     'HalfCheetah-v4': 2500,
-    'Swimmer-v4': 5000
+    'Swimmer-v4': 5000,
+    'Ant-v4': 5000
 }
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
-args.add_argument('--algo', type=str, default='SAC')
+args.add_argument('--env_id', type=str, default='Ant-v4')
+args.add_argument('--algo', type=str, default='arsac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 
