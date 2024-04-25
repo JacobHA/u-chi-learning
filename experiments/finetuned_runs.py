@@ -8,7 +8,7 @@ from CustomDQN import CustomDQN
 from CustomSAC import CustomSAC
 from UAgent import UAgent
 from ASAC import ASAC
-from LogUAgent import LogUAgent
+from ASQL import ASQL
 from utils import safe_open
 
 
@@ -62,8 +62,8 @@ elif algo == 'sql':
     AgentClass = SoftQAgent
 elif algo == 'asac':
     AgentClass = ASAC
-elif algo == 'logu':
-    AgentClass = LogUAgent
+elif algo == 'asql':
+    AgentClass = ASQL
 elif algo == 'sac':
     AgentClass = CustomSAC
 
