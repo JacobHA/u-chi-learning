@@ -29,11 +29,11 @@ def runner(device):
     # Now access the config for this algo:
     config = configs['u']
 
-    rawlik_hparams = {'use_rawlik': False,
+    ppi_hparams = {'use_ppi': False,
                         }
 
     model = UAgent(env, **config, tensorboard_log=f'experiments/ablations/{env}',
-                 device=device, log_interval=1000, **rawlik_hparams,
+                 device=device, log_interval=1000, **ppi_hparams,
                  name=f'{NUM_NETS}nets',
                  num_nets=NUM_NETS
                  )#, aggregator='max')

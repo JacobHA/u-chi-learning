@@ -1,4 +1,9 @@
-EVAL (EigenVector-based Average-reward Learning) implementation in Gymnasium's classic control and mazes.
+ASQL and ASAC:
+Average-Reward variants of SQL and SAC.
+
+(Formerly EVAL, EigenVector-based Average-reward Learning).
+
+Environments: Gridworlds, Gymnasium's classic control and Mujoco.
 
 # TODOs:
 - [ ] fix viusalizations in todo
@@ -8,6 +13,7 @@ EVAL (EigenVector-based Average-reward Learning) implementation in Gymnasium's c
 - [x] Batch theta overrides: Same w/ periodic updates of ref s,a,s'
 - [x] Implement LR schedule
 - [x] Create a folder when one is missing for logging
+- [ ] Make custom FPS for rendering envs (esp. Atari)
 
 # New Features:
 - [ ] Possibly use SB3 style: :param train_freq: Update the model every ``train_freq`` steps. Alternatively pass a tuple of frequency and unit

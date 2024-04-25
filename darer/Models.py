@@ -86,9 +86,9 @@ def model_initializer(is_image_space,
 
     return model, nS
 
-class LogUNet(nn.Module):
+class QNet(nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
-        super(LogUNet, self).__init__()
+        super(QNet, self).__init__()
         self.using_vector_env = isinstance(env.action_space, gym.spaces.MultiDiscrete)
         self.env = env
         if self.using_vector_env:
@@ -286,33 +286,34 @@ class OnlineNets():
             torch.nn.utils.clip_grad_norm_(net.parameters(), max_grad_norm)
 
 
-class OnlineLogUNets(OnlineNets):
+class OnlineQNets(OnlineNets):
     def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
         super().__init__(list_of_nets, aggregator_fn, is_vector_env)
 
-    def choose_action(self, state, greedy=False, prior=None):
+    def choose_action(self, state, beta, greedy=False, prior=None):
         with torch.no_grad():
             
             if prior is None:
-                prior = 1 / self.nA
-            logprior = torch.log(torch.tensor(prior, device=self.device))
+                prior = torch.tensor([1 / self.nA], device=self.device)
+            
+            logprior = torch.log(prior)
             # Get a sample from each net, then sample uniformly over them:
-            logus = torch.stack([net.forward(state) for net in self.nets], dim=1)
-            logus = logus.squeeze(0)
+            qs = torch.stack([net.forward(state) for net in self.nets], dim=1)
+            qs = qs.squeeze(0)
             # Aggregate over the networks:
-            logu = self.aggregator_fn(logus, dim=0).squeeze(0)
+            q = self.aggregator_fn(qs, dim=0).squeeze(0)
 
             if not self.is_vector_env:
+                log_action_dist = beta * q + logprior
                 if greedy:
-                    action_net_idx = torch.argmax(logu + logprior, dim=0)
+                    action_net_idx = torch.argmax(log_action_dist, dim=0)
                     # action = idxs[action_net_idx].cpu().numpy()
                     action = action_net_idx.cpu().numpy()
                 else:
-                    # pi* = pi0 * exp(logu)
-                    logu = logu.clamp(-30,30)
-                    in_exp = logu + logprior
-                    in_exp -= (in_exp.max() + in_exp.min())/2
-                    dist = torch.exp(in_exp)
+                    # pi* = pi0 * exp(q)
+                    q = q.clamp(-30,30)
+                    log_action_dist -= (log_action_dist.max() + log_action_dist.min())/2
+                    dist = torch.exp(log_action_dist)
                     dist /= torch.sum(dist)
                     c = Categorical(dist)
                     # action = idxs[c.sample().cpu().item()].cpu().numpy()
@@ -322,20 +323,8 @@ class OnlineLogUNets(OnlineNets):
                 actions = np.array(actions)
                 rnd_idx = np.expand_dims(np.random.randint(len(actions), size=actions.shape[1]), axis=0)
                 action = np.take_along_axis(actions, rnd_idx, axis=0).squeeze(0)
-            # perhaps re-weight this based on pessimism?
             return action
-            # with torch.no_grad():
-            #     logus = [net(state) for net in self.nets]
-            #     logu = torch.stack(logus, dim=-1)
-            #     logu = logu.squeeze(1)
-            #     logu = torch.mean(logu, dim=-1)#[0]
-            #     baseline = (torch.max(logu) + torch.min(logu))/2
-            #     logu = logu - baseline
-            #     logu = torch.clamp(logu, min=-20, max=20)
-            #     dist = torch.exp(logu)
-            #     dist = dist / torch.sum(dist)
-            #     c = Categorical(dist)#, validate_args=True)
-            #     return c.sample()#.item()
+            
 
 class OnlineUNets(OnlineNets):
     def __init__(self, list_of_nets, aggregator_fn, is_vector_env=False):
@@ -378,7 +367,7 @@ class OnlineSoftQNets(OnlineNets):
         with torch.no_grad():
             q_as = torch.stack([net.forward(state) for net in self], dim=1)
             q_as = q_as.squeeze(0)
-            q_a = self.aggregator_fn(q_as, dim=0)
+            q_a = self.aggregator_fn(q_as, dim=0).squeeze(0)
 
 
             if greedy:
@@ -392,11 +381,12 @@ class OnlineSoftQNets(OnlineNets):
                 pi = pi / torch.sum(pi)
                 a = Categorical(pi).sample()
                 action = a.cpu().numpy()
+                
         return action
 
-class LogUsa(nn.Module):
+class Qsa(nn.Module):
     def __init__(self, env, hidden_dim=256, device='cuda'):
-        super(LogUsa, self).__init__()
+        super(Qsa, self).__init__()
         self.env = env
         self.device = device
         self.nS = get_flattened_obs_dim(self.env.observation_space)
@@ -679,6 +669,38 @@ class PiNet(nn.Module):
         return y
         # return x
     
+      
+class CustomNet(nn.Module):
+    def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):
+        super(CustomNet, self).__init__()
+        self.env = env
+        self.nA = env.action_space.n
+        self.is_image_space = is_image_space(env.observation_space)
+        self.is_tabular = is_tabular(env)
+        self.device = device
+        # Start with an empty model:
+        if self.is_image_space:
+            raise NotImplementedError
+        else:
+            self.nS = env.observation_space.shape
+            input_dim = self.nS[0]
+            self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
+            self.fc2 = torch.nn.Linear(hidden_dim + input_dim, hidden_dim + input_dim)
+            self.fc3 = torch.nn.Linear(hidden_dim + 2*input_dim, self.nA)
+            self.relu = activation()
+
+    def forward(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device)  # Convert to PyTorch tensor
+        
+        x_in = preprocess_obs(x, self.env.observation_space)
+        x = self.relu(self.fc1(x_in))
+        x = torch.cat([x, x_in], dim=-1)
+        x = self.relu(self.fc2(x))
+        x = torch.cat([x, x_in], dim=-1)
+        x = self.fc3(x)
+
+        return x
     
 class SoftQNet(torch.nn.Module):
     def __init__(self, env, device='cuda', hidden_dim=256, activation=nn.ReLU):

@@ -1,0 +1,14 @@
+aggregator: 'max'
+num_nets: 2
+beta: 2
+batch_size: 256
+buffer_size: 100_000
+gradient_steps: 1
+hidden_dim: 256
+learning_rate: 0.001
+learning_starts: 10000
+target_update_interval: 1
+tau: 0.003
+tau_theta: 0.997
+train_freq: 1
+actor_learning_rate: 0.0002

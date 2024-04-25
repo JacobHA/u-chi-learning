@@ -6,6 +6,8 @@ from stable_baselines3.common.utils import safe_mean, should_collect_more_steps
 
 class CustomDQN(DQN):
     def __init__(self, *args, log_interval=500, hidden_dim=64, **kwargs):
+        # strip the render arg:
+        self.render = kwargs.pop('render', False)
         super().__init__('MlpPolicy', *args, verbose=4, **kwargs)
         self.eval_auc = 0
         self.eval_rwd = 0
@@ -39,7 +41,7 @@ class CustomDQN(DQN):
             while not done:
                 action = self.predict(state, deterministic=True)[0]
                 next_state, reward, done, _ = self.eval_env.step(action)
-                avg_reward += reward
+                avg_reward += reward.item()
                 state = next_state
         avg_reward /= n_episodes
         self.eval_env.close()

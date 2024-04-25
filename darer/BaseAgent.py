@@ -59,12 +59,14 @@ class BaseAgent:
     def __init__(self,
                  env_id: Union[str, gym.Env],
                  learning_rate: float = 1e-3,
-                 beta: float = 0.1,
+                 beta: Union[float, str] = 0.1,
                  beta_schedule: str = 'none',
                  batch_size: int = 64,
                  buffer_size: int = 100_000,
                  target_update_interval: int = 10_000,
                  tau: float = 1.0,
+                 prior_update_interval: int = 1_000,
+                 prior_tau: float = 0.9,
                  hidden_dim: int = 64,
                  num_nets: int = 2,
                  tau_theta: float = 0.995,
@@ -107,13 +109,14 @@ class BaseAgent:
             self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
-        self.beta = beta
+        self.beta = float(beta)
         self.beta_schedule = beta_schedule
         self.batch_size = batch_size
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.target_update_interval = target_update_interval
         self.tau = tau
+        self.prior_update_interval = prior_update_interval
         self.hidden_dim = hidden_dim
         self.gradient_steps = gradient_steps
         if device == "auto":
@@ -188,40 +191,21 @@ class BaseAgent:
         Sample the replay buffer and do the updates
         (gradient descent and update target networks)
         """
-        self.new_theta_pending = 0
-        self.new_theta_counter = 1
+        
         # Increase update counter
         self._n_updates += gradient_steps
         # average self.theta over multiple gradient steps
-        self.new_thetas = torch.zeros(gradient_steps).to(self.device)
         for grad_step in range(gradient_steps):
             # Sample a batch from the replay buffer:
             batch = self.replay_buffer.sample(batch_size)
-            # loss = 
             self.gradient_descent(batch, grad_step)
-            # self.optimizers.zero_grad()
 
-            # # Clip gradient norm
-            # loss.backward()
-            # self.model.clip_grad_norm(self.max_grad_norm)
-            # self.optimizers.step()
-
-        # TODO: Clamp based on reward range
-        # new_thetas = torch.clamp(new_thetas, self.min_rwd, self.max_rwd)
-        self.new_thetas = torch.clamp(self.new_thetas, min=-50, max=50)
-        new_theta = self.new_thetas.mean(dim=0)
-        self.logger.record(f"train/new_theta", new_theta.item())
 
         # Can't use env_steps b/c we are inside the learn function which is called only
-        # every train_freq steps:
-        # new_theta = self.new_theta_pending / self.new_theta_counter
-        self.theta = self.tau_theta * self.theta + \
-            (1 - self.tau_theta) * new_theta
-        # else:
-        #     self.new_theta_pending += new_theta
-        #     self.new_theta_counter += 1
-        #     self.logger.record("train/theta_buffer", self.new_theta_pending.item() / self.new_theta_counter)
-
+        # # every train_freq steps:
+        # self.theta = self.tau_theta * self.theta + \
+        #     (1 - self.tau_theta) * new_theta
+        
         # # Log info from this training cycle:
         # self.logger.record("train/avg logu", curr_logu.mean().item())
         # self.logger.record("train/min logu", curr_logu.min().item())
@@ -272,7 +256,7 @@ class BaseAgent:
                 # action = self.env.action_space.sample()
 
                 next_state, reward, terminated, truncated, infos = self.env.step(
-                    action.item())
+                    action)
                 self._on_step()
                 avg_ep_len += 1
                 done = terminated or truncated
@@ -338,6 +322,9 @@ class BaseAgent:
         if self.env_steps % self.target_update_interval == 0:
             self._update_target()
 
+        if self.env_steps % self.prior_update_interval == 0:
+            self._update_prior()
+
         if self.env_steps % self.log_interval == 0:
             # Log info from this training cycle:
             self.logger.record("train/theta", self.theta.item())
@@ -357,7 +344,7 @@ class BaseAgent:
             torch.save(self.online_logu.state_dict(),
                        'sql-policy.para')
         # Get the current learning rate from the optimizer:
-        self.lr = 0#self.u_optimizers.get_lr()
+        self.lr = 0#self.optimzers.get_lr()
         log_class_vars(self, self.logger, LOG_PARAMS, use_wandb=self.use_wandb)
 
         if self.is_tabular:
@@ -399,7 +386,7 @@ class BaseAgent:
                 n_steps += 1
 
                 next_state, reward, terminated, truncated, info = self.eval_env.step(
-                    action.item())
+                    action)
                 avg_reward += reward
                 state = next_state
                 done = terminated or truncated
@@ -433,8 +420,10 @@ class BaseAgent:
             self.betas = torch.linspace(
                 self.beta, self.beta_end, total_timesteps).to(self.device)
         elif beta_schedule == 'none':
-            self.betas = torch.tensor(
-                [self.beta] * total_timesteps).to(self.device)
+            if self.beta == 'auto':
+                self.betas = torch.tensor([1.0] * total_timesteps).to(self.device)
+            else:
+                self.betas = torch.tensor([self.beta] * total_timesteps).to(self.device)
         else:
             raise NotImplementedError(
                 f"Unknown beta schedule: {beta_schedule}")

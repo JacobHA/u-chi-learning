@@ -8,7 +8,7 @@ import os
 sys.path.append('darer')
 from UAgent import UAgent
 from LogUAgent import LogUAgent
-from arSAC import arSAC
+from ASAC import ASAC
 from utils import safe_open, sample_wandb_hyperparams
 
 
@@ -17,6 +17,12 @@ env_to_steps = {
     'Acrobot-v1': 5_000,
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 500_000,
+    'HalfCheetah-v4': 1_000_000,
+    'Ant-v4': 1_000_000,
+    'Humanoid-v4': 1_000_000,
+    'Hopper-v4': 1_000_000,
+    'Swimmer-v4': 1_000_000,
+    'Reacher-v4': 1_000_000,
 }
 
 env_to_logfreq = {
@@ -24,11 +30,16 @@ env_to_logfreq = {
     'Acrobot-v1': 200,
     'LunarLander-v2': 1000,
     'MountainCar-v0': 100,
+    'HalfCheetah-v4': 2500,
+    'Ant-v4': 2500,
+    'Humanoid-v4': 2500,
+    'Swimmer-v4': 2500,
+    'Reacher-v4': 2500,
 }
 
 algo_to_agent = {
     'u': UAgent,
-    'arSAC': arSAC,
+    'asac': ASAC,
     'logu': LogUAgent
 }
 
@@ -107,11 +118,11 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
-    args.add_argument('--project', type=str, default='eval-full-ft')
-    args.add_argument('--env_id', type=str, default='CartPole-v1')
-    args.add_argument('--algo', type=str, default='logu')
-    args.add_argument('--device', type=str, default='cpu')
-    args.add_argument('--exp-name', type=str, default='EVAL')
+    args.add_argument('--project', type=str, default='mj-sweep')
+    args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
+    args.add_argument('--algo', type=str, default='asac')
+    args.add_argument('--device', type=str, default='auto')
+    args.add_argument('--exp-name', type=str, default='mujoco')
 
     args = args.parse_args()
 

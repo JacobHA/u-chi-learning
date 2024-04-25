@@ -1,13 +1,12 @@
-from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape, get_flattened_obs_dim, preprocess_obs
+from stable_baselines3.common.preprocessing import get_action_dim, get_flattened_obs_dim
 import numpy as np
 import torch
 from torch.nn import functional as F
-from stable_baselines3.common.utils import get_parameters_by_name, polyak_update
 
 # import wandb
 import sys
 sys.path.append('darer')
-from Models import LogUsa, OnlineUNets, Optimizers, TargetNets,  GaussianPolicy, Usa
+from Models import Qsa, OnlineUNets, Optimizers, TargetNets
 from BaseAgent import BaseAgent
 from utils import logger_at_folder
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
@@ -15,42 +14,48 @@ from stable_baselines3.sac.policies import Actor
 import torch as th
 
 
-torch.backends.cudnn.benchmark = True
+# torch.backends.cudnn.benchmark = True
 # raise warning level for debugger:
-import warnings
-warnings.filterwarnings("error")
-class arSAC(BaseAgent):
+# import warnings
+# warnings.filterwarnings("error")
+class ASAC(BaseAgent):
     def __init__(self,
                  *args,
                  actor_learning_rate: float = 1e-3,
-                 beta = 'auto',
+                #  beta = 'auto',
+                 use_ppi: bool = False,
+                 use_dones: bool = True,
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = 'arSAC-nodone-autotemp'
-
+        self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'max'
+        self.use_dones = use_dones
+        self.use_ppi = use_ppi
         self.actor_learning_rate = actor_learning_rate
         self.nA = get_action_dim(self.env.action_space)        
         self.nS = get_flattened_obs_dim(self.env.observation_space)
 
         # Set up the logger:
         self.logger = logger_at_folder(self.tensorboard_log,
-                                       algo_name=f'{self.env_str}-{self.algo_name}{beta if beta == "auto" else ""}')
+                                       algo_name=f'{self.env_str}-{self.algo_name}{self.beta if self.beta == "auto" else ""}')
         self.log_hparams(self.logger)
         self.logpi0 = th.log(th.tensor(1/self.nA, device=self.device))
         # self.ent_coef_optimizer: Optional[th.optim.Adam] = None
-        self.ent_coef = beta
+        if self.beta != 'auto':
+            self.ent_coef = self.beta**(-1)
+        else:
+            self.ent_coef = 'auto'
         self._initialize_networks()
         self.target_entropy = float(-np.prod(self.env.action_space.shape).astype(np.float32))
 
 
     def _initialize_networks(self):
-        self.online_critics = OnlineUNets([LogUsa(self.env,
+        self.online_critics = OnlineUNets([Qsa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)],
                                         aggregator_fn=self.aggregator_fn)
-        self.target_critics = TargetNets([LogUsa(self.env,
+        self.target_critics = TargetNets([Qsa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)])
@@ -149,49 +154,51 @@ class arSAC(BaseAgent):
             self.ent_coef_optimizer.zero_grad()
             ent_coef_loss.backward()
             self.ent_coef_optimizer.step()
-
             
         # Get current Q-values estimates for each critic network
         # using action from the replay buffer
         current_q_values = self.online_critics(states, actions)
-
- 
 
         with th.no_grad():
             # Select action according to policy
             next_actions, next_log_prob = self.actor.action_log_prob(next_states)
             # Compute the next Q values: min over all critics targets
             next_q_values = th.cat(self.target_critics(next_states, next_actions), dim=1)
-            next_q_values = self.aggregator_fn(next_q_values, dim=1)#, keepdim=True)
+            next_q_values = self.aggregator_fn(next_q_values, dim=1) 
             # add entropy term
-            # next_q_values = next_q_values - ent_coef * next_log_prob.reshape(-1, 1)
+            next_v_values = next_q_values - ent_coef * (next_log_prob.reshape(-1, 1) - self.logpi0)
             # td error + entropy term
-            # target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
-            target_q_values = (1/ent_coef) * (rewards - self.theta) + (next_q_values + self.logpi0 - next_log_prob.reshape(-1, 1)) 
+            # target_q_values = rewards +  * self.gamma * next_q_values
+            if self.use_dones:
+                next_v_values = next_v_values * (1 - dones)
+
+            target_q_values = rewards - self.theta + next_v_values 
 
             min_q_values = th.cat(current_q_values, dim=1)
-            min_q_values = self.aggregator_fn(min_q_values, dim=1)#, keepdim=True)
+            min_q_values = self.aggregator_fn(min_q_values, dim=1)
 
-        new_theta = th.mean(rewards + ent_coef * ((next_q_values + self.logpi0 - next_log_prob.reshape(-1, 1)) - min_q_values))
+            # new_theta = th.mean(rewards + next_v_values - min_q_values)
+            new_theta = th.mean(rewards - ent_coef * (log_prob.reshape(-1, 1) - self.logpi0))
+            self.logger.record(f"train/new_theta", new_theta.item())
+
         self.theta += self.tau_theta * (new_theta - self.theta)
-
 
         # Compute critic loss
         critic_loss = 0.5 * sum(F.mse_loss(current_q, target_q_values) for current_q in current_q_values)
         assert isinstance(critic_loss, th.Tensor)  # for type checker
-        # critic_losses.append(critic_loss.item())  # type: ignore[union-attr]
 
+
+        self.lr = self.q_optimizers.get_lr()
         # Optimize the critic
         self.q_optimizers.zero_grad()
         critic_loss.backward()
         self.q_optimizers.step()
 
         # Compute actor loss
-        # Alternative: actor_loss = th.mean(log_prob - qf1_pi)
         # Min over all critic networks
         q_values_pi = th.cat(self.online_critics(states, actions_pi), dim=1)
-        min_qf_pi = self.aggregator_fn(q_values_pi, dim=1)#, keepdim=True)
-        actor_loss = (log_prob - min_qf_pi).mean()
+        min_qf_pi = self.aggregator_fn(q_values_pi, dim=1)
+        actor_loss = (ent_coef * log_prob - min_qf_pi).mean()
 
         # Optimize the actor
         self.actor_optimizer.zero_grad()
@@ -212,6 +219,12 @@ class arSAC(BaseAgent):
         # polyak_update(self.batch_norm_stats, self.batch_norm_stats_target, 1.0)
 
 
+    def _update_prior(self):
+        if self.use_ppi:
+            # Polyak average the prior:
+            self.target_prior.polyak(self.online_prior, self.tau)
+
+
 def main():
     # env_id = 'LunarLanderContinuous-v2'
     # env_id = 'BipedalWalker-v3'
@@ -223,7 +236,7 @@ def main():
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     # from simple_env import SimpleEnv
-    agent = arSAC(env_id, **config, device='cuda',
+    agent = ASAC(env_id, **config, device='cuda',
                     num_nets=2, tensorboard_log='pend', 
                     actor_learning_rate=1e-4, 
                     render=False, max_grad_norm=10, log_interval=2000,
