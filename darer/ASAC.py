@@ -23,14 +23,14 @@ class ASAC(BaseAgent):
                  *args,
                  actor_learning_rate: float = 1e-3,
                 #  beta = 'auto',
-                 use_rawlik: bool = False,
+                 use_ppi: bool = False,
                  use_dones: bool = True,
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
         self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'max'
         self.use_dones = use_dones
-        self.use_rawlik = use_rawlik
+        self.use_ppi = use_ppi
         self.actor_learning_rate = actor_learning_rate
         self.nA = get_action_dim(self.env.action_space)        
         self.nS = get_flattened_obs_dim(self.env.observation_space)
@@ -220,7 +220,7 @@ class ASAC(BaseAgent):
 
 
     def _update_prior(self):
-        if self.use_rawlik:
+        if self.use_ppi:
             # Polyak average the prior:
             self.target_prior.polyak(self.online_prior, self.tau)
 

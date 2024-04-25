@@ -109,7 +109,7 @@ class BaseAgent:
             self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
-        self.beta = beta
+        self.beta = float(beta)
         self.beta_schedule = beta_schedule
         self.batch_size = batch_size
         self.buffer_size = buffer_size

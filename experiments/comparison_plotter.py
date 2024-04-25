@@ -97,8 +97,7 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
                     labels.append(label)
                 # swap U for EVAL:
                 labels = [label.replace('U', 'EVAL') for label in labels]
-                # Swap Rawlik for PPI:
-                labels = [label.replace('rawlik', 'PPI') for label in labels]
+                labels = [label.replace('ppi', 'PPI') for label in labels]
                 # Remove the number of runs:
                 # labels = [label.split(' (')[0] for label in labels]
             # labels = [label.split(title+'-')[-1] for label in labels]

@@ -8,14 +8,14 @@ from utils import logger_at_folder
 class ASQL(BaseAgent):
     def __init__(self,
                  *args,
-                 use_rawlik=False,
+                 use_ppi=False,
                  prior_update_interval: int = 1_000,
                  prior_tau: float = 0.9,
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = 'ASQL' + ('-PPI' if use_rawlik else '')
-        self.use_rawlik = use_rawlik
+        self.algo_name = 'ASQL' + ('-PPI' if use_ppi else '')
+        self.use_ppi = use_ppi
         self.prior_update_interval = prior_update_interval
         self.prior_tau = prior_tau
         # Set up the logger:
@@ -43,7 +43,7 @@ class ASQL(BaseAgent):
         opts = [torch.optim.Adam(q.parameters(), lr=self.learning_rate)
                 for q in self.online_qs]
 
-        if self.use_rawlik:
+        if self.use_ppi:
             self.online_prior = OnlineUNets(
                 [PiNet(self.env, hidden_dim=self.hidden_dim, device=self.device)],
                 aggregator_fn=self.aggregator_fn)
@@ -61,21 +61,21 @@ class ASQL(BaseAgent):
         kl = 0
         pi0 = None
 
-        if self.use_rawlik:
+        if self.use_ppi:
             pi0 = self.target_prior.nets[0](state).squeeze()
 
         return self.online_qs.choose_action(state, self.beta, greedy=False, prior=pi0), kl
 
     def evaluation_policy(self, state: np.ndarray) -> int:
         pi0 = None
-        if self.use_rawlik:
+        if self.use_ppi:
             pi0 = self.target_prior.nets[0](state).squeeze()
                 
         return self.online_qs.choose_action(state, self.beta, greedy=True, prior=pi0)
 
     def gradient_descent(self, batch, grad_step: int):
         states, actions, next_states, dones, rewards = batch
-        if self.use_rawlik:
+        if self.use_ppi:
             curr_priora = self.online_prior.nets[0](states).squeeze()
 
         # Calculate the current q values (feedforward):
@@ -88,12 +88,11 @@ class ASQL(BaseAgent):
             online_curr_q = torch.stack([q(states).gather(1, actions)
                                             for q in self.online_qs], dim=0)
 
-            if self.use_rawlik:
+            if self.use_ppi:
                 target_priora = self.target_prior.nets[0](states).squeeze()
                 # target_priora /= target_priora.sum(dim=-1, keepdim=True)
 
-                target_prior_next = self.target_prior.nets[0](
-                    next_states).squeeze()
+                target_prior_next = self.target_prior.nets[0](next_states).squeeze()
                 target_prior_next /= target_prior_next.sum(
                     dim=-1, keepdim=True)
 
@@ -106,11 +105,12 @@ class ASQL(BaseAgent):
             # Aggregate the qs:
             online_q_next = self.aggregator_fn(online_q_next, dim=0).squeeze(0)
             online_curr_q = self.aggregator_fn(online_curr_q, dim=0).squeeze(0)
-            online_log_chi = torch.logsumexp(online_q_next + log_prior_next.repeat(1, 1), dim=-1, keepdim=True)
-            # online_curr_q = online_curr_q.unsqueeze(-1)
+            online_next_v = self.beta**(-1) * torch.logsumexp(self.beta * online_q_next + log_prior_next.repeat(1, 1), 
+                                                         dim=-1, 
+                                                         keepdim=True)
 
-            # TODO: beta missing on the rewards?
-            new_theta = -torch.mean( rewards + (online_log_chi - online_curr_q) / self.beta, dim=0)
+            # new_theta = -torch.mean( rewards + (online_log_chi - online_curr_q) / self.beta, dim=0)
+            new_theta = torch.mean(rewards + self.beta**(-1) * online_next_v - online_curr_q , dim=0)
             self.theta += self.tau_theta * (new_theta - self.theta)
 
             target_next_qs = [target_q(next_states)
@@ -133,7 +133,7 @@ class ASQL(BaseAgent):
         loss = 0.5*sum(self.loss_fn(q, expected_curr_q)
                        for q in curr_q.T)
         
-        if self.use_rawlik:
+        if self.use_ppi:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
             pistar = torch.exp(self.aggregator_fn(online_curr_q, dim=0)) * target_priora
             pistar /= pistar.sum(dim=-1, keepdim=True)
@@ -159,5 +159,5 @@ class ASQL(BaseAgent):
 
     def _update_prior(self):
         # Update the prior:
-        if self.use_rawlik:
+        if self.use_ppi:
             self.target_prior.polyak(self.online_prior, self.prior_tau)
