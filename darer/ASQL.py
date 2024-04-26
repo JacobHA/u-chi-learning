@@ -109,7 +109,10 @@ class ASQL(BaseAgent):
                                                          keepdim=True)
 
             # new_theta = -torch.mean( rewards + (online_log_chi - online_curr_q) / self.beta, dim=0)
-            new_theta = torch.mean(rewards + self.beta**(-1) * online_next_v - online_curr_q , dim=0)
+            # new_theta = -torch.mean(rewards + self.beta**(-1) * online_next_v - online_curr_q , dim=0)
+            new_theta = torch.mean(rewards - online_curr_q + online_next_v, dim=0)
+
+
             self.theta = (1 - self.tau_theta) * self.theta + self.tau_theta * new_theta
 
             target_next_qs = [target_q(next_states)
@@ -125,7 +128,7 @@ class ASQL(BaseAgent):
             next_v = next_v * (1 - dones)  # + self.theta * dones
 
             # "Backup" eigenvector equation:
-            expected_curr_q = rewards + self.theta + next_v
+            expected_curr_q = rewards - self.theta + next_v
             expected_curr_q = expected_curr_q.squeeze(1)
 
         # Calculate the q ("critic") loss:

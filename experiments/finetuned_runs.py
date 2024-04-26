@@ -19,7 +19,8 @@ env_to_steps = {
     'MountainCar-v0': 500_000,
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
-    'Swimmer-v4': 250_000
+    'Swimmer-v4': 250_000,
+    'Humanoid-v4': 5_000_000,
 }
 
 env_to_logfreq = {
@@ -29,7 +30,8 @@ env_to_logfreq = {
     'MountainCar-v0': 100,
     'HalfCheetah-v4': 2500,
     'Swimmer-v4': 5000,
-    'Ant-v4': 5000
+    'Ant-v4': 5000,
+    'Humanoid-v4': 10000,
 }
 
 args = argparse.ArgumentParser()
