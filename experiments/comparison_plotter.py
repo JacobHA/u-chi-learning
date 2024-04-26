@@ -97,8 +97,7 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
                     labels.append(label)
                 # swap U for EVAL:
                 labels = [label.replace('U', 'EVAL') for label in labels]
-                # Swap Rawlik for PPI:
-                labels = [label.replace('rawlik', 'PPI') for label in labels]
+                labels = [label.replace('ppi', 'PPI') for label in labels]
                 # Remove the number of runs:
                 # labels = [label.split(' (')[0] for label in labels]
             # labels = [label.split(title+'-')[-1] for label in labels]
@@ -141,7 +140,11 @@ if __name__ == "__main__":
         # plotter(folder=folder, metrics=['rollout/ep_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin', 'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
 
         try:
-            plotter(env=env, folder=folder, metrics=['eval/avg_reward','rollout/ep_reward'], title=env)
+            plotter(env=env, 
+                    folder=folder, 
+                    metrics=['eval/avg_reward','rollout/ep_reward', 'train/theta', 'rollout/neg_free_energy'], 
+                    title=env,
+                    exclude_algos=[f'{env}-arSAC-autoauto', f'{env}-arSAC-min', f'{env}-arSAC-autonewhauto', f'{env}-arSAC'])
         except KeyError:
             print("No data to plot.")
 
