@@ -235,7 +235,7 @@ def sample_wandb_hyperparams(params, int_hparams=None):
             else:
                 raise NotImplementedError
         else:
-            raise NotImplementedError
+            raise NotImplementedError # f"Value {v} not recognized."
         if k in int_hparams:
             sampled[k] = int(sampled[k])
     return sampled

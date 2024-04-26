@@ -7,8 +7,9 @@ import os
 
 sys.path.append('darer')
 from UAgent import UAgent
-from LogUAgent import LogUAgent
+from ASQL import ASQL
 from ASAC import ASAC
+from SoftQAgent import SoftQAgent
 from utils import safe_open, sample_wandb_hyperparams
 
 
@@ -26,7 +27,7 @@ env_to_steps = {
 }
 
 env_to_logfreq = {
-    'CartPole-v1': 200,
+    'CartPole-v1': 400,
     'Acrobot-v1': 200,
     'LunarLander-v2': 1000,
     'MountainCar-v0': 100,
@@ -40,7 +41,8 @@ env_to_logfreq = {
 algo_to_agent = {
     'u': UAgent,
     'asac': ASAC,
-    'logu': LogUAgent
+    'sql': SoftQAgent,
+    'asql': ASQL,
 }
 
 int_hparams = {'train_freq', 'gradient_steps'}
@@ -119,7 +121,7 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
     args.add_argument('--project', type=str, default='mj-sweep')
-    args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
+    args.add_argument('--env', type=str, default='HalfCheetah-v4')
     args.add_argument('--algo', type=str, default='asac')
     args.add_argument('--device', type=str, default='auto')
     args.add_argument('--exp-name', type=str, default='mujoco')
@@ -131,5 +133,5 @@ if __name__ == '__main__':
     sweep_cfg = safe_open(f'sweeps/{args.exp_name}.yaml')
 
     for i in range(args.count):
-        main(sweep_cfg, env_id=args.env_id, algo=args.algo, project=args.project, device=args.device)
+        main(sweep_cfg, env_id=args.env, algo=args.algo, project=args.project, device=args.device)
 
