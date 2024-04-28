@@ -111,7 +111,7 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics,
             plt.ylabel(name)
 
             plt.tight_layout()
-            plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}-{env}.png"), dpi=300)
+            plt.savefig(os.path.join(folder, f"{metric.split('/')[-1]}.png"), dpi=300)
             plt.close()
         else:
             print("No data to plot.")
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     if env == '':
         envs = ['Acrobot-v1', 'CartPole-v1', 'MountainCar-v0', 'LunarLander-v2']
 
-        envs += ['Swimmer-v4', 'Reacher-v4', 'Ant-v4', 'HalfCheetah-v4']
+        envs += ['Swimmer-v4', 'Reacher-v4', 'Ant-v4', 'HalfCheetah-v4', 'Swimmer-v4/gamma']
     else:
         envs = [env]
 
@@ -154,7 +154,7 @@ if __name__ == "__main__":
                     exclude_algos=[f'{env}-arSAC-autoauto', f'{env}-arSAC-min', f'{env}-arSAC-autonewhauto', f'{env}-arSAC'],
                     **env_to_settings.get(env, {})                    
                     ,
-                    include_algos=[f'{env}-arDDPG', 'SAC']#, f'{env}-arSAC-newh']
+                    include_algos=[f'{env}-arDDPG', 'SAC', f'{env}-arSAC-newh']
                     )
         except KeyError:
             print("No data to plot.")
