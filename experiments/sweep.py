@@ -10,6 +10,7 @@ from UAgent import UAgent
 from ASQL import ASQL
 from ASAC import ASAC
 from SoftQAgent import SoftQAgent
+from CustomSAC import CustomSAC
 from utils import safe_open, sample_wandb_hyperparams
 
 
@@ -17,7 +18,7 @@ env_to_steps = {
     'CartPole-v1': 10_000,
     'Acrobot-v1': 5_000,
     'LunarLander-v2': 200_000,
-    'MountainCar-v0': 500_000,
+    'MountainCar-v0': 200_000,
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
     'Humanoid-v4': 1_000_000,
@@ -30,11 +31,11 @@ env_to_logfreq = {
     'CartPole-v1': 400,
     'Acrobot-v1': 200,
     'LunarLander-v2': 1000,
-    'MountainCar-v0': 100,
+    'MountainCar-v0': 1000,
     'HalfCheetah-v4': 2500,
     'Ant-v4': 2500,
     'Humanoid-v4': 2500,
-    'Swimmer-v4': 2500,
+    'Swimmer-v4': 5000,
     'Reacher-v4': 2500,
 }
 
@@ -43,6 +44,7 @@ algo_to_agent = {
     'asac': ASAC,
     'sql': SoftQAgent,
     'asql': ASQL,
+    'sac': CustomSAC
 }
 
 int_hparams = {'train_freq', 'gradient_steps'}
@@ -64,7 +66,8 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
     wandb_kwargs = {"project": project}
     if sweep_config:
         sweep_config["controller"] = {'type': 'local'}
-        sampled_params = sample_wandb_hyperparams(sweep_config["parameters"], int_hparams=int_hparams)
+        sampled_params = sample_wandb_hyperparams(sweep_config["parameters"], 
+                                                    int_hparams=int_hparams)
         print(f"locally sampled params: {sampled_params}")
         wandb_kwargs['config'] = sampled_params
 
@@ -98,15 +101,16 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 
             # cast sampled params to int if they are in int_hparams
             for k in int_hparams:
-                full_config[k] = int(full_config[k])
+                if k in full_config:
+                    full_config[k] = int(full_config[k])
 
             # Choose the algo appropriately
-            Agent = algo_to_agent.get(algo, UAgent)
+            Agent = algo_to_agent[algo]
 
             agent = Agent(env_id, **full_config,
                                 device=device, log_interval=env_to_logfreq.get(env_id, 500),
                                 tensorboard_log=log_dir,
-                                render=False,)
+                                )
 
             # Measure the time it takes to learn:
             agent.learn(total_timesteps=total_timesteps)
@@ -120,11 +124,12 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
-    args.add_argument('--project', type=str, default='mj-sweep')
-    args.add_argument('--env', type=str, default='HalfCheetah-v4')
-    args.add_argument('--algo', type=str, default='asac')
+    args.add_argument('--project', type=str, default='discount')
+    args.add_argument('--env', type=str, default='Swimmer-v4')
+    args.add_argument('--algo', type=str, default='sac')
     args.add_argument('--device', type=str, default='auto')
-    args.add_argument('--exp-name', type=str, default='mujoco')
+    args.add_argument('--exp-name', type=str, default='gamma')
+    args.add_argument('--log', type=str, default='tf_logs')
 
     args = args.parse_args()
 
@@ -133,5 +138,10 @@ if __name__ == '__main__':
     sweep_cfg = safe_open(f'sweeps/{args.exp_name}.yaml')
 
     for i in range(args.count):
-        main(sweep_cfg, env_id=args.env, algo=args.algo, project=args.project, device=args.device)
+        main(sweep_cfg,
+             env_id=args.env,
+             algo=args.algo,
+             project=args.project,
+             device=args.device,
+             log_dir=args.log)
 
