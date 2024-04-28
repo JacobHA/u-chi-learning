@@ -135,7 +135,12 @@ if __name__ == "__main__":
         # folder = f'experiments/ft/{env}/'
         folder = f'ft_logs/{args.experiment_name}/{env}'
         # folder = f'experiments/ablations/{env}/'
-        # env_to_settings = {
+        env_to_settings = {"Acrobot-v1":
+                            {
+                                "xlim": (0, 5000),
+                                # "ylim": (-500, 0),
+                            },
+                            }
         
 
         # plotter(folder=folder, metrics=['eval/avg_reward'], ylim=(0, 510), exclude_algos=['CartPole-v1-U','CartPole-v1-Umin',  'CartPole-v1-Ured', 'CartPole-v1-Umean', 'CartPole-v1-Umse-b02', ])
@@ -147,6 +152,8 @@ if __name__ == "__main__":
                     metrics=['eval/avg_reward','rollout/ep_reward', 'train/theta', 'rollout/neg_free_energy'], 
                     title=env,
                     exclude_algos=[f'{env}-arSAC-autoauto', f'{env}-arSAC-min', f'{env}-arSAC-autonewhauto', f'{env}-arSAC'],
+                    **env_to_settings.get(env, {})                    
+                    ,
                     include_algos=[f'{env}-arDDPG', 'SAC']#, f'{env}-arSAC-newh']
                     )
         except KeyError:
