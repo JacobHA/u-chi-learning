@@ -1,0 +1,10 @@
+method: grid
+metric:
+  goal: maximize
+  name: eval/auc
+parameters:
+  gamma:
+    values:
+      - 0.99
+      - 0.999
+      - 0.9999
