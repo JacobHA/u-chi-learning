@@ -25,10 +25,11 @@ class ASAC(BaseAgent):
                 #  beta = 'auto',
                  use_ppi: bool = False,
                  use_dones: bool = True,
+                 name_suffix: str = '',
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'max'
+        self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + name_suffix
         self.use_dones = use_dones
         self.use_ppi = use_ppi
         self.actor_learning_rate = actor_learning_rate
@@ -37,7 +38,7 @@ class ASAC(BaseAgent):
 
         # Set up the logger:
         self.logger = logger_at_folder(self.tensorboard_log,
-                                       algo_name=f'{self.env_str}-{self.algo_name}{self.beta if self.beta == "auto" else ""}')
+                                       algo_name=f'{self.env_str}-{self.algo_name}')
         self.log_hparams(self.logger)
         self.logpi0 = th.log(th.tensor(1/self.nA, device=self.device))
         # self.ent_coef_optimizer: Optional[th.optim.Adam] = None
@@ -192,6 +193,31 @@ class ASAC(BaseAgent):
         # Optimize the critic
         self.q_optimizers.zero_grad()
         critic_loss.backward()
+        self.online_critics.clip_grad_norm(self.max_grad_norm)
+        # After computing the gradients and before performing the optimization step, calculate the gradient norms
+        # Initialize a list to store gradient norms
+        grad_norms = []
+
+        # Iterate over the parameters of the online critics
+        for param in self.online_critics.parameters():
+            for p in param:
+                # Check if the parameter has a gradient (i.e., it's trainable)
+                if p.grad is not None:
+                    # Calculate and store the gradient norm
+                    grad_norms.append(torch.norm(p.grad).item())
+
+        # Check if any gradients were found
+        if grad_norms:
+            # Compute the maximum gradient norm
+            max_grad_norm = max(grad_norms)
+        else:
+            # No gradients found, set max_grad_norm to 0
+            max_grad_norm = 0.0
+
+        # Log the maximum gradient norm
+        self.logger.record("train/max_grad_norm", max_grad_norm)
+
+
         self.q_optimizers.step()
 
         # Compute actor loss
