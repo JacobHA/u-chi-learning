@@ -190,8 +190,10 @@ class CustomSAC(SAC):
         self.num_episodes = self._episode_num
         if isinstance(self.ent_coef, str):
             self.beta = 1
-        else:
+        elif isinstance(self.ent_coef, th.Tensor):
             self.beta = 1 / self.ent_coef.detach().item() 
+        elif isinstance(self.ent_coef, float):
+            self.beta = 1 / self.ent_coef
         if self.num_timesteps % self.log_interval == 0:
             self._log_stats()
 
