@@ -5,7 +5,7 @@ import gymnasium as gym
 import sys
 sys.path.append('darer')
 sys.path.append('../darer')
-from Models import OnlineLogUNets, LogUNet
+from Models import OnlineQNets, QNet
 
 num_actions = 5
 num_nets = 3
@@ -26,17 +26,17 @@ def online_nets():
     dummy_env = DummyEnv()
     # Set the torch random seed:
     torch.manual_seed(0)
-    list_of_nets = [LogUNet(dummy_env, device='cpu', hidden_dim=8) for _ in range(num_nets)]
-    return OnlineLogUNets(list_of_nets, str_to_aggregator['min'])
+    list_of_nets = [QNet(dummy_env, device='cpu', hidden_dim=8) for _ in range(num_nets)]
+    return OnlineQNets(list_of_nets, str_to_aggregator['min'])
 
 def test_greedy_action(online_nets):
     state = DummyEnv().observation_space.sample()
-    action = online_nets.choose_action(state, greedy=True)
+    action = online_nets.choose_action(state, beta=1, greedy=True)
     assert action in DummyEnv().action_space
 
 def test_choose_action(online_nets):
     state = DummyEnv().observation_space.sample()
-    action = online_nets.choose_action(state)
+    action = online_nets.choose_action(state, beta=1, greedy=False)
     assert action in DummyEnv().action_space
 
 def test_parameters(online_nets):
