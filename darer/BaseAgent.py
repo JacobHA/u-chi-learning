@@ -109,7 +109,7 @@ class BaseAgent:
             self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
-        self.beta = float(beta)
+        self.beta = float(beta) if isinstance(beta, int) else beta
         self.beta_schedule = beta_schedule
         self.batch_size = batch_size
         self.buffer_size = buffer_size
@@ -370,8 +370,9 @@ class BaseAgent:
         # run the current policy and return the average reward
         self.initial_time = time.process_time_ns()
         avg_reward = 0.
-        # log the action frequencies:
-        action_freqs = torch.zeros(self.nA)
+        if isinstance(self.env.action_space, gym.spaces.Discrete):
+            # log the action frequencies:
+            action_freqs = torch.zeros(self.nA)
         n_steps = 0
         for ep in range(n_episodes):
             state, _ = self.eval_env.reset()
@@ -428,3 +429,7 @@ class BaseAgent:
             raise NotImplementedError(
                 f"Unknown beta schedule: {beta_schedule}")
         return self.betas
+
+
+    def _update_prior(self):
+        pass

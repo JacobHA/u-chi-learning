@@ -104,12 +104,12 @@ class Actor(nn.Module):
         self.device = torch.device(device) if device != 'auto' else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         if(state_dim is None):
-           self.state_dim = env.observation_space.shape[0]
+           self.state_dim = self.env.observation_space.shape[0]
         else:
            self.state_dim = state_dim
         
         if(action_dim is None):
-           self.action_dim = env.action_space.shape[0]
+           self.action_dim = self.env.action_space.shape[0]
         else: 
            self.action_dim = action_dim 
 
@@ -124,20 +124,20 @@ class Actor(nn.Module):
         self.optimizer = Adam(self.parameters(),lr = lr)
         
     def forward(self,state):
-        state = state.to(self.device)
-        return self.policy_net(state).to('cpu')
+        state = state.to(self.device, dtype = torch.float32)
+        return self.policy_net(state).to(self.device)
             
     def get_action(self,state):
         
         action = self(state)        
         action = torch.tanh(action)
          
-        return action
+        return action.to(self.device)
         
         
 class Critic(nn.Module):
      def __init__(self, env, act_func = nn.ReLU, lr = 3e-4, state_dim = None, 
-                  action_dim = None, n_hidden_nodes = 256, device = torch.device('cpu')):
+                  action_dim = None, n_hidden_nodes = 256, device = torch.device('cuda')):
         super(Critic, self).__init__()
          
         self.env = env
@@ -171,8 +171,8 @@ class Critic(nn.Module):
         self.optimizer = Adam(self.parameters(), lr = lr)
         
      def forward(self,state):
-         state = state.to(self.device)
-         return self.q_net1(state).to(torch.device('cpu')), self.q_net2(state).to(torch.device('cpu'))            
+         state = state.to(self.device, dtype = torch.float32)
+         return self.q_net1(state).to(self.device), self.q_net2(state).to(self.device)            
         
         
 class Agent:
@@ -188,50 +188,49 @@ class Agent:
 
         self.log = config['log']
         self.logger = logger
-
-        self.state_dim = config['state_dim']
-        
-        self.action_dim = config['action_dim'] 
-        
-        self.actor = Actor(env, state_dim = self.state_dim, action_dim = self.action_dim,lr = config['lr_actor'], 
+                
+        self.actor = Actor(env, lr = config['lr_actor'], 
                            n_hidden_nodes = config['actor_hidden'], device = self.device)
         self.actor.to(self.device)
-        self.actor_target = Actor(env, state_dim = self.state_dim, action_dim = self.action_dim,lr = config['lr_actor'],
-                                  n_hidden_nodes = config['actor_hidden'], device = self.device)
+        self.actor_target = Actor(env, lr = config['lr_actor'],
+                                  n_hidden_nodes = config['actor_hidden'], 
+                                  device = self.device)
         self.actor_target.load_state_dict(self.actor.state_dict())
         self.actor_target.to(self.device)
 
-        self.critic = Critic(env, state_dim = self.state_dim, action_dim = self.action_dim,lr = config['lr_critic'], 
-                             n_hidden_nodes = config['critic_hidden'],  device = self.device )
+        self.critic = Critic(env, lr = config['lr_critic'], 
+                             n_hidden_nodes = config['critic_hidden'], 
+                             device = self.device )
         self.critic.to(self.device)
-        self.critic_target = Critic(env, state_dim = self.state_dim, action_dim = self.action_dim,lr = config['lr_critic'], 
-                                    n_hidden_nodes = config['critic_hidden'], device = self.device)
+        self.critic_target = Critic(env, lr = config['lr_critic'], 
+                                    n_hidden_nodes = config['critic_hidden'], 
+                                    device = self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_target.to(self.device)
-        
-        self.rho = torch.tensor([0.0], requires_grad = True, dtype = torch.float)
-
+        self.rho = torch.tensor([0.0], requires_grad = True, dtype = torch.float, device = self.device)
         self.rho_optim = Adam([self.rho],lr = config['lr_rho'])
-
         self.tau = config['tau']
+        self._n_updates = 0
 
                    
       
     def update(self, batch, critic_freq = 1, actor_freq = 2):
         state, action, next_state, done, reward = batch
+        self._n_updates += 1
 
         
         if(self._n_updates % critic_freq == 0):
 
             with torch.no_grad():
                 next_action = self.actor_target.get_action(next_state)                 
-                q1, q2 = self.critic_target(torch.cat([next_state,next_action], axis = 1))
-                temp = (1-done)*(torch.min(q1, q2).reshape(-1))
+                q1, q2 = self.critic_target(torch.cat([next_state, next_action], axis = 1))
+                temp = (1-done)*(torch.min(q1, q2))
                 q_target = reward + temp  
                         
             
             q_values = self.critic(torch.cat([state,action], axis = 1)) 
-            critic_loss = 0.5 * sum([F.mse_loss(current_q.reshape(-1) + self.rho, q_target) for current_q in q_values])
+            critic_loss = 0.5 * sum([F.mse_loss(current_q + self.rho, q_target) for current_q in q_values])
+            self.logger.record("train/critic loss", critic_loss.item())
             
             self.critic.optimizer.zero_grad()
             self.rho_optim.zero_grad()
@@ -240,7 +239,7 @@ class Agent:
         
             self.critic.optimizer.step()
             self.rho_optim.step()
-
+            self.logger.record("train/rho", self.rho.item())
 
     
         if(self._n_updates % actor_freq == 0): 
@@ -266,7 +265,7 @@ class Agent:
                     params_target.data.add_((1 - self.tau)*params)
 
             if(self.log):    
-                self.logger.add_scalar("actor loss", actor_loss.item())
+                self.logger.record("train/actor loss", actor_loss.item())
     
             
     def get_action(self, state):
@@ -280,12 +279,10 @@ config = {
     'actor_hidden': 256,
     'critic_hidden': 256,
     'tau': 0.005,
-    'state_dim': 8,
-    'action_dim': 2,
     'buffer_size': 100_000,
     'batch_size': 256,
     'episodes': 1000,
-    'warmup_samples': 1000,
+    'warmup_samples': 10000,
     'critic_freq': 1,
     'actor_freq': 2,
     'epi_len': 1000,
@@ -293,9 +290,32 @@ config = {
     'total_env_steps': 1_000_000,
     'eval_freq': 1000,
     'update_freq': 1,
-    'device': 'cpu',
+    'device': 'cuda',
     'log': True,
 }    
+
+
+config['seed'] = 10
+config['buffer_size'] = int(1e5)
+config['total_env_steps'] = int(1e6)
+config['batch_size'] = 256
+config['warmup_samples'] = 5000
+config['eval_freq'] = 5000
+config['epi_len'] = 1000
+config['epi_len_eval'] = 10000
+config['act_fn'] = nn.ReLU
+config['tau'] = 0.995
+config['log'] = True
+config['update_freq'] = 1000
+config['critic_freq'] = 1
+config['actor_freq'] = 2
+
+
+config['lr_critic'] = 3e-4
+config['lr_actor'] = 3e-4
+config['lr_rho'] = 3e-4
+config['critic_hidden'] = 128
+config['actor_hidden'] = 128
 
 torch.manual_seed(config['seed'])
 np.random.seed(config['seed'])
@@ -305,12 +325,13 @@ class arDDPG(BaseAgent):
 
         super().__init__(*args, **kwargs)
         self.algo_name = 'arDDPG'
-        
+        self.tensorboard_log = 'ft_logs/EVAL/' + args[0]
         self.logger = logger_at_folder(self.tensorboard_log,
-                                       algo_name=f'{self.env_str}-{self.algo_name}{self.beta if self.beta == "auto" else ""}')
+                                       algo_name=f'{self.env_str}-{self.algo_name}')
         
         
         self.noise = OUNoise(self.env.action_space)
+
         self.agent = Agent(self.env, config, logger = self.logger)
 
 
@@ -318,21 +339,27 @@ class arDDPG(BaseAgent):
         pass
 
     def exploration_policy(self, state):
-        action = self.agent.get_action(torch.tensor(state).float())
-        action = self.noise.get_action(action.detach().numpy())
-        return action
+        with torch.no_grad():
+            action = self.agent.actor.get_action(torch.tensor(state).float())
+            action = self.noise.get_action(action.detach().cpu().numpy())
+            return action, 0
 
     def evaluation_policy(self, state):
-        self.actor.train(False)
-        self.critic.train(False)                    
-        action = self.actor.get_action(torch.tensor(state).float())
+        with torch.no_grad():
+            self.agent.actor.train(False)
+            self.agent.critic.train(False)                    
+            action = self.agent.actor.get_action(torch.tensor(state).float())
 
-        return action
-    
-    def gradient_step(self, buffer, batch_size):
-        self.agent.update(buffer, batch_size = batch_size, gradient_steps = 1, 
+            return action.cpu().numpy()
+        
+    def gradient_descent(self, batch, grad_step: int):
+        self.agent.update(batch,
                           critic_freq = config['critic_freq'], 
                           actor_freq = config['actor_freq'])
+        
+    def _update_target(self):
+        # Target update is done in the update method of the Agent class.
+        pass
 
 # env = dmc2gym.make(config['domain'],config['task'], episode_length = config['epi_len'])
 # env_eval = dmc2gym.make(config['domain'],config['task'], episode_length = config['epi_len_eval'])
@@ -348,8 +375,9 @@ class arDDPG(BaseAgent):
 # epi_len = config['epi_len']
 
 def main():
-    agent = arDDPG('Ant-v4', 1e-4, 1)
-    agent.learn(total_timesteps=500_000)
+    agent = arDDPG('HalfCheetah-v4', 3e-4, 1)
+    agent.learn(total_timesteps=1_000_000)
 
 if __name__ == '__main__':
-    main()
+    for _ in range(10):
+        main()
