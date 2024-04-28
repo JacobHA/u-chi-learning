@@ -22,7 +22,8 @@ sns.set_context("poster")
 # Make font color black:
 plt.rcParams['text.color'] = 'black'
 
-def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
+def plotter(env, folder, x_axis='step', metrics=all_metrics, 
+            exclude_algos=[], include_algos=[],
             xlim=None, ylim=None, title=None):
 
     algo_data = pd.DataFrame()
@@ -36,32 +37,33 @@ def plotter(env, folder, x_axis='step', metrics=all_metrics, exclude_algos=[],
             continue
 
         algo_name = os.path.basename(subfolder).split('_')[0]
-        if algo_name in exclude_algos:
-            print(f"Skipping {algo_name}, in exclude_algos.")
-            continue
+        if algo_name in include_algos or len(include_algos) == 0:
+            if algo_name in exclude_algos:
+                print(f"Skipping {algo_name}, in exclude_algos.")
+                continue
         
-        log_files = glob(os.path.join(subfolder, '*.tfevents.*'))
-        if not log_files:
-            print(f"No log files found in {subfolder}")
-            continue
-        
-        # Require only one log file per folder:
-        # assert len(log_files) == 1
-        print("Processing", os.path.basename(subfolder))
+            log_files = glob(os.path.join(subfolder, '*.tfevents.*'))
+            if not log_files:
+                print(f"No log files found in {subfolder}")
+                continue
+            
+            # Require only one log file per folder:
+            # assert len(log_files) == 1
+            print("Processing", os.path.basename(subfolder))
 
-        try:
-            for log_file in log_files:
-                reader = SummaryReader(log_file)
-                df = reader.scalars
-                df = df[df['tag'].isin(metrics + [x_axis])]
-                # Add a new column with the algo name:
-                df['algo'] = algo_name
-                # Add run number:
-                df['run'] = os.path.basename(subfolder).split('_')[1]
-                algo_data = pd.concat([algo_data, df])
-        except Exception as e:
-            print(f"Error processing: {e}", log_file)
-            continue
+            try:
+                for log_file in log_files:
+                    reader = SummaryReader(log_file)
+                    df = reader.scalars
+                    df = df[df['tag'].isin(metrics + [x_axis])]
+                    # Add a new column with the algo name:
+                    df['algo'] = algo_name
+                    # Add run number:
+                    df['run'] = os.path.basename(subfolder).split('_')[1]
+                    algo_data = pd.concat([algo_data, df])
+            except Exception as e:
+                print(f"Error processing: {e}", log_file)
+                continue
 
     # Now, loop over all the metrics and plot them individually:
     for metric in metrics:
@@ -144,7 +146,9 @@ if __name__ == "__main__":
                     folder=folder, 
                     metrics=['eval/avg_reward','rollout/ep_reward', 'train/theta', 'rollout/neg_free_energy'], 
                     title=env,
-                    exclude_algos=[f'{env}-arSAC-autoauto', f'{env}-arSAC-min', f'{env}-arSAC-autonewhauto', f'{env}-arSAC'])
+                    exclude_algos=[f'{env}-arSAC-autoauto', f'{env}-arSAC-min', f'{env}-arSAC-autonewhauto', f'{env}-arSAC'],
+                    include_algos=[f'{env}-arDDPG', 'SAC']#, f'{env}-arSAC-newh']
+                    )
         except KeyError:
             print("No data to plot.")
 
