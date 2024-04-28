@@ -7,10 +7,14 @@ import gymnasium as gym
 from stable_baselines3 import SAC
 
 from BaseAgent import LOG_PARAMS
-from utils import log_class_vars
+from utils import log_class_vars, logger_at_folder
 
 class CustomSAC(SAC):
-    def __init__(self, env_id, log_interval=500, hidden_dim=64, log_dir='', **kwargs):
+    def __init__(self, env_id, log_interval=500, hidden_dim=64, tensorboard_log='', **kwargs):
+        # kwargs.pop('aggregator', None)
+        # kwargs.pop('tau_theta', None)
+        # kwargs.pop('num_nets', None)
+
         super().__init__(policy='MlpPolicy', env=env_id, verbose=4, **kwargs)
         
         self.log_interval = log_interval
@@ -18,6 +22,7 @@ class CustomSAC(SAC):
         self.eval_time = 0
         self.initial_time = time.thread_time_ns()
         self.eval_env = gym.make(env_id)
+        self.logger = logger_at_folder(tensorboard_log, algo_name='SAC'+str(self.gamma)+str(self.ent_coef))
 
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
