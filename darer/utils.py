@@ -124,14 +124,13 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
             env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
                 wrappers=[
-                    lambda e: FrameStack(AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, frame_skip=1, noop_max=30), framestack_k),
-                    lambda e: PermuteAtariObs(e) if permute_dims else e
+                    lambda e: AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
                 ])
 
             eval_env = gym.make_vec(
                 env_id, render_mode='human' if render else None, num_envs=n_envs, frameskip=1,
                 wrappers=[
-                    lambda e: PermuteAtariObs(FrameStack(AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, frame_skip=1, noop_max=30), framestack_k))
+                    lambda e: AtariPreprocessing(e, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=True, frame_skip=frameskip, noop_max=30)
                 ])
 
     elif isinstance(env_id, gym.Env):
@@ -157,14 +156,14 @@ class FireResetEnv(gym.Wrapper):
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
-    def reset(self, **kwargs):
-        self.env.reset(**kwargs)
+    def reset(self):
+        self.env.reset()
         obs, _, done, _, _ = self.env.step(1)
         if done:
-            self.env.reset(**kwargs)
+            self.env.reset()
         obs, _, done, _, _ = self.env.step(2)
         if done:
-            self.env.reset(**kwargs)
+            self.env.reset()
         return obs, {}
 
 
@@ -210,7 +209,7 @@ def get_true_eigvec(fa, beta):
     solution = solve_unconstrained(
         beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
     l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
-
+    
     # normalize:
     u_true /= np.linalg.norm(u_true)
     return u_true
@@ -234,9 +233,9 @@ def sample_wandb_hyperparams(params, int_hparams=None):
                 sample = np.exp(random.uniform(emin, emax))
                 sampled[k] = sample
             else:
-                raise NotImplementedError(f"Distribution sampling not implemented for {v['distribution']}, required by {k}")
+                raise NotImplementedError
         else:
-            raise NotImplementedError(f"Unsupported hparam sampling range format in {k}")
+            raise NotImplementedError # f"Value {v} not recognized."
         if k in int_hparams:
             sampled[k] = int(sampled[k])
     return sampled

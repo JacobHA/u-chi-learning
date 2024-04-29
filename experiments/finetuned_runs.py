@@ -7,8 +7,8 @@ from SoftQAgent import SoftQAgent
 from CustomDQN import CustomDQN
 from CustomSAC import CustomSAC
 from UAgent import UAgent
-from arSAC import arSAC
-from LogUAgent import LogUAgent
+from ASAC import ASAC
+from ASQL import ASQL
 from utils import safe_open
 
 
@@ -19,7 +19,9 @@ env_to_steps = {
     'MountainCar-v0': 500_000,
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
-    'Swimmer-v4': 250_000
+    'Swimmer-v4': 250_000,
+    'Humanoid-v4': 5_000_000,
+    'Pusher-v4': 1_000_000,
 }
 
 env_to_logfreq = {
@@ -28,20 +30,25 @@ env_to_logfreq = {
     'LunarLander-v2': 1000,
     'MountainCar-v0': 100,
     'HalfCheetah-v4': 2500,
-    'Swimmer-v4': 5000
+    'Swimmer-v4': 5000,
+    'Ant-v4': 5000,
+    'Humanoid-v4': 10000,
+    'Pusher-v4': 5000,
 }
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
-args.add_argument('--algo', type=str, default='SAC')
+args.add_argument('--env_id', type=str, default='Ant-v4')
+args.add_argument('--algo', type=str, default='arsac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
+args.add_argument('--name', type=str, default='')
 
 args = args.parse_args()
 env_id = args.env_id
 experiment_name = args.exp_name
 device = args.device
+name_suffix = args.name
 
 print("Running finetuned hyperparameters...")
 algo = args.algo
@@ -60,27 +67,24 @@ elif algo == 'dqn':
     AgentClass = CustomDQN
 elif algo == 'sql':
     AgentClass = SoftQAgent
-elif algo == 'arsac':
-    AgentClass = arSAC
-elif algo == 'logu':
-    AgentClass = LogUAgent
+elif algo == 'asac':
+    AgentClass = ASAC
+elif algo == 'asql':
+    AgentClass = ASQL
 elif algo == 'sac':
     AgentClass = CustomSAC
 
 for i in range(args.count):
     full_config = {}
-    # with open(f'hparams/{env_id}/{algo}.yaml') as f:
-    #     default_params = yaml.load(f, yaml.FullLoader)
-    # #  = yaml.load(open(f'hparams/{env_id}/{algo}.yaml'), yaml.FullLoader)
-    # full_config.update(hparams)
-    # full_config.update(default_params)
 
     agent = AgentClass(env_id, **hparams,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
+                        # name_suffix=f'{name_suffix}{i}',
+                        # use_dones=False,
                         # render=False, use_dones=True,
                         )
-
+    
     # Measure the time it takes to learn: 
     agent.learn(total_timesteps=env_to_steps.get(env_id, 100_000))
     del agent

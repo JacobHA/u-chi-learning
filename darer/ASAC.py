@@ -6,7 +6,7 @@ from torch.nn import functional as F
 # import wandb
 import sys
 sys.path.append('darer')
-from Models import LogUsa, OnlineUNets, Optimizers, TargetNets
+from Models import Qsa, OnlineUNets, Optimizers, TargetNets
 from BaseAgent import BaseAgent
 from utils import logger_at_folder
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
@@ -18,26 +18,27 @@ import torch as th
 # raise warning level for debugger:
 # import warnings
 # warnings.filterwarnings("error")
-class arSAC(BaseAgent):
+class ASAC(BaseAgent):
     def __init__(self,
                  *args,
                  actor_learning_rate: float = 1e-3,
                 #  beta = 'auto',
-                 use_rawlik: bool = False,
+                 use_ppi: bool = False,
                  use_dones: bool = True,
+                 name_suffix: str = '',
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = f'arSAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + 'min'
+        self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + name_suffix
         self.use_dones = use_dones
-        self.use_rawlik = use_rawlik
+        self.use_ppi = use_ppi
         self.actor_learning_rate = actor_learning_rate
         self.nA = get_action_dim(self.env.action_space)        
         self.nS = get_flattened_obs_dim(self.env.observation_space)
 
         # Set up the logger:
         self.logger = logger_at_folder(self.tensorboard_log,
-                                       algo_name=f'{self.env_str}-{self.algo_name}{self.beta if self.beta == "auto" else ""}')
+                                       algo_name=f'{self.env_str}-{self.algo_name}')
         self.log_hparams(self.logger)
         self.logpi0 = th.log(th.tensor(1/self.nA, device=self.device))
         # self.ent_coef_optimizer: Optional[th.optim.Adam] = None
@@ -50,12 +51,12 @@ class arSAC(BaseAgent):
 
 
     def _initialize_networks(self):
-        self.online_critics = OnlineUNets([LogUsa(self.env,
+        self.online_critics = OnlineUNets([Qsa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)],
                                         aggregator_fn=self.aggregator_fn)
-        self.target_critics = TargetNets([LogUsa(self.env,
+        self.target_critics = TargetNets([Qsa(self.env,
                                                hidden_dim=self.hidden_dim,
                                                device=self.device)
                                         for _ in range(self.num_nets)])
@@ -192,6 +193,31 @@ class arSAC(BaseAgent):
         # Optimize the critic
         self.q_optimizers.zero_grad()
         critic_loss.backward()
+        self.online_critics.clip_grad_norm(self.max_grad_norm)
+        # After computing the gradients and before performing the optimization step, calculate the gradient norms
+        # Initialize a list to store gradient norms
+        grad_norms = []
+
+        # Iterate over the parameters of the online critics
+        for param in self.online_critics.parameters():
+            for p in param:
+                # Check if the parameter has a gradient (i.e., it's trainable)
+                if p.grad is not None:
+                    # Calculate and store the gradient norm
+                    grad_norms.append(torch.norm(p.grad).item())
+
+        # Check if any gradients were found
+        if grad_norms:
+            # Compute the maximum gradient norm
+            max_grad_norm = max(grad_norms)
+        else:
+            # No gradients found, set max_grad_norm to 0
+            max_grad_norm = 0.0
+
+        # Log the maximum gradient norm
+        self.logger.record("train/max_grad_norm", max_grad_norm)
+
+
         self.q_optimizers.step()
 
         # Compute actor loss
@@ -220,7 +246,7 @@ class arSAC(BaseAgent):
 
 
     def _update_prior(self):
-        if self.use_rawlik:
+        if self.use_ppi:
             # Polyak average the prior:
             self.target_prior.polyak(self.online_prior, self.tau)
 
@@ -236,7 +262,7 @@ def main():
     # env_id = 'Simple-v0'
     from hparams import pendulum_logu as config
     # from simple_env import SimpleEnv
-    agent = arSAC(env_id, **config, device='cuda',
+    agent = ASAC(env_id, **config, device='cuda',
                     num_nets=2, tensorboard_log='pend', 
                     actor_learning_rate=1e-4, 
                     render=False, max_grad_norm=10, log_interval=2000,

@@ -7,10 +7,14 @@ import gymnasium as gym
 from stable_baselines3 import SAC
 
 from BaseAgent import LOG_PARAMS
-from utils import log_class_vars
+from utils import log_class_vars, logger_at_folder
 
 class CustomSAC(SAC):
-    def __init__(self, env_id, log_interval=500, hidden_dim=64, log_dir='', **kwargs):
+    def __init__(self, env_id, log_interval=500, hidden_dim=64, tensorboard_log='', **kwargs):
+        # kwargs.pop('aggregator', None)
+        # kwargs.pop('tau_theta', None)
+        # kwargs.pop('num_nets', None)
+
         super().__init__(policy='MlpPolicy', env=env_id, verbose=4, **kwargs)
         
         self.log_interval = log_interval
@@ -19,6 +23,7 @@ class CustomSAC(SAC):
         self.initial_time = time.thread_time_ns()
         self.eval_env = gym.make(env_id)
 
+        self.our_logger = logger_at_folder(tensorboard_log, algo_name='SAC'+str(self.gamma)+str(self.ent_coef))
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
@@ -122,12 +127,12 @@ class CustomSAC(SAC):
 
         self._n_updates += gradient_steps
 
-        self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
-        self.logger.record("train/ent_coef", np.mean(ent_coefs))
-        self.logger.record("train/actor_loss", np.mean(actor_losses))
-        self.logger.record("train/critic_loss", np.mean(critic_losses))
+        self.our_logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
+        self.our_logger.record("train/ent_coef", np.mean(ent_coefs))
+        self.our_logger.record("train/actor_loss", np.mean(actor_losses))
+        self.our_logger.record("train/critic_loss", np.mean(critic_losses))
         if len(ent_coef_losses) > 0:
-            self.logger.record("train/ent_coef_loss", np.mean(ent_coef_losses))
+            self.our_logger.record("train/ent_coef_loss", np.mean(ent_coef_losses))
 
 
     def _log_stats(self):
@@ -142,10 +147,10 @@ class CustomSAC(SAC):
             self.eval_auc += self.avg_eval_rwd
         
         self.lr = 0#self.optimzers.get_lr()
-        log_class_vars(self, self.logger, LOG_PARAMS, use_wandb=False)
+        log_class_vars(self, self.our_logger, LOG_PARAMS, use_wandb=False)
 
         
-        self.logger.dump(step=self.env_steps)
+        self.our_logger.dump(step=self.env_steps)
         self.initial_time = time.thread_time_ns()
 
     def evaluate(self, n_episodes=10) -> float:
@@ -168,12 +173,12 @@ class CustomSAC(SAC):
 
         avg_reward /= n_episodes
         
-        self.logger.record('eval/avg_episode_length', n_steps / n_episodes)
+        self.our_logger.record('eval/avg_episode_length', n_steps / n_episodes)
         final_time = time.process_time_ns()
         eval_time = (final_time - self.initial_time + 1e-12) / 1e9
         eval_fps = n_steps / eval_time
-        self.logger.record('eval/time', eval_time)
-        self.logger.record('eval/fps', eval_fps)
+        self.our_logger.record('eval/time', eval_time)
+        self.our_logger.record('eval/fps', eval_fps)
         self.eval_time = eval_time
         self.eval_fps = eval_fps
         self.avg_eval_rwd = avg_reward
@@ -190,8 +195,10 @@ class CustomSAC(SAC):
         self.num_episodes = self._episode_num
         if isinstance(self.ent_coef, str):
             self.beta = 1
-        else:
+        elif isinstance(self.ent_coef, th.Tensor):
             self.beta = 1 / self.ent_coef.detach().item() 
+        elif isinstance(self.ent_coef, float):
+            self.beta = 1 / self.ent_coef
         if self.num_timesteps % self.log_interval == 0:
             self._log_stats()
 

@@ -1,4 +1,9 @@
-EVAL (EigenVector-based Average-reward Learning) implementation in Gymnasium's classic control and mazes.
+ASQL and ASAC:
+Average-Reward variants of SQL and SAC.
+
+(Formerly EVAL, EigenVector-based Average-reward Learning).
+
+Environments: Gridworlds, Gymnasium's classic control and Mujoco.
 
 # TODOs:
 - [ ] fix viusalizations in todo
