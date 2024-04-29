@@ -8,3 +8,4 @@ learning_starts: 0
 target_update_interval: 10
 tau: 1.0
 train_freq: 2
+num_nets: 2
