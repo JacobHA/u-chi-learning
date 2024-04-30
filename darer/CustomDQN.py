@@ -25,7 +25,7 @@ class CustomDQN(DQN):
         self.eval_rwd = 0
         self.eval_interval = log_interval
         if max_eval_steps is None:
-            self.eval_env = self.env
+            self.eval_env = gym.make(env_id)
         else:
             self.eval_env = gym.make(env_id, max_episode_steps=max_eval_steps)
         self.step_to_avg_eval_rwd = {}
@@ -52,13 +52,14 @@ class CustomDQN(DQN):
         # Run the current policy and return the average reward
         avg_reward = 0.
         for _ in range(n_episodes):
-            state = self.eval_env.reset()
+            state, _ = self.eval_env.reset()
             done = False
             while not done:
                 action = self.predict(state, deterministic=True)[0]
-                next_state, reward, done, _ = self.eval_env.step(action)
-                avg_reward += reward.item()
+                next_state, reward, term, trunc, _ = self.eval_env.step(action)
+                avg_reward += reward
                 state = next_state
+                done = term or trunc
         avg_reward /= n_episodes
         self.eval_env.close()
         return float(avg_reward)
