@@ -43,6 +43,7 @@ args.add_argument('--algo', type=str, default='arsac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
+args.add_argument('--eval_steps', type=int, default=1000)
 
 args = args.parse_args()
 env_id = args.env_id
@@ -80,6 +81,7 @@ for i in range(args.count):
     agent = AgentClass(env_id, **hparams,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
+                        max_eval_steps=args.eval_steps,
                         # theta_recent_batch=True,
                         # name_suffix=f'{name_suffix}{i}',
                         # use_dones=False,
