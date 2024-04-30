@@ -14,7 +14,7 @@ class ASQL(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = 'ASQL' + ('-PPI' if use_ppi else '')
+        self.algo_name = 'ASQL' + ('-PPI' if use_ppi else '') + self.name_suffix
         self.use_ppi = use_ppi
         self.prior_update_interval = prior_update_interval
         self.prior_tau = prior_tau
