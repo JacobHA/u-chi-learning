@@ -10,12 +10,18 @@ from BaseAgent import LOG_PARAMS
 from utils import log_class_vars, logger_at_folder
 
 class CustomSAC(SAC):
-    def __init__(self, env_id, log_interval=500, hidden_dim=64, tensorboard_log='', name_suffix='', max_eval_steps=1000, **kwargs):
-        # kwargs.pop('aggregator', None)
-        # kwargs.pop('tau_theta', None)
-        # kwargs.pop('num_nets', None)
+    def __init__(self, 
+                 env_id, 
+                 log_interval=500, 
+                 hidden_dim=64, 
+                 tensorboard_log='', 
+                 name_suffix='', 
+                 max_eval_steps=1000, 
+                 **kwargs):
 
-        super().__init__(policy='MlpPolicy', env=env_id, verbose=4, **kwargs)
+        policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
+
+        super().__init__(policy='MlpPolicy', env=env_id, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
         
         self.log_interval = log_interval
         self.eval_auc = 0
