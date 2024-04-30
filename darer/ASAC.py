@@ -30,7 +30,7 @@ class ASAC(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + name_suffix
+        self.algo_name = f'ASAC' + '-no'*(not use_dones) + '-auto'*(self.beta == 'auto') + name_suffix
         self.use_dones = use_dones
         self.use_ppi = use_ppi
         self.theta_recent_batch = theta_recent_batch
