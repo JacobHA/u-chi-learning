@@ -81,7 +81,7 @@ for i in range(args.count):
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         # theta_recent_batch=True,
-                        # name_suffix=f'{name_suffix}{i}',
+                        name_suffix=f'{name_suffix}',
                         # use_dones=False,
                         # render=False, use_dones=True,
                         )
