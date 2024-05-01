@@ -92,6 +92,8 @@ Model-free ground truth comparisons:
 [scaling_dqn]: Acrobot-v1-dqn.png
 
 
+pip install git+https://github.com/google-research/rliable
+(statistical tests)
 
 For updating requirements.txt:
 ```

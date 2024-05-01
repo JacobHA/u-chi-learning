@@ -10,20 +10,27 @@ from BaseAgent import LOG_PARAMS
 from utils import log_class_vars, logger_at_folder
 
 class CustomSAC(SAC):
-    def __init__(self, env_id, log_interval=500, hidden_dim=64, tensorboard_log='', **kwargs):
-        # kwargs.pop('aggregator', None)
-        # kwargs.pop('tau_theta', None)
-        # kwargs.pop('num_nets', None)
+    def __init__(self, 
+                 env_id, 
+                 log_interval=500, 
+                 hidden_dim=64, 
+                 tensorboard_log='', 
+                 name_suffix='', 
+                 max_eval_steps=1000, 
+                 **kwargs):
 
-        super().__init__(policy='MlpPolicy', env=env_id, verbose=4, **kwargs)
+        policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
+
+        super().__init__(policy='MlpPolicy', env=env_id, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
         
         self.log_interval = log_interval
         self.eval_auc = 0
         self.eval_time = 0
         self.initial_time = time.thread_time_ns()
-        self.eval_env = gym.make(env_id)
+        self.eval_env = gym.make(env_id, max_episode_steps=max_eval_steps)
 
-        self.our_logger = logger_at_folder(tensorboard_log, algo_name='SAC'+str(self.gamma)+str(self.ent_coef))
+        self.our_logger = logger_at_folder(tensorboard_log, 
+                                           algo_name='SAC'+str(self.gamma)+str(self.ent_coef)+name_suffix)
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)

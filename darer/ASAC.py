@@ -25,13 +25,15 @@ class ASAC(BaseAgent):
                 #  beta = 'auto',
                  use_ppi: bool = False,
                  use_dones: bool = True,
+                 theta_recent_batch: bool = False,
                  name_suffix: str = '',
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = f'ASAC-' + 'no'*(not use_dones) + 'auto'*(self.beta == 'auto') + name_suffix
+        self.algo_name = f'ASAC' + '-no'*(not use_dones) + '-auto'*(self.beta == 'auto') + name_suffix
         self.use_dones = use_dones
         self.use_ppi = use_ppi
+        self.theta_recent_batch = theta_recent_batch
         self.actor_learning_rate = actor_learning_rate
         self.nA = get_action_dim(self.env.action_space)        
         self.nS = get_flattened_obs_dim(self.env.observation_space)
@@ -179,7 +181,14 @@ class ASAC(BaseAgent):
             min_q_values = self.aggregator_fn(min_q_values, dim=1)
 
             # new_theta = th.mean(rewards + next_v_values - min_q_values)
-            new_theta = th.mean(rewards - ent_coef * (log_prob.reshape(-1, 1) - self.logpi0))
+            if self.theta_recent_batch:
+                # sample a batch from end of replay buffer:
+                recent_batch = self.replay_buffer._get_samples(np.arange(-self.batch_size, 0))
+                r_states, r_actions, r_next_states, r_dones, r_rewards = recent_batch
+                r_log_prob = self.actor.action_log_prob(r_states)[1].reshape(-1, 1)
+                new_theta = th.mean(r_rewards - ent_coef * (r_log_prob.reshape(-1, 1) - self.logpi0))
+            else:
+                new_theta = th.mean(rewards - ent_coef * (log_prob.reshape(-1, 1) - self.logpi0))
             self.logger.record(f"train/new_theta", new_theta.item())
 
         self.theta += self.tau_theta * (new_theta - self.theta)
