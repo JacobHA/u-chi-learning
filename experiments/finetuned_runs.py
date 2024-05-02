@@ -22,6 +22,7 @@ env_to_steps = {
     'Swimmer-v4': 250_000,
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
+    'Pendulum-v1': 10_000,
 }
 
 env_to_logfreq = {
@@ -34,6 +35,7 @@ env_to_logfreq = {
     'Ant-v4': 5000,
     'Humanoid-v4': 10000,
     'Pusher-v4': 5000,
+    'Pendulum-v1': 500, 
 }
 
 args = argparse.ArgumentParser()
