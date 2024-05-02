@@ -41,7 +41,7 @@ env_to_logfreq = {
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
 args.add_argument('--env_id', type=str, default='Ant-v4')
-args.add_argument('--algo', type=str, default='arsac')
+args.add_argument('--algo', type=str, default='asac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
@@ -85,7 +85,7 @@ for i in range(args.count):
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         max_eval_steps=args.eval_steps,
                         # theta_recent_batch=True,
-                        # name_suffix=f'{name_suffix}',
+                        name_suffix=f'{name_suffix}',
                         # use_dones=False,
                         # render=False, use_dones=True,
                         )
