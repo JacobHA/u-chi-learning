@@ -273,22 +273,22 @@ class Agent:
 
 config = {
     'seed': 0,
-    'lr_actor': 3e-4,
-    'lr_critic': 3e-4,
-    'lr_rho': 3e-4,
+    'lr_actor': 1e-3,
+    'lr_critic': 1e-3,
+    'lr_rho': 1e-3,
     'actor_hidden': 256,
     'critic_hidden': 256,
     'tau': 0.005,
     'buffer_size': 100_000,
     'batch_size': 256,
     'episodes': 1000,
-    'warmup_samples': 10000,
+    'warmup_samples': 0,
     'critic_freq': 1,
     'actor_freq': 2,
-    'epi_len': 1000,
-    'epi_len_eval': 1000,
-    'total_env_steps': 1_000_000,
-    'eval_freq': 1000,
+    'epi_len': 200,
+    'epi_len_eval': 200,
+    'total_env_steps': 10_000,
+    'eval_freq': 200,
     'update_freq': 1,
     'device': 'cuda',
     'log': True,
@@ -296,26 +296,13 @@ config = {
 
 
 config['seed'] = 10
-config['buffer_size'] = int(1e5)
-config['total_env_steps'] = int(1e6)
-config['batch_size'] = 256
-config['warmup_samples'] = 5000
-config['eval_freq'] = 5000
-config['epi_len'] = 1000
-config['epi_len_eval'] = 10000
+config['total_env_steps'] = int(1e4)
 config['act_fn'] = nn.ReLU
-config['tau'] = 0.995
 config['log'] = True
-config['update_freq'] = 1000
+config['update_freq'] = 100
 config['critic_freq'] = 1
 config['actor_freq'] = 2
 
-
-config['lr_critic'] = 3e-4
-config['lr_actor'] = 3e-4
-config['lr_rho'] = 3e-4
-config['critic_hidden'] = 128
-config['actor_hidden'] = 128
 
 torch.manual_seed(config['seed'])
 np.random.seed(config['seed'])
@@ -361,23 +348,11 @@ class arDDPG(BaseAgent):
         # Target update is done in the update method of the Agent class.
         pass
 
-# env = dmc2gym.make(config['domain'],config['task'], episode_length = config['epi_len'])
-# env_eval = dmc2gym.make(config['domain'],config['task'], episode_length = config['epi_len_eval'])
-
-# buffer = Buffer(config['buffer_size'])
-# agent = Agent(env_eval, config)
-# total_env_steps = config['total_env_steps']
-# batch_size = config['batch_size']
-# learning_start = config['warmup_samples']
-# eval_freq = config['eval_freq']
-# update_freq = config['update_freq']
-
-# epi_len = config['epi_len']
 
 def main():
-    agent = arDDPG('HalfCheetah-v4', 3e-4, 1)
-    agent.learn(total_timesteps=1_000_000)
+    agent = arDDPG('Pendulum-v1', 1e-3, 1)
+    agent.learn(total_timesteps=10_000)
 
 if __name__ == '__main__':
-    for _ in range(10):
+    for _ in range(4):
         main()
