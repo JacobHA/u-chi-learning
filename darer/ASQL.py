@@ -148,7 +148,8 @@ class ASQL(BaseAgent):
         self.optimizers.zero_grad()
         # Clip gradient norm
         loss.backward()
-        self.model.clip_grad_norm(self.max_grad_norm)
+        if self.max_grad_norm is not None:
+            self.model.clip_grad_norm(self.max_grad_norm)
         self.optimizers.step()
         return None 
 
