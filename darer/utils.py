@@ -34,14 +34,16 @@ def logger_at_folder(log_dir=None, algo_name=None):
         files = os.listdir(log_dir)
         # Get the number of existing "LogU" directories:
         # another run may be creating a folder:
-        time.sleep(0.5)
+        random_wait_time = random.uniform(0, 3)
+        time.sleep(random_wait_time)
         num = len([int(f.split('_')[1]) for f in files if algo_name in f]) + 1
         tmp_path = f"{log_dir}/{algo_name}_{num}"
 
         # If the path exists already, increment the number:
         while os.path.exists(tmp_path):
             # another run may be creating a folder:
-            time.sleep(0.5)
+            random_wait_time = random.uniform(0, 3)
+            time.sleep(random_wait_time)
             num += 1
             tmp_path = f"{log_dir}/{algo_name}_{num}"
             # try:

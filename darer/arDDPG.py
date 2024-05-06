@@ -290,8 +290,7 @@ config = {
 
 
 config['seed'] = 10
-config['buffer_size'] = int(1e5)
-config['batch_size'] = 256
+config['total_env_steps'] = int(1e4)
 config['act_fn'] = nn.ReLU
 config['log'] = True
 config['critic_freq'] = 1
@@ -344,9 +343,9 @@ class arDDPG(BaseAgent):
 
 
 def main():
-    agent = arDDPG('Pendulum-v1', 3e-4, 1)
+    agent = arDDPG('Pendulum-v1', 1e-3, 1)
     agent.learn(total_timesteps=10_000)
 
 if __name__ == '__main__':
-    for _ in range(10):
+    for _ in range(4):
         main()
