@@ -22,6 +22,7 @@ env_to_steps = {
     'Swimmer-v4': 250_000,
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
+    'Pendulum-v1': 10_000
 }
 
 env_to_logfreq = {
@@ -34,6 +35,7 @@ env_to_logfreq = {
     'Ant-v4': 5000,
     'Humanoid-v4': 10000,
     'Pusher-v4': 5000,
+    'Pendulum-v1': 200
 }
 
 args = argparse.ArgumentParser()
@@ -83,7 +85,7 @@ for i in range(args.count):
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         max_eval_steps=args.eval_steps,
                         # theta_recent_batch=True,
-                        # name_suffix=f'{name_suffix}',
+                        name_suffix=f'{name_suffix}',
                         # use_dones=False,
                         # render=False, use_dones=True,
                         )
