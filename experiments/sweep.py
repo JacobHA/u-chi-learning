@@ -127,11 +127,11 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
-    args.add_argument('--project', type=str, default='discount')
+    args.add_argument('--project', type=str, default='eval-sweep')
     args.add_argument('--env', type=str, default='Swimmer-v4')
     args.add_argument('--algo', type=str, default='sac')
     args.add_argument('--device', type=str, default='auto')
-    args.add_argument('--exp-name', type=str, default='gamma')
+    args.add_argument('--exp-name', type=str, default='mujoco')
     args.add_argument('--log', type=str, default='tf_logs')
 
     args = args.parse_args()
