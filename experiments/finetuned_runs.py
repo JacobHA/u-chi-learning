@@ -9,6 +9,7 @@ from CustomSAC import CustomSAC
 from UAgent import UAgent
 from ASAC import ASAC
 from ASQL import ASQL
+from arDDPG import arDDPG
 from utils import safe_open
 
 
@@ -76,6 +77,8 @@ elif algo == 'asql':
     AgentClass = ASQL
 elif algo == 'sac':
     AgentClass = CustomSAC
+elif algo == 'arddpg':
+    AgentClass = arDDPG
 
 for i in range(args.count):
     full_config = {}
