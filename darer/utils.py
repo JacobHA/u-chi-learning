@@ -81,7 +81,7 @@ class PermuteAtariObs(gym.Wrapper):
         res = np.transpose(res, [2,1,0])
         return res, info
 
-def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=1000):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None):
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -92,7 +92,11 @@ def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps
         return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims)
     else:
         env = gym.make(env_id)
-        eval_env = gym.make(env_id, render_mode='human' if render else None, max_episode_steps=max_steps)
+        if max_steps is not None:
+            eval_env = gym.make(env_id, render_mode='human' if render else None, max_episode_steps=max_steps)
+        else:
+            eval_env = gym.make(env_id, render_mode='human' if render else None)
+
         return env, eval_env
 
 
