@@ -304,7 +304,7 @@ np.random.seed(config['seed'])
 class arDDPG(BaseAgent):
     def __init__(self, *args, **kwargs):
 
-        super().__init__(*args, learning_starts=0, **kwargs)
+        super().__init__(*args, learning_starts=0, log_interval=200, **kwargs)
         self.algo_name = 'arDDPG'
         self.tensorboard_log = 'ft_logs/EVAL/' + args[0]
         self.logger = logger_at_folder(self.tensorboard_log,
