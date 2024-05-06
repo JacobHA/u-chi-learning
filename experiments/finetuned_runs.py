@@ -35,6 +35,7 @@ env_to_logfreq = {
     'Ant-v4': 5000,
     'Humanoid-v4': 10000,
     'Pusher-v4': 5000,
+    'Pendulum-v1': 200
 }
 
 args = argparse.ArgumentParser()
