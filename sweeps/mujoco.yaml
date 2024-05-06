@@ -14,7 +14,7 @@ parameters:
   tau_theta:
     distribution: uniform
     max: 1.0
-    min: 0.99
+    min: 0.1
   actor_learning_rate:
     values:
     - 0.00005
@@ -37,7 +37,6 @@ parameters:
     - 20
   buffer_size:
     values:
-    - 50000
     - 100000
     - 250000
     - 1000000
@@ -46,8 +45,6 @@ parameters:
     - 256
   batch_size:
     values:
-    - 64
-    - 128
     - 256
   target_update_interval:
     values:
@@ -59,3 +56,6 @@ parameters:
       - 0.005
       - 0.007
       - 0.01
+      - 0.02
+      - 0.03
+      - 0.05
