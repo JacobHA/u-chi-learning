@@ -22,7 +22,7 @@ env_to_steps = {
     'Swimmer-v4': 250_000,
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
-    'Pendulum-v1': 10_000
+    'Pendulum-v1': 10_000,
 }
 
 env_to_logfreq = {
@@ -35,13 +35,12 @@ env_to_logfreq = {
     'Ant-v4': 5000,
     'Humanoid-v4': 10000,
     'Pusher-v4': 5000,
-    'Pendulum-v1': 200
 }
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
 args.add_argument('--env_id', type=str, default='Ant-v4')
-args.add_argument('--algo', type=str, default='arsac')
+args.add_argument('--algo', type=str, default='asac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
