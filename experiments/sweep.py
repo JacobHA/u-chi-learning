@@ -11,6 +11,8 @@ from ASQL import ASQL
 from ASAC import ASAC
 from SoftQAgent import SoftQAgent
 from CustomSAC import CustomSAC
+from arDDPG import arDDPG
+
 from utils import safe_open, sample_wandb_hyperparams
 
 
@@ -45,6 +47,7 @@ algo_to_agent = {
     'sql': SoftQAgent,
     'asql': ASQL,
     'sac': CustomSAC
+    'arddpg': arDDPG
 }
 
 int_hparams = {'train_freq', 'gradient_steps'}
