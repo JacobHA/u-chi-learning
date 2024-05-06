@@ -271,47 +271,40 @@ class Agent:
     def get_action(self, state):
         return self.actor.get_action(state)        
 
-config = {
-    'seed': 0,
-    'lr_actor': 2e-3,
-    'lr_critic': 2e-3,
-    'lr_rho': 2e-3,
-    'actor_hidden': 256,
-    'critic_hidden': 256,
-    'tau': 0.995,
-    'buffer_size': 100_000,
-    'batch_size': 256,
-    'critic_freq': 1,
-    'actor_freq': 2,
-    'eval_freq': 200,
-    'device': 'cuda',
-    'log': True,
-}    
-
-
-config['seed'] = 10
-config['total_env_steps'] = int(1e4)
-config['act_fn'] = nn.ReLU
-config['log'] = True
-config['critic_freq'] = 1
-config['actor_freq'] = 2
-
-
-torch.manual_seed(config['seed'])
-np.random.seed(config['seed'])
-
 class arDDPG(BaseAgent):
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, learning_starts=0, log_interval=200, **kwargs)
+    def __init__(self,
+                 *args,
+                 actor_learning_rate: float = 1e-3,
+                 name_suffix: str = '',
+                 **kwargs,
+                ):
+        super().__init__(*args, **kwargs)
         self.algo_name = 'arDDPG'
         self.tensorboard_log = 'ft_logs/EVAL/' + args[0]
         self.logger = logger_at_folder(self.tensorboard_log,
-                                       algo_name=f'{self.env_str}-{self.algo_name}')
+                                       algo_name=f'{self.algo_name}'+name_suffix)
         
         
         self.noise = OUNoise(self.env.action_space)
+        config = {}
+        config['seed'] = 10
+        config['log'] = True
 
+        torch.manual_seed(config['seed'])
+        np.random.seed(config['seed'])
+
+        config['lr_critic'] = self.learning_rate
+        config['lr_actor'] = actor_learning_rate
+        config['critic_freq'] = 1
+        config['actor_freq'] = 2
+        config['lr_rho'] = self.tau_theta
+        config['actor_hidden'] = self.hidden_dim
+        config['critic_hidden'] = self.hidden_dim
+        config['tau'] = self.tau
+        config['buffer_size'] = self.buffer_size
+        config['batch_size'] = self.batch_size
+        config['device'] = self.device
+        self.config = config
         self.agent = Agent(self.env, config, logger = self.logger)
 
 
@@ -334,8 +327,8 @@ class arDDPG(BaseAgent):
         
     def gradient_descent(self, batch, grad_step: int):
         self.agent.update(batch,
-                          critic_freq = config['critic_freq'], 
-                          actor_freq = config['actor_freq'])
+                          critic_freq = self.config['critic_freq'], 
+                          actor_freq = self.config['actor_freq'])
         
     def _update_target(self):
         # Target update is done in the update method of the Agent class.
@@ -343,7 +336,16 @@ class arDDPG(BaseAgent):
 
 
 def main():
-    agent = arDDPG('Pendulum-v1', 1e-3, 1)
+    agent = arDDPG('Pendulum-v1',
+                    learning_rate=2e-3,
+                    actor_learning_rate=2e-3,
+                    beta=0,
+                    batch_size=256,
+                    buffer_size=100_000,
+                    target_update_interval=1,
+                    tau=0.995,
+                    tau_theta=2e-3,
+    )
     agent.learn(total_timesteps=10_000)
 
 if __name__ == '__main__':

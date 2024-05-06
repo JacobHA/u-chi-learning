@@ -22,7 +22,6 @@ class ASAC(BaseAgent):
     def __init__(self,
                  *args,
                  actor_learning_rate: float = 1e-3,
-                #  beta = 'auto',
                  use_ppi: bool = False,
                  use_dones: bool = True,
                  theta_recent_batch: bool = False,

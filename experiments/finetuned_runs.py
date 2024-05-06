@@ -9,6 +9,7 @@ from CustomSAC import CustomSAC
 from UAgent import UAgent
 from ASAC import ASAC
 from ASQL import ASQL
+from arDDPG import arDDPG
 from utils import safe_open
 
 
@@ -35,6 +36,7 @@ env_to_logfreq = {
     'Ant-v4': 5000,
     'Humanoid-v4': 10000,
     'Pusher-v4': 5000,
+    'Pendulum-v1': 200
 }
 
 args = argparse.ArgumentParser()
@@ -75,6 +77,8 @@ elif algo == 'asql':
     AgentClass = ASQL
 elif algo == 'sac':
     AgentClass = CustomSAC
+elif algo == 'arddpg':
+    AgentClass = arDDPG
 
 for i in range(args.count):
     full_config = {}
