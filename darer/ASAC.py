@@ -202,7 +202,8 @@ class ASAC(BaseAgent):
         # Optimize the critic
         self.q_optimizers.zero_grad()
         critic_loss.backward()
-        self.online_critics.clip_grad_norm(self.max_grad_norm)
+        if self.max_grad_norm is not None:
+            self.online_critics.clip_grad_norm(self.max_grad_norm)
         # After computing the gradients and before performing the optimization step, calculate the gradient norms
         # Initialize a list to store gradient norms
         grad_norms = []
