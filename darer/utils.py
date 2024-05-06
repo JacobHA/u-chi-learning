@@ -34,14 +34,16 @@ def logger_at_folder(log_dir=None, algo_name=None):
         files = os.listdir(log_dir)
         # Get the number of existing "LogU" directories:
         # another run may be creating a folder:
-        time.sleep(0.5)
+        random_wait_time = random.uniform(0, 3)
+        time.sleep(random_wait_time)
         num = len([int(f.split('_')[1]) for f in files if algo_name in f]) + 1
         tmp_path = f"{log_dir}/{algo_name}_{num}"
 
         # If the path exists already, increment the number:
         while os.path.exists(tmp_path):
             # another run may be creating a folder:
-            time.sleep(0.5)
+            random_wait_time = random.uniform(0, 3)
+            time.sleep(random_wait_time)
             num += 1
             tmp_path = f"{log_dir}/{algo_name}_{num}"
             # try:
@@ -81,7 +83,7 @@ class PermuteAtariObs(gym.Wrapper):
         res = np.transpose(res, [2,1,0])
         return res, info
 
-def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=1000):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None):
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -92,7 +94,11 @@ def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps
         return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims)
     else:
         env = gym.make(env_id)
-        eval_env = gym.make(env_id, render_mode='human' if render else None, max_episode_steps=max_steps)
+        if max_steps is not None:
+            eval_env = gym.make(env_id, render_mode='human' if render else None, max_episode_steps=max_steps)
+        else:
+            eval_env = gym.make(env_id, render_mode='human' if render else None)
+
         return env, eval_env
 
 

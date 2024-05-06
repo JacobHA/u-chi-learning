@@ -273,23 +273,17 @@ class Agent:
 
 config = {
     'seed': 0,
-    'lr_actor': 1e-3,
-    'lr_critic': 1e-3,
-    'lr_rho': 1e-3,
+    'lr_actor': 2e-3,
+    'lr_critic': 2e-3,
+    'lr_rho': 2e-3,
     'actor_hidden': 256,
     'critic_hidden': 256,
-    'tau': 0.005,
+    'tau': 0.995,
     'buffer_size': 100_000,
     'batch_size': 256,
-    'episodes': 1000,
-    'warmup_samples': 0,
     'critic_freq': 1,
     'actor_freq': 2,
-    'epi_len': 200,
-    'epi_len_eval': 200,
-    'total_env_steps': 10_000,
     'eval_freq': 200,
-    'update_freq': 1,
     'device': 'cuda',
     'log': True,
 }    
@@ -299,7 +293,6 @@ config['seed'] = 10
 config['total_env_steps'] = int(1e4)
 config['act_fn'] = nn.ReLU
 config['log'] = True
-config['update_freq'] = 100
 config['critic_freq'] = 1
 config['actor_freq'] = 2
 
@@ -310,7 +303,7 @@ np.random.seed(config['seed'])
 class arDDPG(BaseAgent):
     def __init__(self, *args, **kwargs):
 
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, learning_starts=0, **kwargs)
         self.algo_name = 'arDDPG'
         self.tensorboard_log = 'ft_logs/EVAL/' + args[0]
         self.logger = logger_at_folder(self.tensorboard_log,
