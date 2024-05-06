@@ -46,8 +46,8 @@ algo_to_agent = {
     'asac': ASAC,
     'sql': SoftQAgent,
     'asql': ASQL,
-    'sac': CustomSAC
-    'arddpg': arDDPG
+    'sac': CustomSAC,
+    'arddpg': arDDPG,
 }
 
 int_hparams = {'train_freq', 'gradient_steps'}
