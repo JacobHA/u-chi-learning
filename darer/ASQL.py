@@ -108,9 +108,9 @@ class ASQL(BaseAgent):
                                                          dim=-1, 
                                                          keepdim=True)
 
-            # new_theta = -torch.mean( rewards + (online_log_chi - online_curr_q) / self.beta, dim=0)
-            # new_theta = -torch.mean(rewards + self.beta**(-1) * online_next_v - online_curr_q , dim=0)
-            new_theta = torch.mean(rewards - online_curr_q + online_next_v, dim=0)
+            online_curr_v = self.beta**(-1) * torch.logsumexp(self.beta * online_curr_q + target_priora, dim=-1, keepdim=True)
+            new_theta = torch.mean(rewards - (online_curr_q - online_curr_v) , dim=0)
+            # new_theta = torch.mean(rewards - online_curr_q + online_next_v, dim=0)
 
 
             self.theta = (1 - self.tau_theta) * self.theta + self.tau_theta * new_theta
