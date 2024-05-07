@@ -32,17 +32,11 @@ parameters:
     - 0.001
   beta:
     values:
-    - 1
-    - 2
-    - 3
     - 5
-    - 10
-    - 15
-    - 20
   buffer_size:
     values:
     - 100000
-    - 250000
+    - 1000000
   hidden_dim:
     values:
     - 256
