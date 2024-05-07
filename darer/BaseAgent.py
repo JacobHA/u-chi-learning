@@ -103,7 +103,7 @@ class BaseAgent:
         else:
             is_atari = False
         self.env, self.eval_env = env_id_to_envs(
-            env_id, render, is_atari=is_atari, max_steps=max_eval_steps)
+            env_id, render, is_atari=is_atari, max_steps=max_eval_steps, render_mode="human")
 
         if hasattr(self.env.unwrapped.spec, 'id'):
             self.env_str = self.env.unwrapped.spec.id
@@ -379,7 +379,7 @@ class BaseAgent:
         self.logger.dump(step=self.env_steps)
         self.initial_time = time.thread_time_ns()
 
-    def evaluate(self, n_episodes=10) -> float:
+    def evaluate(self, n_episodes=10, render=False) -> float:
         # run the current policy and return the average reward
         self.initial_time = time.process_time_ns()
         avg_reward = 0.
@@ -387,6 +387,8 @@ class BaseAgent:
             # log the action frequencies:
             action_freqs = torch.zeros(self.nA)
         n_steps = 0
+        # if render:
+        #     self.eval_env.render_mode = 'human'
         for ep in range(n_episodes):
             state, _ = self.eval_env.reset()
             done = False
@@ -404,6 +406,8 @@ class BaseAgent:
                 avg_reward += reward
                 state = next_state
                 done = terminated or truncated
+                if render:
+                    self.eval_env.render()
 
         avg_reward /= n_episodes
         if isinstance(self.env.action_space, gym.spaces.Discrete):
@@ -469,14 +473,16 @@ class BaseAgent:
         torch.save(total_state, path)
 
     @staticmethod
-    def load(path):
+    def load(path, **new_kwargs):
         state = torch.load(path)
         cls = BaseAgent
         for cls_ in BaseAgent.__subclasses__():
             if cls_.__name__ == state['class']:
                 cls = cls_
         args = state['kwargs'].get('args', ())
-        agent = cls(*args, **state['kwargs'])
+        kwargs = state['kwargs']
+        kwargs.update(new_kwargs)
+        agent = cls(*args, **kwargs)
         for k, v in state['state_dicts'].items():
             attrs = k.split('.')
             module = agent
