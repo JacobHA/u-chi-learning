@@ -57,7 +57,7 @@ try:
 except KeyError:
     WANDB_DIR = None
 
-def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu'):
+def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu', exp_name=None):
     # env = gymnasium.make(env_id)
     total_timesteps = env_to_steps.get(env_id, 100_000)
     runs_per_hparam = 3
@@ -82,6 +82,7 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
         with wandb.init(sync_tensorboard=True, 
                         id=unique_id,
                         dir=WANDB_DIR,
+                        group=exp_name,
                         **wandb_kwargs) as run: 
             cfg = run.config
             print(run.id)
@@ -126,11 +127,11 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
-    args.add_argument('--project', type=str, default='discount')
-    args.add_argument('--env', type=str, default='Swimmer-v4')
-    args.add_argument('--algo', type=str, default='sac')
+    args.add_argument('--project', type=str, default='u-chi-learning')
+    args.add_argument('--env', type=str, default='LunarLander-v2')
+    args.add_argument('--algo', type=str, default='u')
     args.add_argument('--device', type=str, default='auto')
-    args.add_argument('--exp-name', type=str, default='gamma')
+    args.add_argument('--exp-name', type=str, default='general')
     args.add_argument('--log', type=str, default='tf_logs')
 
     args = args.parse_args()
@@ -145,5 +146,6 @@ if __name__ == '__main__':
              algo=args.algo,
              project=args.project,
              device=args.device,
-             log_dir=args.log)
+             log_dir=args.log,
+             exp_name=args.exp_name)
 

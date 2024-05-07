@@ -228,12 +228,14 @@ def sample_wandb_hyperparams(params, int_hparams=None):
                 sampled[k] = random.uniform(v['min'], v['max'])
             elif v['distribution'] == 'normal':
                 sampled[k] = random.normalvariate(v['mean'], v['std'])
-            elif v['distribution'] == 'log_uniform_values':
+            elif v['distribution'] == 'log_uniform_values' or v['distribution'] == 'q_log_uniform_values':
                 emin, emax = np.log(v['max']), np.log(v['min'])
                 sample = np.exp(random.uniform(emin, emax))
+                if v['distribution'] == 'q_log_uniform_values':
+                    sample = int(sample)
                 sampled[k] = sample
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"Distribution {v['distribution']} not recognized.")
         else:
             raise NotImplementedError # f"Value {v} not recognized."
         if k in int_hparams:

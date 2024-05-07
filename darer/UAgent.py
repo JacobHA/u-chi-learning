@@ -117,10 +117,6 @@ class UAgent(BaseAgent):
             curr_priora = self.online_prior.nets[0](states).squeeze()
 
         with torch.no_grad():
-            online_u_next = torch.stack([u(next_states)
-                                         for u in self.online_us], dim=0)
-            online_curr_u = torch.stack([u(states).gather(1, actions)
-                                         for u in self.online_us], dim=0)
             #TODO: collapse these into one call
             online_curr_ua = torch.stack([u(states)
                                           for u in self.online_us], dim=0)
@@ -136,22 +132,6 @@ class UAgent(BaseAgent):
             else:
                 target_priora = torch.ones(self.batch_size, self.nA, device=self.device) * (1/self.nA)
                 target_prior_next = torch.ones(self.batch_size, self.nA, device=self.device) * (1/self.nA)
-
-            # TODO: Test target vs online nets for this calculation:
-            online_u_next = self.aggregator_fn(online_u_next, dim=0)
-            online_chi = (
-                online_u_next * target_prior_next.repeat(1, 1)).sum(dim=-1)
-            online_curr_u = online_curr_u.squeeze(-1)
-            online_curr_u = self.aggregator_fn(online_curr_u, dim=0)
-
-            in_log = online_chi / online_curr_u
-            # in_log = torch.clamp(in_log, min=1e-6, max=1e6)
-            # clamp to a tolerable range:
-            # batch_theta = -torch.mean(rewards.squeeze(-1) + torch.log(in_log) / self.beta, dim=1)
-            batch_rho = torch.mean(torch.exp(self.beta * rewards.squeeze()) * in_log)
-
-            # batch_theta = torch.clamp(batch_theta, min=-30, max=30)
-            self.new_thetas[grad_step] = -torch.log(batch_rho) / self.beta
             
             target_next_us = [target_u(next_states) for target_u in self.target_us]
 

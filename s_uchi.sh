@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=logu
-#SBATCH --output=logu-%A_%a.out
-#SBATCH --error=logu-%A_%a.err
+#SBATCH --job-name=u
+#SBATCH --output=u-%A_%a.out
+#SBATCH --error=u-%A_%a.err
 #SBATCH --time=48:00:00
 #SBATCH --mem=16G
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=16
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 
@@ -19,10 +19,13 @@ export WANDB_MODE=offline
 wandb offline
 
 # Start the evaluations
-SWEEP_ID=${1:-"none"}
-ENVNAME=${2:-"LunarLander-v2"}
-DEVICE=${3:-"cuda"}
-python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="logu" --sweep-id=$SWEEP_ID --env_id=$ENVNAME --device=$DEVICE &
-python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="logu" --sweep-id=$SWEEP_ID --env_id=$ENVNAME --device=$DEVICE &
-python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="logu" --sweep-id=$SWEEP_ID --env_id=$ENVNAME --device=$DEVICE &
-python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="logu" --sweep-id=$SWEEP_ID --env_id=$ENVNAME --device=$DEVICE
+ENVNAME=${1:-"LunarLander-v2"}
+EXPNAME=${2:-"general"}
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME &
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME &
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME &
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME &
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME &
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME &
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME &
+python experiments/sweep.py --count=1 --project="u-chi-learning" --algo="asql" --exp-name $EXPNAME --env=$ENVNAME
