@@ -7,7 +7,7 @@ import gymnasium as gym
 from typing import Optional, Union, List, Tuple, Dict, Any, get_type_hints
 from typeguard import typechecked
 import wandb
-from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, get_eigvec_values
+from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, get_eigvec_values, find_torch_modules
 
 HPARAM_ATTRS = {
     'beta': 'beta',
@@ -88,8 +88,14 @@ class BaseAgent:
                  max_eval_steps=None,
                  name_suffix: Optional[str] = '',
                  seed: Optional[int] = None,
+                 save_best: Optional[bool] = False,
+                 save_path: Optional[str] = 'best_models',
                  ) -> None:
-
+        self.kwargs = locals()
+        self.kwargs.pop('self')
+        self.kwargs.pop('TypeCheckMemo')
+        self.kwargs.pop('memo')
+        self.kwargs.pop('check_argument_types')
         # first check if Atari env or not:
         if isinstance(env_id, str):
             is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
@@ -148,6 +154,9 @@ class BaseAgent:
         self.name_suffix = name_suffix
         # Track the rewards over time:
         self.step_to_avg_eval_rwd = {}
+        # save the parameters for model loading
+        self.save_best = save_best
+        self.save_path = save_path
 
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
                                           observation_space=self.env.observation_space,
@@ -433,6 +442,35 @@ class BaseAgent:
                 f"Unknown beta schedule: {beta_schedule}")
         return self.betas
 
-
     def _update_prior(self):
         pass
+
+    def __str__(self):
+        return f"{self.__class__.__name__}_{self.env_str}"
+
+    def save(self, path=None):
+        if path is None:
+            path = str(self)
+        total_state = {
+            "kwargs": self.kwargs,
+            "state_dicts": find_torch_modules(self),
+            "class": self.__class__.__name__
+        }
+        torch.save(total_state, path)
+
+    @staticmethod
+    def load(path):
+        state = torch.load(path)
+        cls = BaseAgent
+        for cls_ in BaseAgent.__subclasses__():
+            if cls_.__name__ == state['class']:
+                cls = cls_
+        args = state['kwargs'].get('args', ())
+        agent = cls(*args, **state['kwargs'])
+        for k, v in state['state_dicts'].items():
+            attrs = k.split('.')
+            module = agent
+            for attr in attrs:
+                module = getattr(module, attr)
+            module.load_state_dict(v)
+        return agent

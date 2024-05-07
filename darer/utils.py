@@ -245,3 +245,34 @@ def sample_wandb_hyperparams(params, int_hparams=None):
         if k in int_hparams:
             sampled[k] = int(sampled[k])
     return sampled
+
+
+def find_torch_modules(module, modules=None, prefix=None):
+    """
+    Recursively find all torch.nn.Modules within a given module.
+    Args:
+        module (nn.Module): The module to inspect.
+        modules (dict, optional): A dictionary to collect module names and their instances.
+        prefix (str, optional): A prefix for the module names to handle nested structures.
+    Returns:
+        dict: A dictionary with module names as keys and module instances as values.
+    """
+    if modules is None:
+        modules = {}
+    # Check if the current module itself is an instance of nn.Module
+    submodules = None
+    if isinstance(module, torch.nn.Module):
+        modules[prefix] = module.state_dict()
+        submodules = module.named_children
+    elif hasattr(module, '__dict__'):
+        submodules = module.__dict__.items
+    # Recursively find all submodules if the current module is a container
+    if submodules:
+        for name, sub_module in submodules():
+            if prefix:
+                mod_name = f"{prefix}.{name}"
+            else:
+                mod_name = name
+            find_torch_modules(sub_module, modules, mod_name)
+
+    return modules

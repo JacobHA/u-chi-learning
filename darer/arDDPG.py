@@ -114,7 +114,7 @@ class Actor(nn.Module):
            self.action_dim = action_dim 
 
 
-        
+
         self.policy_net = nn.Sequential(nn.Linear(self.state_dim, n_hidden_nodes),
                                         act_func(),
                                         nn.Linear(n_hidden_nodes, n_hidden_nodes),
@@ -273,14 +273,19 @@ class Agent:
 
 class arDDPG(BaseAgent):
     def __init__(self,
-                 *args,
+                 env_id=None,
                  actor_learning_rate: float = 1e-3,
                  name_suffix: str = '',
                  **kwargs,
                 ):
-        super().__init__(*args, **kwargs)
+        super().__init__(env_id=env_id, **kwargs)
+        # update the kwargs with the new arguments
+        self.kwargs.update(locals())
+        self.kwargs.pop('self')
+        self.kwargs.pop('kwargs')
+        self.kwargs.pop('__class__')
         self.algo_name = 'arDDPG'
-        self.tensorboard_log = 'ft_logs/EVAL/' + args[0]
+        self.tensorboard_log = f'ft_logs/EVAL/{str(env_id)}'
         self.logger = logger_at_folder(self.tensorboard_log,
                                        algo_name=f'{self.algo_name}'+name_suffix)
         
