@@ -279,7 +279,7 @@ def main():
         save_best=True
     )
                       
-    agent.learn(total_timesteps=10_000)
+    agent.learn(total_timesteps=500_000)
 
 
 if __name__ == '__main__':

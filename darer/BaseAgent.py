@@ -425,7 +425,15 @@ class BaseAgent:
         self.logger.record('eval/fps', eval_fps)
         self.eval_time = eval_time
         self.eval_fps = eval_fps
-        if self.save_best and avg_reward > self.avg_eval_rwd:
+        # find the current best saved model
+        if os.path.exists(os.path.join(self.save_path, f"{str(self)}_score.txt")):
+            with open(os.path.join(self.save_path, f"{str(self)}_score.txt"), 'r') as f:
+                best_saved_avg_rwd = float(f.read())
+        else:
+            best_saved_avg_rwd = -np.inf
+        if self.save_best and avg_reward > best_saved_avg_rwd:
+            with open(os.path.join(self.save_path, f"{str(self)}_score.txt"), 'w') as f:
+                f.write(str(avg_reward))
             self.save(os.path.join(self.save_path, str(self)))
             print("new best model saved")
         self.avg_eval_rwd = avg_reward
