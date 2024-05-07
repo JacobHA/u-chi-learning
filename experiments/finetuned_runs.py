@@ -20,7 +20,7 @@ env_to_steps = {
     'MountainCar-v0': 200_000,
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
-    'Swimmer-v4': 250_000,
+    'Swimmer-v4': 1_000_000,
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
