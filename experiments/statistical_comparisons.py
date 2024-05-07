@@ -33,7 +33,7 @@ env = args.env
 # env='Ant-v4'
 total_steps = env_to_steps[env]
 algorithms = [f'{env}-ASAC', 'SAC0.990.2', 'SAC', f'{env}-arDDPG']
-algorithms += [f'{env}-arSAC-newh', 'SAC0.990.2', 'SAC', f'{env}-arDDPG']
+algorithms += [f'{env}-arSAC-newh', 'SAC0.990.2', 'SAC', f'arDDPG']
 algorithms += ['DQN', f'{env}-ASQL']
 algorithms = list(set(algorithms))
 
@@ -103,7 +103,13 @@ for algo in algorithms:
     score_dict[algo] = np.array(score_dict[algo]).reshape(-1, 1)
 
 # Sort the score_dict by alphabetical name of algo to ensure plotting color consistency:
-score_dict = dict(sorted(score_dict.items(), key=lambda x: x[0]))
+# First get names:
+algo_names = list(score_dict.keys())
+# Then sort them:
+algo_names.sort()
+# Then create a new score_dict with the sorted names:
+score_dict = {name: score_dict[name] for name in algo_names}
+# score_dict = dict(sorted(score_dict.items(), key=lambda x: x[0][0], reverse=True))
 
 
 aggregate_func = lambda x: np.array([
@@ -121,7 +127,7 @@ fig, axes = plot_utils.plot_interval_estimates(
   xlabel_y_coordinate=-1,
   legend=True)
 
-fig.savefig(f'ft_logs/EVAL/{env}/rliabl.png', bbox_inches='tight')
+fig.savefig(f'ft_logs/EVAL/{env}/rliabl.png', bbox_inches='tight', dpi=300)
 min_t = np.min([np.min(scores) for scores in aggregate_scores.values()])
 max_t = np.max([np.max(scores) for scores in aggregate_scores.values()])
 if min_t > 0:
@@ -146,7 +152,7 @@ plot_utils.plot_performance_profiles(
   ax=ax,
   legend=True)
 
-fig.savefig(f'ft_logs/EVAL/{env}/perf_profile.png', bbox_inches='tight')
+fig.savefig(f'ft_logs/EVAL/{env}/perf_profile.png', bbox_inches='tight', dpi=300)
 
 # Reshape the temporal_score_dict to have shape n_runs by n_tasks by n_frames:
 # temporal_score_dict = {algo: np.array(score).reshape(-1,1,-1) for algo, score in temporal_score_dict.items()}
