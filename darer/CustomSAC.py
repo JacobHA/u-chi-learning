@@ -9,28 +9,36 @@ from stable_baselines3 import SAC
 from BaseAgent import LOG_PARAMS
 from utils import log_class_vars, logger_at_folder
 
+
 class CustomSAC(SAC):
-    def __init__(self, 
-                 env_id, 
+    def __init__(self,
+                 policy='MlpPolicy',
+                 env_id=None,
                  log_interval=500, 
                  hidden_dim=64, 
-                 tensorboard_log='', 
+                 tensorboard_log=None,
                  name_suffix='', 
                  max_eval_steps=1000, 
                  **kwargs):
 
         policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
-
+        if 'env' in kwargs:
+            kwargs.pop('env')
         super().__init__(policy='MlpPolicy', env=env_id, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
         
         self.log_interval = log_interval
         self.eval_auc = 0
         self.eval_time = 0
         self.initial_time = time.thread_time_ns()
-        self.eval_env = gym.make(env_id, max_episode_steps=max_eval_steps)
-
-        self.our_logger = logger_at_folder(tensorboard_log, 
-                                           algo_name='SAC'+str(self.gamma)+str(self.ent_coef)+name_suffix)
+        self.env = env_id
+        self.env_id = env_id
+        self.tensorboard_log = tensorboard_log
+        self.name_suffix = name_suffix
+        self.eval_env = gym.make(env_id, max_episode_steps=max_eval_steps) if env_id else None
+        self.our_logger = logger_at_folder(
+            tensorboard_log,
+            algo_name='SAC' + str(self.gamma) + str(self.ent_coef) + name_suffix
+        ) if tensorboard_log else None
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
@@ -209,6 +217,22 @@ class CustomSAC(SAC):
         if self.num_timesteps % self.log_interval == 0:
             self._log_stats()
 
+    def __str__(self):
+        return f"{self.__class__.__name__}_{self.env_id}"
+
+    def save(self, path, **kwargs):
+        # remove unpickleable logger:
+        del self.our_logger
+        super().save(path, include=['tensorboard_log'], **kwargs)
+
+    def load(self, path, **kwargs):
+        agent = super().load(path, **kwargs)
+        agent.our_logger = logger_at_folder(
+            agent.tensorboard_log,
+            algo_name='SAC' + str(agent.gamma) + str(agent.ent_coef) + self.name_suffix
+        )
+        return agent
+
 
 def main():
     env = 'Pendulum-v1'
@@ -219,8 +243,9 @@ def main():
         'buffer_size': 100_000,
         'ent_coef': '0.2',
     }
-    agent = CustomSAC('MlpPolicy', env, device='auto', **kwargs, log_dir='ft_logs', tensorboard_log='ft_logs/EVAL')
-    agent.learn(1000000)
+    agent = CustomSAC(policy='MlpPolicy', env_id=env, device='auto', **kwargs, tensorboard_log='ft_logs/EVAL')
+    agent.save('sac')
+    agent.load('sac')
 
 if __name__ == '__main__':
     main()
