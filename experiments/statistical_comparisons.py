@@ -17,7 +17,7 @@ env_to_steps = {
     'MountainCar-v0': 200_000,
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
-    'Swimmer-v4': 250_000,
+    'Swimmer-v4': 1_000_000,
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
@@ -33,7 +33,7 @@ env = args.env
 # env='Ant-v4'
 total_steps = env_to_steps[env]
 algorithms = [f'{env}-ASAC', 'SAC0.990.2', 'SAC', f'{env}-arDDPG']
-algorithms += [f'{env}-arSAC-newh', 'SAC0.990.2', 'SAC', f'{env}-arDDPG']
+algorithms += [f'{env}-arSAC-newh', 'SAC0.990.2', 'SAC0.9990.05', 'SAC', f'{env}-arDDPG']
 algorithms += ['DQN', f'{env}-ASQL']
 algorithms = list(set(algorithms))
 
