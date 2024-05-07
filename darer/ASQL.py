@@ -3,7 +3,7 @@ import torch
 from torch.nn import functional as F
 from BaseAgent import BaseAgent
 from Models import QNet, OnlineQNets, OnlineUNets, Optimizers, PiNet, TargetNets
-from utils import logger_at_folder
+from utils import get_max_grad, logger_at_folder
 
 class ASQL(BaseAgent):
     def __init__(self,
@@ -108,9 +108,9 @@ class ASQL(BaseAgent):
                                                          dim=-1, 
                                                          keepdim=True)
 
-            # new_theta = -torch.mean( rewards + (online_log_chi - online_curr_q) / self.beta, dim=0)
-            # new_theta = -torch.mean(rewards + self.beta**(-1) * online_next_v - online_curr_q , dim=0)
-            new_theta = torch.mean(rewards - online_curr_q + online_next_v, dim=0)
+            online_curr_v = self.beta**(-1) * torch.logsumexp(self.beta * online_curr_q + target_priora, dim=-1, keepdim=True)
+            new_theta = torch.mean(rewards - (online_curr_q - online_curr_v) , dim=0)
+            # new_theta = torch.mean(rewards - online_curr_q + online_next_v, dim=0)
 
 
             self.theta = (1 - self.tau_theta) * self.theta + self.tau_theta * new_theta
@@ -150,8 +150,16 @@ class ASQL(BaseAgent):
         loss.backward()
         if self.max_grad_norm is not None:
             self.model.clip_grad_norm(self.max_grad_norm)
+            
+        current_max_grad_norm = get_max_grad(self.online_qs)
+
+        # Log the maximum gradient norm
+        self.logger.record("train/max_grad_norm", current_max_grad_norm)
+
         self.optimizers.step()
         return None 
+
+    
 
     def _update_target(self):
         # Do a Polyak update of parameters:

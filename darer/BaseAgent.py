@@ -103,7 +103,7 @@ class BaseAgent:
         else:
             is_atari = False
         self.env, self.eval_env = env_id_to_envs(
-            env_id, render, is_atari=is_atari, max_steps=max_eval_steps, render_mode="human")
+            env_id, render, is_atari=is_atari, max_steps=max_eval_steps)
 
         if hasattr(self.env.unwrapped.spec, 'id'):
             self.env_str = self.env.unwrapped.spec.id

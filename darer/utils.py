@@ -83,7 +83,7 @@ class PermuteAtariObs(gym.Wrapper):
         res = np.transpose(res, [2,1,0])
         return res, info
 
-def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None, render_mode="human"):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None):
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -276,3 +276,24 @@ def find_torch_modules(module, modules=None, prefix=None):
             find_torch_modules(sub_module, modules, mod_name)
 
     return modules
+
+
+def get_max_grad(model):
+    grad_norms = []
+
+    # Iterate over the parameters of the online critics
+    for param in model.parameters():
+        for p in param:
+            # Check if the parameter has a gradient (i.e., it's trainable)
+            if p.grad is not None:
+                # Calculate and store the gradient norm
+                grad_norms.append(torch.norm(p.grad).item())
+
+    # Check if any gradients were found
+    if grad_norms:
+        # Compute the maximum gradient norm
+        max_grad_norm = max(grad_norms)
+    else:
+        # No gradients found, set max_grad_norm to 0
+        max_grad_norm = 0.0
+    return max_grad_norm
