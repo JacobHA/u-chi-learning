@@ -1,3 +1,4 @@
+import os
 import time
 import numpy as np
 import torch
@@ -146,7 +147,7 @@ class BaseAgent:
         self.aggregator = aggregator
         self.tensorboard_log = tensorboard_log
         self.aggregator_fn = str_to_aggregator[aggregator]
-        self.avg_eval_rwd = None
+        self.avg_eval_rwd = -np.inf
         self.fps = None
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
@@ -420,6 +421,9 @@ class BaseAgent:
         self.logger.record('eval/fps', eval_fps)
         self.eval_time = eval_time
         self.eval_fps = eval_fps
+        if self.save_best and avg_reward > self.avg_eval_rwd:
+            self.save(os.path.join(self.save_path, str(self)))
+            print("new best model saved")
         self.avg_eval_rwd = avg_reward
         self.step_to_avg_eval_rwd[self.env_steps] = avg_reward
         return avg_reward
@@ -456,6 +460,12 @@ class BaseAgent:
             "state_dicts": find_torch_modules(self),
             "class": self.__class__.__name__
         }
+        # if the path is a directory, make :
+        if '/' in path:
+            bp = path.split('/')
+            base_path = os.path.join(*bp[:-1])
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
         torch.save(total_state, path)
 
     @staticmethod

@@ -1,3 +1,4 @@
+import yaml
 from stable_baselines3.common.preprocessing import get_action_dim, get_flattened_obs_dim
 import numpy as np
 import torch
@@ -269,17 +270,19 @@ def main():
     env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
-    from hparams import pendulum_logu as config
+    with open(f'hparams/{env_id}/asac.yaml') as f:
+        params = yaml.load(f, Loader=yaml.FullLoader)
     # from simple_env import SimpleEnv
-    agent = ASAC(env_id, **config, device='cuda',
-                    num_nets=2, tensorboard_log='pend', 
-                    actor_learning_rate=1e-4, 
-                    render=False, max_grad_norm=10, log_interval=2000,
-                      )
+    agent = ASAC(env_id, **params, device='cuda',
+        tensorboard_log=f'local-asac-{env_id}',
+        render=False, max_grad_norm=10, log_interval=2000,
+        save_best=True
+    )
                       
-    agent.learn(total_timesteps=500_000)
+    agent.learn(total_timesteps=10_000)
 
 
 if __name__ == '__main__':
-    for _ in range(10):
-        main()
+    main()
+    # for _ in range(10):
+    #     main()
