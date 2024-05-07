@@ -8,7 +8,7 @@ import sys
 sys.path.append('darer')
 from Models import Qsa, OnlineUNets, Optimizers, TargetNets
 from BaseAgent import BaseAgent
-from utils import logger_at_folder
+from utils import get_max_grad, logger_at_folder
 from stable_baselines3.common.torch_layers import MlpExtractor, FlattenExtractor
 from stable_baselines3.sac.policies import Actor
 import torch as th
@@ -203,30 +203,10 @@ class ASAC(BaseAgent):
         critic_loss.backward()
         if self.max_grad_norm is not None:
             self.online_critics.clip_grad_norm(self.max_grad_norm)
-        # After computing the gradients and before performing the optimization step, calculate the gradient norms
-        # Initialize a list to store gradient norms
-        grad_norms = []
-
-        # Iterate over the parameters of the online critics
-        for param in self.online_critics.parameters():
-            for p in param:
-                # Check if the parameter has a gradient (i.e., it's trainable)
-                if p.grad is not None:
-                    # Calculate and store the gradient norm
-                    grad_norms.append(torch.norm(p.grad).item())
-
-        # Check if any gradients were found
-        if grad_norms:
-            # Compute the maximum gradient norm
-            max_grad_norm = max(grad_norms)
-        else:
-            # No gradients found, set max_grad_norm to 0
-            max_grad_norm = 0.0
+        current_max_grad_norm = get_max_grad(self.online_critics)
 
         # Log the maximum gradient norm
-        self.logger.record("train/max_grad_norm", max_grad_norm)
-
-
+        self.logger.record("train/max_grad_norm", current_max_grad_norm)
         self.q_optimizers.step()
 
         # Compute actor loss

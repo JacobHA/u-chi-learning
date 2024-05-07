@@ -245,3 +245,23 @@ def sample_wandb_hyperparams(params, int_hparams=None):
         if k in int_hparams:
             sampled[k] = int(sampled[k])
     return sampled
+
+def get_max_grad(model):
+    grad_norms = []
+
+    # Iterate over the parameters of the online critics
+    for param in model.parameters():
+        for p in param:
+            # Check if the parameter has a gradient (i.e., it's trainable)
+            if p.grad is not None:
+                # Calculate and store the gradient norm
+                grad_norms.append(torch.norm(p.grad).item())
+
+    # Check if any gradients were found
+    if grad_norms:
+        # Compute the maximum gradient norm
+        max_grad_norm = max(grad_norms)
+    else:
+        # No gradients found, set max_grad_norm to 0
+        max_grad_norm = 0.0
+    return max_grad_norm
