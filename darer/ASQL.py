@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import yaml
 from torch.nn import functional as F
 from BaseAgent import BaseAgent
 from Models import QNet, OnlineQNets, OnlineUNets, Optimizers, PiNet, TargetNets
@@ -14,6 +15,11 @@ class ASQL(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
+        self.kwargs.update(locals())
+        self.kwargs.pop('self')
+        self.kwargs.pop('args')
+        self.kwargs.pop('kwargs')
+        self.kwargs.pop('__class__')
         self.algo_name = 'ASQL' + ('-PPI' if use_ppi else '') + self.name_suffix
         self.use_ppi = use_ppi
         self.prior_update_interval = prior_update_interval
@@ -157,16 +163,37 @@ class ASQL(BaseAgent):
         self.logger.record("train/max_grad_norm", current_max_grad_norm)
 
         self.optimizers.step()
-        return None 
-
-    
+        return None
 
     def _update_target(self):
         # Do a Polyak update of parameters:
         self.target_qs.polyak(self.online_qs, self.tau)
 
-
     def _update_prior(self):
         # Update the prior:
         if self.use_ppi:
             self.target_prior.polyak(self.online_prior, self.prior_tau)
+
+
+def main():
+    # env_id = 'LunarLanderContinuous-v2'
+    env_id = 'LunarLander-v2'
+    # env_id = 'BipedalWalker-v3'
+    # env_id = 'CartPole-v1'
+    # env_id = 'Ant-v4'
+    # env_id = 'Simple-v0'
+    with open(f'hparams/{env_id}/asql.yaml') as f:
+        params = yaml.load(f, Loader=yaml.FullLoader)
+    # from simple_env import SimpleEnv
+    agent = ASQL(env_id, **params, device='cuda',
+                 tensorboard_log=f'local-asql-{env_id}',
+                 render=False, max_grad_norm=10, log_interval=2000,
+                 save_best=True
+                 )
+    agent.learn(total_timesteps=10_000)
+
+
+if __name__ == '__main__':
+    main()
+    # for _ in range(10):
+    #     main()

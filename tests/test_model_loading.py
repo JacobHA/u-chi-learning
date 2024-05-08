@@ -19,7 +19,7 @@ def test_saving_and_loading():
     act_cont = [False, False, True, False, True, True]
     # continuous and discrete envs for corresponding agents
     for i, agent in enumerate(agents):
-        env_id = 'MountainCarContinuous-v0' if act_cont[i] else 'CartPole-v1'
+        env_id = 'MountainCarContinuous-v0' if act_cont[i] else 'LunarLander-v2'
         agent = agent(env_id=env_id, tensorboard_log='test')
         agent.save(f"test/test-{str(agent)}")
         agent.load(f"test/test-{str(agent)}")

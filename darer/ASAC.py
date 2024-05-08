@@ -30,6 +30,11 @@ class ASAC(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
+        self.kwargs.update(locals())
+        self.kwargs.pop('self')
+        self.kwargs.pop('args')
+        self.kwargs.pop('kwargs')
+        self.kwargs.pop('__class__')
         self.algo_name = f'ASAC' + '-no'*(not use_dones) + '-auto'*(self.beta == 'auto') + name_suffix
         self.use_dones = use_dones
         self.use_ppi = use_ppi

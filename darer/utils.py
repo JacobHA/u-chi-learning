@@ -273,6 +273,8 @@ def find_torch_modules(module, modules=None, prefix=None):
                 mod_name = f"{prefix}.{name}"
             else:
                 mod_name = name
+            if name in mod_name.split('.'):
+                continue
             find_torch_modules(sub_module, modules, mod_name)
 
     return modules
