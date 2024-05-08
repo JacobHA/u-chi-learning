@@ -162,14 +162,14 @@ class FireResetEnv(gym.Wrapper):
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
-    def reset(self):
-        self.env.reset()
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
         obs, _, done, _, _ = self.env.step(1)
         if done:
-            self.env.reset()
+            self.env.reset(**kwargs)
         obs, _, done, _, _ = self.env.step(2)
         if done:
-            self.env.reset()
+            self.env.reset(**kwargs)
         return obs, {}
 
 
