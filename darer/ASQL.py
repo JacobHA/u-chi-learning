@@ -177,7 +177,7 @@ class ASQL(BaseAgent):
 
 def main():
     # env_id = 'LunarLanderContinuous-v2'
-    env_id = 'LunarLander-v2'
+    env_id = 'PongNoFrameskip-v4'
     # env_id = 'BipedalWalker-v3'
     # env_id = 'CartPole-v1'
     # env_id = 'Ant-v4'

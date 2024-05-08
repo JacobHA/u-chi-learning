@@ -1,0 +1,47 @@
+method: random
+metric:
+  goal: maximize
+  name: eval/auc
+parameters:
+  tau_theta:
+    distribution: uniform
+    max: 1.0
+    min: 0.0
+  batch_size:
+    values:
+      - 16
+      - 32
+  learning_rate:
+    distribution: log_uniform_values
+    max: 0.001
+    min: 0.000001
+  beta:
+    distribution: uniform
+    max: 10
+    min: 0.01
+  target_update_interval:
+    values:
+      - 10000
+  tau:
+    values:
+      - 1
+  gradient_steps:
+    values:
+      - 4
+  train_freq:
+    values:
+      - 4
+  hidden_dim:
+    values:
+      - 512
+  num_nets:
+    values:
+      - 2
+  aggregator:
+    values:
+      - min
+      - mean
+      - max
+  learning_starts:
+    values:
+      - 50000
