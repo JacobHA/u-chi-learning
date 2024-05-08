@@ -27,6 +27,7 @@ env_to_steps = {
     'Hopper-v4': 1_000_000,
     'Swimmer-v4': 1_000_000,
     'Reacher-v4': 1_000_000,
+    'PongNoFrameskip-v4': 1_200_000,
 }
 
 env_to_logfreq = {
@@ -114,7 +115,8 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
                 env_id=env_id, **full_config,
                 device=device, log_interval=env_to_logfreq.get(env_id, 500),
                 tensorboard_log=log_dir,
-                save_best=save_best
+                save_best=save_best,
+
             )
 
             # Measure the time it takes to learn:
@@ -130,10 +132,10 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=10)
     args.add_argument('--project', type=str, default='u-chi-learning')
-    args.add_argument('--env', type=str, default='LunarLander-v2')
+    args.add_argument('--env', type=str, default='PongNoFrameskip-v4')
     args.add_argument('--algo', type=str, default='asql')
     args.add_argument('--device', type=str, default='auto')
-    args.add_argument('--exp-name', type=str, default='general')
+    args.add_argument('--exp-name', type=str, default='atari')
     args.add_argument('--log', type=str, default='tf_logs')
     args.add_argument('--save-best', type=bool, default=True)
 
