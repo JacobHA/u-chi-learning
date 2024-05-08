@@ -91,6 +91,7 @@ class BaseAgent:
                  seed: Optional[int] = None,
                  save_best: Optional[bool] = False,
                  save_path: Optional[str] = 'best_models',
+                 render_mode: Optional[str] = 'human',
                  ) -> None:
         self.kwargs = locals()
         self.kwargs.pop('self')
@@ -103,7 +104,8 @@ class BaseAgent:
         else:
             is_atari = False
         self.env, self.eval_env = env_id_to_envs(
-            env_id, render, is_atari=is_atari, max_steps=max_eval_steps)
+            env_id, render, is_atari=is_atari, max_steps=max_eval_steps,
+            render_mode=render_mode)
 
         if hasattr(self.env.unwrapped.spec, 'id'):
             self.env_str = self.env.unwrapped.spec.id
@@ -431,6 +433,9 @@ class BaseAgent:
                 best_saved_avg_rwd = float(f.read())
         else:
             best_saved_avg_rwd = -np.inf
+            # Make the folder here:
+            os.makedirs(self.save_path, exist_ok=True)
+
         if self.save_best and avg_reward > best_saved_avg_rwd:
             with open(os.path.join(self.save_path, f"{str(self)}_score.txt"), 'w') as f:
                 f.write(str(avg_reward))

@@ -83,7 +83,7 @@ class PermuteAtariObs(gym.Wrapper):
         res = np.transpose(res, [2,1,0])
         return res, info
 
-def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None, render_mode='human'):
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -91,18 +91,18 @@ def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps
         eval_env = copy.deepcopy(env_id)
         return env, eval_env
     if is_atari:
-        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims)
+        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims, render_mode=render_mode)
     else:
         env = gym.make(env_id)
         if max_steps is not None:
-            eval_env = gym.make(env_id, render_mode='human' if render else None, max_episode_steps=max_steps)
+            eval_env = gym.make(env_id, render_mode=render_mode, max_episode_steps=max_steps)
         else:
-            eval_env = gym.make(env_id, render_mode='human' if render else None)
+            eval_env = gym.make(env_id, render_mode=render_mode)
 
         return env, eval_env
 
 
-def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=True, permute_dims=False):
+def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=True, permute_dims=False, render_mode='human'):
     if isinstance(env_id, str):
         # Don't vectorize if there is only one env
         if n_envs==1:
@@ -115,7 +115,7 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
                 env = PermuteAtariObs(env)
             # env = AtariAdapter(env)
             # make another instance for evaluation purposes only:
-            eval_env = gym.make(env_id, render_mode='human' if render else None, frameskip=frameskip)
+            eval_env = gym.make(env_id, render_mode=render_mode, frameskip=frameskip)
             eval_env = AtariPreprocessing(eval_env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 eval_env = FrameStack(eval_env, framestack_k)
