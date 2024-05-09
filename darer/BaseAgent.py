@@ -91,7 +91,7 @@ class BaseAgent:
                  seed: Optional[int] = None,
                  save_best: Optional[bool] = False,
                  save_path: Optional[str] = 'best_models',
-                 render_mode: Optional[str] = 'human',
+                 render_mode: Optional[str] = None,
                  ) -> None:
         self.kwargs = locals()
         self.kwargs.pop('self')

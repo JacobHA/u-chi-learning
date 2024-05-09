@@ -83,7 +83,7 @@ class PermuteAtariObs(gym.Wrapper):
         res = np.transpose(res, [2,1,0])
         return res, info
 
-def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None, render_mode='human'):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None, render_mode=None):
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -102,11 +102,11 @@ def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps
         return env, eval_env
 
 
-def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=True, permute_dims=False, render_mode='human'):
+def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=True, permute_dims=False, render_mode=None):
     if isinstance(env_id, str):
         # Don't vectorize if there is only one env
         if n_envs==1:
-            env = gym.make(env_id, frameskip=frameskip)
+            env = gym.make(env_id, frameskip=frameskip, render_mode='human' if render else None)
             env = AtariPreprocessing(env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 env = FrameStack(env, framestack_k)

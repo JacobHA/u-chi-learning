@@ -113,7 +113,7 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 
             agent = Agent(
                 env_id=env_id, **full_config,
-                device=device, log_interval=env_to_logfreq.get(env_id, 500),
+                device=device, log_interval=env_to_logfreq.get(env_id, 10000),
                 tensorboard_log=log_dir,
                 save_best=save_best,
 
