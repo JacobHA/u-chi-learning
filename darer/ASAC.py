@@ -201,6 +201,8 @@ class ASAC(BaseAgent):
         # Compute critic loss
         critic_loss = 0.5 * sum(F.mse_loss(current_q, target_q_values) for current_q in current_q_values)
         assert isinstance(critic_loss, th.Tensor)  # for type checker
+        # Log the mean q values:
+        self.logger.record("train/mean_q", min_q_values.mean().item())
 
 
         self.lr = self.q_optimizers.get_lr()
