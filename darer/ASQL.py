@@ -110,9 +110,6 @@ class ASQL(BaseAgent):
             # Aggregate the qs:
             online_q_next = self.aggregator_fn(online_q_next, dim=0).squeeze(0)
             online_curr_q = self.aggregator_fn(online_curr_q, dim=0).squeeze(0)
-            online_next_v = self.beta**(-1) * torch.logsumexp(self.beta * online_q_next + log_prior_next.repeat(1, 1), 
-                                                         dim=-1, 
-                                                         keepdim=True)
 
             online_curr_v = self.beta**(-1) * torch.logsumexp(self.beta * online_curr_q + target_priora, dim=-1, keepdim=True)
             new_theta = torch.mean(rewards - (online_curr_q - online_curr_v) , dim=0)
@@ -139,7 +136,11 @@ class ASQL(BaseAgent):
 
         # Calculate the q ("critic") loss:
         loss = 0.5*sum(self.loss_fn(q, expected_curr_q) for q in curr_q.T)
-        
+        # Log mean q values:
+        self.logger.record("train/mean_q", curr_q.mean().item())
+        # And loss:
+        self.logger.record("train/loss", loss.item())
+
         if self.use_ppi:
             # prior_loss = self.loss_fn(curr_prior.squeeze(), self.aggregator_fn(online_curr_u,dim=0)[0])
             pistar = torch.exp(self.beta * self.aggregator_fn(online_curr_q, dim=0)) * target_priora
