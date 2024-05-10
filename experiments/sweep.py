@@ -130,7 +130,7 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
-    args.add_argument('--count', type=int, default=1)
+    args.add_argument('--count', type=int, default=50)
     args.add_argument('--project', type=str, default='u-chi-learning')
     args.add_argument('--env', type=str, default='PongNoFrameskip-v4')
     args.add_argument('--algo', type=str, default='asql')
