@@ -224,7 +224,7 @@ def is_tabular(env):
     return isinstance(env.observation_space, gym.spaces.Discrete) and isinstance(env.action_space, gym.spaces.Discrete)
 
 
-def sample_wandb_hyperparams(params, int_hparams=None):
+def sample_wandb_hyperparams(params):
     sampled = {}
     for k, v in params.items():
         if 'values' in v:
@@ -236,16 +236,16 @@ def sample_wandb_hyperparams(params, int_hparams=None):
                     sampled[k] = int(val)
             elif v['distribution'] == 'normal':
                 sampled[k] = random.normalvariate(v['mean'], v['std'])
-            elif v['distribution'] == 'log_uniform_values':
+            elif v['distribution'] in {'log_uniform_values', 'q_log_uniform_values'}:
                 emin, emax = np.log(v['max']), np.log(v['min'])
                 sample = np.exp(random.uniform(emin, emax))
+                if v['distribution'].startswith("q_"):
+                    sample = int(sample)
                 sampled[k] = sample
             else:
                 raise NotImplementedError
         else:
             raise NotImplementedError # f"Value {v} not recognized."
-        if k in int_hparams:
-            sampled[k] = int(sampled[k])
     return sampled
 
 

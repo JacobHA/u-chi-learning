@@ -70,8 +70,7 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
     wandb_kwargs = {"project": project}
     if sweep_config:
         sweep_config["controller"] = {'type': 'local'}
-        sampled_params = sample_wandb_hyperparams(sweep_config["parameters"], 
-                                                    int_hparams=int_hparams)
+        sampled_params = sample_wandb_hyperparams(sweep_config["parameters"])
         print(f"locally sampled params: {sampled_params}")
         wandb_kwargs['config'] = sampled_params
 
@@ -116,7 +115,6 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
                 device=device, log_interval=env_to_logfreq.get(env_id, 10000),
                 tensorboard_log=log_dir,
                 save_best=save_best,
-
             )
 
             # Measure the time it takes to learn:
@@ -132,10 +130,10 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=1)
     args.add_argument('--project', type=str, default='u-chi-learning')
-    args.add_argument('--env', type=str, default='PongNoFrameskip-v4')
+    args.add_argument('--env', type=str, default='MountainCar-v0')
     args.add_argument('--algo', type=str, default='asql')
     args.add_argument('--device', type=str, default='auto')
-    args.add_argument('--exp-name', type=str, default='atari')
+    args.add_argument('--exp-name', type=str, default='general')
     args.add_argument('--log', type=str, default='tf_logs')
     args.add_argument('--save-best', type=bool, default=True)
 
