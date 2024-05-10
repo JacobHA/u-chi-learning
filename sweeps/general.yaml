@@ -29,7 +29,7 @@ parameters:
     max: 0.5
     min: 0.0
   gradient_steps:
-    distribution: uniform
+    distribution: q_uniform
     max: 10
     min: 1
   train_freq:

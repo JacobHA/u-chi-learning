@@ -39,7 +39,7 @@ def wandb_train(local_cfg=None):
     wandb_kwargs = {"project": project, "group": experiment_name}
     if local_cfg:
         local_cfg["controller"] = {'type': 'local'}
-        sampled_params = sample_wandb_hyperparams(local_cfg["parameters"], int_hparams=int_hparams)
+        sampled_params = sample_wandb_hyperparams(local_cfg["parameters"])
         local_cfg["parameters"] = sampled_params
         print(f"locally sampled params: {sampled_params}")
         wandb_kwargs['config'] = local_cfg

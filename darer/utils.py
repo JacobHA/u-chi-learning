@@ -224,7 +224,7 @@ def is_tabular(env):
     return isinstance(env.observation_space, gym.spaces.Discrete) and isinstance(env.action_space, gym.spaces.Discrete)
 
 
-def sample_wandb_hyperparams(params, int_hparams=None):
+def sample_wandb_hyperparams(params):
     sampled = {}
     for k, v in params.items():
         if 'values' in v:
@@ -247,9 +247,6 @@ def sample_wandb_hyperparams(params, int_hparams=None):
                 raise NotImplementedError
         else:
             raise NotImplementedError # f"Value {v} not recognized."
-        if k in int_hparams:
-            sampled[k] = int(sampled[k])
-
         assert k in sampled, f"Hparam {k} not successfully sampled."
     return sampled
 
