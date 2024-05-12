@@ -1,3 +1,4 @@
+import yaml
 from stable_baselines3.common.preprocessing import get_action_dim, get_flattened_obs_dim
 import numpy as np
 import torch
@@ -29,6 +30,11 @@ class ASAC(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
+        self.kwargs.update(locals())
+        self.kwargs.pop('self')
+        self.kwargs.pop('args')
+        self.kwargs.pop('kwargs')
+        self.kwargs.pop('__class__')
         self.algo_name = f'ASAC' + '-no'*(not use_dones) + '-auto'*(self.beta == 'auto') + name_suffix
         self.use_dones = use_dones
         self.use_ppi = use_ppi
@@ -195,6 +201,8 @@ class ASAC(BaseAgent):
         # Compute critic loss
         critic_loss = 0.5 * sum(F.mse_loss(current_q, target_q_values) for current_q in current_q_values)
         assert isinstance(critic_loss, th.Tensor)  # for type checker
+        # Log the mean q values:
+        self.logger.record("train/mean_q", min_q_values.mean().item())
 
 
         self.lr = self.q_optimizers.get_lr()
@@ -252,17 +260,19 @@ def main():
     env_id = 'HalfCheetah-v4'
     # env_id = 'Ant-v4'
     # env_id = 'Simple-v0'
-    from hparams import pendulum_logu as config
+    with open(f'hparams/{env_id}/asac.yaml') as f:
+        params = yaml.load(f, Loader=yaml.FullLoader)
     # from simple_env import SimpleEnv
-    agent = ASAC(env_id, **config, device='cuda',
-                    num_nets=2, tensorboard_log='pend', 
-                    actor_learning_rate=1e-4, 
-                    render=False, max_grad_norm=10, log_interval=2000,
-                      )
+    agent = ASAC(env_id, **params, device='cuda',
+        tensorboard_log=f'local-asac-{env_id}',
+        render=False, max_grad_norm=10, log_interval=2000,
+        save_best=True
+    )
                       
     agent.learn(total_timesteps=500_000)
 
 
 if __name__ == '__main__':
-    for _ in range(10):
-        main()
+    main()
+    # for _ in range(10):
+    #     main()

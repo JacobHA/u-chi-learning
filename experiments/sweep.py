@@ -27,6 +27,7 @@ env_to_steps = {
     'Hopper-v4': 1_000_000,
     'Swimmer-v4': 1_000_000,
     'Reacher-v4': 1_000_000,
+    'PongNoFrameskip-v4': 1_200_000,
 }
 
 env_to_logfreq = {
@@ -58,7 +59,7 @@ try:
 except KeyError:
     WANDB_DIR = None
     
-def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu'):
+def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None, log_dir='tf_logs', device='cpu', save_best=False):
     # env = gymnasium.make(env_id)
     total_timesteps = env_to_steps.get(env_id, 100_000)
     runs_per_hparam = 3
@@ -110,10 +111,13 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
             # Choose the algo appropriately
             Agent = algo_to_agent[algo]
 
-            agent = Agent(env_id, **full_config,
-                                device=device, log_interval=env_to_logfreq.get(env_id, 500),
-                                tensorboard_log=log_dir,
-                                )
+            agent = Agent(
+                env_id=env_id, **full_config,
+                device=device, log_interval=env_to_logfreq.get(env_id, 10000),
+                tensorboard_log=log_dir,
+                save_best=save_best,
+
+            )
 
             # Measure the time it takes to learn:
             agent.learn(total_timesteps=total_timesteps)
@@ -126,13 +130,14 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
-    args.add_argument('--count', type=int, default=10)
-    args.add_argument('--project', type=str, default='eval-sweep')
-    args.add_argument('--env', type=str, default='Swimmer-v4')
-    args.add_argument('--algo', type=str, default='sac')
+    args.add_argument('--count', type=int, default=50)
+    args.add_argument('--project', type=str, default='u-chi-learning')
+    args.add_argument('--env', type=str, default='PongNoFrameskip-v4')
+    args.add_argument('--algo', type=str, default='asql')
     args.add_argument('--device', type=str, default='auto')
-    args.add_argument('--exp-name', type=str, default='mujoco')
+    args.add_argument('--exp-name', type=str, default='atari')
     args.add_argument('--log', type=str, default='tf_logs')
+    args.add_argument('--save-best', type=bool, default=True)
 
     args = args.parse_args()
 
@@ -146,5 +151,6 @@ if __name__ == '__main__':
              algo=args.algo,
              project=args.project,
              device=args.device,
-             log_dir=args.log)
+             log_dir=args.log,
+             save_best=args.save_best)
 

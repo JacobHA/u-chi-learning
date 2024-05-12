@@ -1,3 +1,4 @@
+import os
 import time
 import numpy as np
 import torch
@@ -7,7 +8,7 @@ import gymnasium as gym
 from typing import Optional, Union, List, Tuple, Dict, Any, get_type_hints
 from typeguard import typechecked
 import wandb
-from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, get_eigvec_values
+from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, get_eigvec_values, find_torch_modules
 
 HPARAM_ATTRS = {
     'beta': 'beta',
@@ -88,15 +89,23 @@ class BaseAgent:
                  max_eval_steps=None,
                  name_suffix: Optional[str] = '',
                  seed: Optional[int] = None,
+                 save_best: Optional[bool] = False,
+                 save_path: Optional[str] = 'best_models',
+                 render_mode: Optional[str] = None,
                  ) -> None:
-
+        self.kwargs = locals()
+        self.kwargs.pop('self')
+        self.kwargs.pop('TypeCheckMemo')
+        self.kwargs.pop('memo')
+        self.kwargs.pop('check_argument_types')
         # first check if Atari env or not:
         if isinstance(env_id, str):
             is_atari = 'NoFrameskip' in env_id or 'ALE' in env_id
         else:
             is_atari = False
         self.env, self.eval_env = env_id_to_envs(
-            env_id, render, is_atari=is_atari, max_steps=max_eval_steps)
+            env_id, render, is_atari=is_atari, max_steps=max_eval_steps,
+            render_mode=render_mode)
 
         if hasattr(self.env.unwrapped.spec, 'id'):
             self.env_str = self.env.unwrapped.spec.id
@@ -140,7 +149,7 @@ class BaseAgent:
         self.aggregator = aggregator
         self.tensorboard_log = tensorboard_log
         self.aggregator_fn = str_to_aggregator[aggregator]
-        self.avg_eval_rwd = None
+        self.avg_eval_rwd = -np.inf
         self.fps = None
         self.beta_end = beta_end
         self.scheduler_str = scheduler_str
@@ -148,6 +157,9 @@ class BaseAgent:
         self.name_suffix = name_suffix
         # Track the rewards over time:
         self.step_to_avg_eval_rwd = {}
+        # save the parameters for model loading
+        self.save_best = save_best
+        self.save_path = save_path
 
         self.replay_buffer = ReplayBuffer(buffer_size=buffer_size,
                                           observation_space=self.env.observation_space,
@@ -369,7 +381,7 @@ class BaseAgent:
         self.logger.dump(step=self.env_steps)
         self.initial_time = time.thread_time_ns()
 
-    def evaluate(self, n_episodes=10) -> float:
+    def evaluate(self, n_episodes=10, render=False) -> float:
         # run the current policy and return the average reward
         self.initial_time = time.process_time_ns()
         avg_reward = 0.
@@ -377,6 +389,8 @@ class BaseAgent:
             # log the action frequencies:
             action_freqs = torch.zeros(self.nA)
         n_steps = 0
+        # if render:
+        #     self.eval_env.render_mode = 'human'
         for ep in range(n_episodes):
             state, _ = self.eval_env.reset()
             done = False
@@ -394,6 +408,8 @@ class BaseAgent:
                 avg_reward += reward
                 state = next_state
                 done = terminated or truncated
+                if render:
+                    self.eval_env.render()
 
         avg_reward /= n_episodes
         if isinstance(self.env.action_space, gym.spaces.Discrete):
@@ -411,6 +427,20 @@ class BaseAgent:
         self.logger.record('eval/fps', eval_fps)
         self.eval_time = eval_time
         self.eval_fps = eval_fps
+        # find the current best saved model
+        if os.path.exists(os.path.join(self.save_path, f"{str(self)}_score.txt")):
+            with open(os.path.join(self.save_path, f"{str(self)}_score.txt"), 'r') as f:
+                best_saved_avg_rwd = float(f.read())
+        else:
+            best_saved_avg_rwd = -np.inf
+            # Make the folder here:
+            os.makedirs(self.save_path, exist_ok=True)
+
+        if self.save_best and avg_reward > best_saved_avg_rwd:
+            with open(os.path.join(self.save_path, f"{str(self)}_score.txt"), 'w') as f:
+                f.write(str(avg_reward))
+            self.save(os.path.join(self.save_path, str(self)))
+            print("new best model saved")
         self.avg_eval_rwd = avg_reward
         self.step_to_avg_eval_rwd[self.env_steps] = avg_reward
         return avg_reward
@@ -433,6 +463,43 @@ class BaseAgent:
                 f"Unknown beta schedule: {beta_schedule}")
         return self.betas
 
-
     def _update_prior(self):
         pass
+
+    def __str__(self):
+        return f"{self.__class__.__name__}_{self.env_str}"
+
+    def save(self, path=None):
+        if path is None:
+            path = str(self)
+        total_state = {
+            "kwargs": self.kwargs,
+            "state_dicts": find_torch_modules(self),
+            "class": self.__class__.__name__
+        }
+        # if the path is a directory, make :
+        if '/' in path:
+            bp = path.split('/')
+            base_path = os.path.join(*bp[:-1])
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+        torch.save(total_state, path)
+
+    @staticmethod
+    def load(path, **new_kwargs):
+        state = torch.load(path)
+        cls = BaseAgent
+        for cls_ in BaseAgent.__subclasses__():
+            if cls_.__name__ == state['class']:
+                cls = cls_
+        args = state['kwargs'].get('args', ())
+        kwargs = state['kwargs']
+        kwargs.update(new_kwargs)
+        agent = cls(*args, **kwargs)
+        for k, v in state['state_dicts'].items():
+            attrs = k.split('.')
+            module = agent
+            for attr in attrs:
+                module = getattr(module, attr)
+            module.load_state_dict(v)
+        return agent

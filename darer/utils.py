@@ -83,7 +83,7 @@ class PermuteAtariObs(gym.Wrapper):
         res = np.transpose(res, [2,1,0])
         return res, info
 
-def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None):
+def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None, render_mode=None):
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -91,22 +91,22 @@ def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps
         eval_env = copy.deepcopy(env_id)
         return env, eval_env
     if is_atari:
-        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims)
+        return atari_env_id_to_envs(env_id, render, n_envs=1, frameskip=4, framestack_k=4, permute_dims=permute_dims, render_mode=render_mode)
     else:
         env = gym.make(env_id)
         if max_steps is not None:
-            eval_env = gym.make(env_id, render_mode='human' if render else None, max_episode_steps=max_steps)
+            eval_env = gym.make(env_id, render_mode=render_mode, max_episode_steps=max_steps)
         else:
-            eval_env = gym.make(env_id, render_mode='human' if render else None)
+            eval_env = gym.make(env_id, render_mode=render_mode)
 
         return env, eval_env
 
 
-def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=True, permute_dims=False):
+def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None, grayscale_obs=True, permute_dims=False, render_mode=None):
     if isinstance(env_id, str):
         # Don't vectorize if there is only one env
         if n_envs==1:
-            env = gym.make(env_id, frameskip=frameskip)
+            env = gym.make(env_id, frameskip=frameskip, render_mode='human' if render else None)
             env = AtariPreprocessing(env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 env = FrameStack(env, framestack_k)
@@ -115,7 +115,7 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
                 env = PermuteAtariObs(env)
             # env = AtariAdapter(env)
             # make another instance for evaluation purposes only:
-            eval_env = gym.make(env_id, render_mode='human' if render else None, frameskip=frameskip)
+            eval_env = gym.make(env_id, render_mode=render_mode, frameskip=frameskip)
             eval_env = AtariPreprocessing(eval_env, terminal_on_life_loss=True, screen_size=84, grayscale_obs=grayscale_obs, grayscale_newaxis=True, scale_obs=False, noop_max=30, frame_skip=1)
             if framestack_k:
                 eval_env = FrameStack(eval_env, framestack_k)
@@ -162,14 +162,14 @@ class FireResetEnv(gym.Wrapper):
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
-    def reset(self):
-        self.env.reset()
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
         obs, _, done, _, _ = self.env.step(1)
         if done:
-            self.env.reset()
+            self.env.reset(**kwargs)
         obs, _, done, _, _ = self.env.step(2)
         if done:
-            self.env.reset()
+            self.env.reset(**kwargs)
         return obs, {}
 
 
@@ -230,8 +230,10 @@ def sample_wandb_hyperparams(params, int_hparams=None):
         if 'values' in v:
             sampled[k] = random.choice(v['values'])
         elif 'distribution' in v:
-            if v['distribution'] == 'uniform' or v['distribution'] == 'uniform_values':
-                sampled[k] = random.uniform(v['min'], v['max'])
+            if v['distribution'] in {'uniform', 'q_uniform'} or v['distribution'] in {'q_uniform_values', 'uniform_values'}:
+                val = random.uniform(v['min'], v['max'])
+                if v['distribution'].startswith("q_"):
+                    sampled[k] = int(val)
             elif v['distribution'] == 'normal':
                 sampled[k] = random.normalvariate(v['mean'], v['std'])
             elif v['distribution'] == 'log_uniform_values':
@@ -245,6 +247,40 @@ def sample_wandb_hyperparams(params, int_hparams=None):
         if k in int_hparams:
             sampled[k] = int(sampled[k])
     return sampled
+
+
+def find_torch_modules(module, modules=None, prefix=None):
+    """
+    Recursively find all torch.nn.Modules within a given module.
+    Args:
+        module (nn.Module): The module to inspect.
+        modules (dict, optional): A dictionary to collect module names and their instances.
+        prefix (str, optional): A prefix for the module names to handle nested structures.
+    Returns:
+        dict: A dictionary with module names as keys and module instances as values.
+    """
+    if modules is None:
+        modules = {}
+    # Check if the current module itself is an instance of nn.Module
+    submodules = None
+    if isinstance(module, torch.nn.Module):
+        modules[prefix] = module.state_dict()
+        submodules = module.named_children
+    elif hasattr(module, '__dict__'):
+        submodules = module.__dict__.items
+    # Recursively find all submodules if the current module is a container
+    if submodules:
+        for name, sub_module in submodules():
+            if prefix:
+                mod_name = f"{prefix}.{name}"
+            else:
+                mod_name = name
+            if name in mod_name.split('.'):
+                continue
+            find_torch_modules(sub_module, modules, mod_name)
+
+    return modules
+
 
 def get_max_grad(model):
     grad_norms = []
