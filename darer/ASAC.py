@@ -218,6 +218,9 @@ class ASAC(BaseAgent):
         # Optimize the actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        # clip the actor gradient:
+        if self.max_grad_norm is not None:
+            th.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
         self.actor_optimizer.step()
 
         # log newest temperature:
