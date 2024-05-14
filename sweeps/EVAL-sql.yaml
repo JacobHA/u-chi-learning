@@ -3,10 +3,12 @@ metric:
   goal: maximize
   name: eval/auc
 parameters:
-  tau_theta:
-    distribution: uniform
-    max: 1.0
-    min: 0.0
+  gamma:
+    values:
+      - 0.95
+      - 0.98
+      - 0.99
+      - 0.995
   batch_size:
     values:
       - 32

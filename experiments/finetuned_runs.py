@@ -17,7 +17,7 @@ env_to_steps = {
     'CartPole-v1': 50_000,
     'Acrobot-v1': 100_000,
     'LunarLander-v2': 200_000,
-    'MountainCar-v0': 200_000,
+    'MountainCar-v0': 240_000,
     'HalfCheetah-v4': 1_000_000,
     'Ant-v4': 1_000_000,
     'Swimmer-v4': 1_000_000,
