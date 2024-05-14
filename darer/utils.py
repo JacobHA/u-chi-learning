@@ -237,7 +237,7 @@ def sample_wandb_hyperparams(params, int_hparams=None):
                 sampled[k] = val
             elif v['distribution'] == 'normal':
                 sampled[k] = random.normalvariate(v['mean'], v['std'])
-            elif v['distribution'] in {'log_uniform_values' or 'q_log_uniform_values'}:
+            elif v['distribution'] in {'log_uniform_values', 'q_log_uniform_values'}:
                 emin, emax = np.log(v['max']), np.log(v['min'])
                 sample = np.exp(random.uniform(emin, emax))
                 if v['distribution'].startswith("q_"):
