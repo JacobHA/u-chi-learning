@@ -17,8 +17,8 @@ from utils import safe_open, sample_wandb_hyperparams
 
 
 env_to_steps = {
-    'CartPole-v1': 10_000,
-    'Acrobot-v1': 5_000,
+    'CartPole-v1': 50_000,
+    'Acrobot-v1': 50_000,
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 200_000,
     'HalfCheetah-v4': 1_000_000,

@@ -233,12 +233,15 @@ def sample_wandb_hyperparams(params, int_hparams=None):
             if v['distribution'] in {'uniform', 'q_uniform'} or v['distribution'] in {'q_uniform_values', 'uniform_values'}:
                 val = random.uniform(v['min'], v['max'])
                 if v['distribution'].startswith("q_"):
-                    sampled[k] = int(val)
+                    val = int(val)
+                sampled[k] = val
             elif v['distribution'] == 'normal':
                 sampled[k] = random.normalvariate(v['mean'], v['std'])
-            elif v['distribution'] == 'log_uniform_values':
+            elif v['distribution'] in {'log_uniform_values', 'q_log_uniform_values'}:
                 emin, emax = np.log(v['max']), np.log(v['min'])
                 sample = np.exp(random.uniform(emin, emax))
+                if v['distribution'].startswith("q_"):
+                    sample = int(sample)
                 sampled[k] = sample
             else:
                 raise NotImplementedError
@@ -246,6 +249,8 @@ def sample_wandb_hyperparams(params, int_hparams=None):
             raise NotImplementedError # f"Value {v} not recognized."
         if k in int_hparams:
             sampled[k] = int(sampled[k])
+
+        assert k in sampled, f"Hparam {k} not successfully sampled."
     return sampled
 
 
