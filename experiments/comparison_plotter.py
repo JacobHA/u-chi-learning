@@ -154,7 +154,7 @@ if __name__ == "__main__":
                     exclude_algos=[f'{env}-arSAC-autoauto', f'{env}-arSAC-min', f'{env}-arSAC-autonewhauto', f'{env}-arSAC'],
                     **env_to_settings.get(env, {})                    
                     ,
-                    include_algos=[f'{env}-arDDPG', 'SAC', f'{env}-arSAC-newh']
+                    # include_algos=[f'{env}-arDDPG', 'SAC', f'{env}-arSAC-newh']
                     )
         except KeyError:
             print("No data to plot.")
