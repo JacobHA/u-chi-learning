@@ -1,4 +1,4 @@
-method: random
+method: bayes
 metric:
   goal: maximize
   name: eval/auc
@@ -13,10 +13,9 @@ parameters:
       - 64
       - 128
       - 256
-      - 512
   learning_rate:
     distribution: log_uniform_values
-    max: 0.1
+    max: 0.01
     min: 0.0001
   beta:
     distribution: log_uniform_values
@@ -28,20 +27,30 @@ parameters:
       - 100
       - 500
       - 1000
-      - 2000
+      - 5000
+  tau:
+    values:
+      - 1.0
+  max_grad_norm:
+    values:
+      - 10.0
   gradient_steps:
     distribution: log_uniform_values
-    max: 50
+    max: 5
     min: 1
   train_freq:
-    distribution: log_uniform_values
-    max: 50
-    min: 1
+    values:
+      - 1
   hidden_dim:
     values:
-      - 16
-      - 32
       - 64
       - 128
       - 256
-      - 512
+  aggregator:
+    values:
+      - min
+      - mean
+      - max
+  learning_starts:
+    values:
+      - 5000

@@ -233,7 +233,8 @@ def sample_wandb_hyperparams(params):
             if v['distribution'] in {'uniform', 'q_uniform'} or v['distribution'] in {'q_uniform_values', 'uniform_values'}:
                 val = random.uniform(v['min'], v['max'])
                 if v['distribution'].startswith("q_"):
-                    sampled[k] = int(val)
+                    val = int(val)
+                sampled[k] = val
             elif v['distribution'] == 'normal':
                 sampled[k] = random.normalvariate(v['mean'], v['std'])
             elif v['distribution'] in {'log_uniform_values', 'q_log_uniform_values'}:

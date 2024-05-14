@@ -17,8 +17,8 @@ from utils import safe_open, sample_wandb_hyperparams
 
 
 env_to_steps = {
-    'CartPole-v1': 10_000,
-    'Acrobot-v1': 5_000,
+    'CartPole-v1': 50_000,
+    'Acrobot-v1': 50_000,
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 200_000,
     'HalfCheetah-v4': 1_000_000,
@@ -128,7 +128,7 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
-    args.add_argument('--count', type=int, default=1)
+    args.add_argument('--count', type=int, default=50)
     args.add_argument('--project', type=str, default='u-chi-learning')
     args.add_argument('--env', type=str, default='MountainCar-v0')
     args.add_argument('--algo', type=str, default='asql')

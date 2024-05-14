@@ -111,7 +111,8 @@ class ASQL(BaseAgent):
             online_q_next = self.aggregator_fn(online_q_next, dim=0).squeeze(0)
             online_curr_q = self.aggregator_fn(online_curr_q, dim=0).squeeze(0)
 
-            online_curr_v = self.beta**(-1) * torch.logsumexp(self.beta * online_curr_q + target_priora, dim=-1, keepdim=True)
+            online_curr_v = self.beta**(-1) * torch.logsumexp(self.beta * online_curr_q + torch.log(target_priora), dim=-1, keepdim=True)
+            # online_next_v = self.beta**(-1) * torch.logsumexp(self.beta * online_q_next + log_prior_next, dim=-1, keepdim=True)
             new_theta = torch.mean(rewards - (online_curr_q - online_curr_v) , dim=0)
             # new_theta = torch.mean(rewards - online_curr_q + online_next_v, dim=0)
 
