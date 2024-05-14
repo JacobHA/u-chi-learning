@@ -59,7 +59,7 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
             if not log_files:
                 print(f"No log files found in {subfolder}")
                 continue
-            
+
             print("Processing", os.path.basename(subfolder))
 
             try:
@@ -68,7 +68,7 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
                     df = reader.scalars
                     df = df[df['tag'].isin([metric, x_axis])]
                     clean_algo_name = clean_algorithm_name(algo_name, env)
-                    
+
                     df['algo'] = clean_algo_name
                     df['run'] = os.path.basename(subfolder).split('_')[1]
                     algo_data = pd.concat([algo_data, df])
@@ -136,7 +136,7 @@ if __name__ == "__main__":
                     ax.set_ylabel('')
             except KeyError:
                 print("No data to plot.")
-        
+
         unique_handles, unique_labels = [], []
         for ax in axis:
             handles, labels = ax.get_legend_handles_labels()
