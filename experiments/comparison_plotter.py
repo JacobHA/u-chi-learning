@@ -120,7 +120,7 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--envs', type=str, nargs='+', default=['Swimmer-v4', 'Ant-v4', 'HalfCheetah-v4', 'Swimmer-v4'])
+    parser.add_argument('-e', '--envs', type=str, nargs='+', default=['Swimmer-v4'])  # , 'Ant-v4', 'HalfCheetah-v4', 'Swimmer-v4'
     parser.add_argument('-n', '--experiment_name', type=str, default='ft_logs_test')
     args = parser.parse_args()
     envs = args.envs
@@ -129,6 +129,8 @@ if __name__ == "__main__":
     metrics = ['eval/avg_reward',]  #  'eval/avg_reward', 'train/theta', 'rollout/neg_free_energy'
     for metric in metrics:
         fig, axis = plt.subplots(1, len(envs), figsize=(12*len(envs), 8))
+        if len(envs) == 1:
+            axis = [axis]
         for i, env in enumerate(envs):
             ax = axis[i]
             ax.set_title(env)
