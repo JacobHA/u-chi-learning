@@ -17,7 +17,7 @@ scipy
 matplotlib
 tbparse
 lxml==4.9.4
-dm_control
 pytest
 pytest-mock
 imageio
+rliable
