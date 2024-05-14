@@ -15,7 +15,7 @@ from utils import safe_open
 
 env_to_steps = {
     'CartPole-v1': 50_000,
-    'Acrobot-v1': 100_000,
+    'Acrobot-v1': 50_000,
     'LunarLander-v2': 200_000,
     'MountainCar-v0': 200_000,
     'HalfCheetah-v4': 1_000_000,
@@ -24,6 +24,8 @@ env_to_steps = {
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
+    'PongNoFrameskip-v4': 1_200_000,
+
 }
 
 env_to_logfreq = {
@@ -36,13 +38,14 @@ env_to_logfreq = {
     'Ant-v4': 5000,
     'Humanoid-v4': 10000,
     'Pusher-v4': 5000,
-    'Pendulum-v1': 200
+    'Pendulum-v1': 200,
+    'PongNoFrameskip-v4': 10_000,
 }
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='Ant-v4')
-args.add_argument('--algo', type=str, default='asac')
+args.add_argument('--env_id', type=str, default='CartPole-v1')
+args.add_argument('--algo', type=str, default='asql')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
