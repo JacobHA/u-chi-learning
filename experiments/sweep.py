@@ -6,7 +6,6 @@ import sys
 import os
 
 sys.path.append('darer')
-from UAgent import UAgent
 from ASQL import ASQL
 from ASAC import ASAC
 from SoftQAgent import SoftQAgent
@@ -43,7 +42,6 @@ env_to_logfreq = {
 }
 
 algo_to_agent = {
-    'u': UAgent,
     'asac': ASAC,
     'sql': SoftQAgent,
     'asql': ASQL,

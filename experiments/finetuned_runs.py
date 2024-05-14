@@ -6,7 +6,6 @@ sys.path.append('darer')
 from SoftQAgent import SoftQAgent
 from CustomDQN import CustomDQN
 from CustomSAC import CustomSAC
-from UAgent import UAgent
 from ASAC import ASAC
 from ASQL import ASQL
 from arDDPG import arDDPG
@@ -61,13 +60,7 @@ print(algo)
 
 hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
 # Drop the gamma hparam:
-if algo == 'u': 
-    try:
-        hparams.pop('gamma')
-    except:
-        pass
-    AgentClass = UAgent
-elif algo == 'dqn':
+if algo == 'dqn':
     AgentClass = CustomDQN
 elif algo == 'sql':
     AgentClass = SoftQAgent

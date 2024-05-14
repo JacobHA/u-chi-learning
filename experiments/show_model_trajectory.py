@@ -3,7 +3,6 @@ import sys
 import argparse
 sys.path.append('darer')
 
-from UAgent import UAgent
 from ASQL import ASQL
 from ASAC import ASAC
 from SoftQAgent import SoftQAgent
