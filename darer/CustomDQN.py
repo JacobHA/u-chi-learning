@@ -35,6 +35,8 @@ class CustomDQN(DQN):
                                            algo_name='DQN'+name_suffix)
 
     def _on_step(self) -> None:
+        # Do super's self._on_step:
+        super()._on_step()
         # Evaluate the agent and log it if step % log_interval == 0:
         if self._n_calls % self.eval_interval == 0:
             self.eval_rwd = self.evaluate_agent(5)
@@ -45,8 +47,6 @@ class CustomDQN(DQN):
             # self._dump_logs()#step=self.num_timesteps)
             self.our_logger.dump(step=self.num_timesteps)
 
-        # Do super's self._on_step:
-        super()._on_step()
 
     def evaluate_agent(self, n_episodes=1):
         # Run the current policy and return the average reward
@@ -76,6 +76,9 @@ class CustomDQN(DQN):
             self.our_logger.record("rollout/ep_len_mean", safe_mean([ep_info["l"] for ep_info in self.ep_info_buffer]))
             self.our_logger.record("eval/auc", self.eval_auc)
             self.our_logger.record("eval/avg_reward", self.eval_rwd)
+            # epsilon decay info:
+            self.our_logger.record("train/epsilon", self.exploration_rate)
+            
 
         self.our_logger.record("time/fps", fps)
         self.our_logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
