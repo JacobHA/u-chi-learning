@@ -44,8 +44,8 @@ env_to_logfreq = {
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='CartPole-v1')
-args.add_argument('--algo', type=str, default='asql')
+args.add_argument('--env_id', type=str, default='Pendulum-v1')
+args.add_argument('--algo', type=str, default='sac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
@@ -85,8 +85,9 @@ elif algo == 'arddpg':
 
 for i in range(args.count):
     full_config = {}
-
-    agent = AgentClass(env_id, **hparams,
+    from stable_baselines3.sac import SAC
+    # agent = SAC('MlpPolicy', env_id, **hparams, device=device)
+    agent = AgentClass(env_id, **hparams, policy="MlpPolicy",
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         max_eval_steps=args.eval_steps,

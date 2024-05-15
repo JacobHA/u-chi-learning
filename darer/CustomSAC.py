@@ -12,25 +12,24 @@ from utils import log_class_vars, logger_at_folder
 
 class CustomSAC(SAC):
     def __init__(self,
-                 policy='MlpPolicy',
                  env_id=None,
                  log_interval=500, 
                  hidden_dim=64, 
                  tensorboard_log=None,
                  name_suffix='', 
-                 max_eval_steps=1000, 
+                 max_eval_steps=1000,
+                 policy='MlpPolicy',
                  **kwargs):
 
         policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
         if 'env' in kwargs:
             kwargs.pop('env')
-        super().__init__(policy='MlpPolicy', env=env_id, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
+        super().__init__(policy=policy, env=env_id, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
         
         self.log_interval = log_interval
         self.eval_auc = 0
         self.eval_time = 0
         self.initial_time = time.thread_time_ns()
-        self.env = env_id
         self.env_id = env_id
         self.tensorboard_log = tensorboard_log
         self.name_suffix = name_suffix
