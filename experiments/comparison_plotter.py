@@ -6,6 +6,13 @@ import os
 from glob import glob
 from tbparse import SummaryReader
 
+def clean_algorithm_name(algo_name, env):
+    prefix = f'{env}-'
+    if algo_name.startswith(prefix):
+        return algo_name[len(prefix):]
+    return algo_name
+
+
 metrics_to_ylabel = {
     'eval/avg_reward': 'Average Evaluation Reward',
     'rollout/ep_reward': 'Average Rollout Reward',
@@ -60,7 +67,8 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
                     reader = SummaryReader(log_file)
                     df = reader.scalars
                     df = df[df['tag'].isin([metric, x_axis])]
-                    clean_algo_name = algo_name.removeprefix(f'{env}-')
+                    clean_algo_name = clean_algorithm_name(algo_name, env)
+                    
                     df['algo'] = clean_algo_name
                     df['run'] = os.path.basename(subfolder).split('_')[1]
                     algo_data = pd.concat([algo_data, df])
