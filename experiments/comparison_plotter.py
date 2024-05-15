@@ -93,12 +93,12 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
         ax.legend()
 
 cc = ['CartPole-v1', 'Acrobot-v1', 'MountainCar-v0', 'LunarLander-v2']
-mj = ['HalfCheetah-v4', 'Ant-v4', 'Swimmer-v4', 'Pendulum-v1']
+mj = ['Pendulum-v1',  'Swimmer-v4', 'HalfCheetah-v4', 'Ant-v4']
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cc[2:3])
+    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cc)
     parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
     args = parser.parse_args()
     envs = args.envs
@@ -110,7 +110,7 @@ if __name__ == "__main__":
             axis = [axis]
             env_name = envs[0]
         else:
-            env_name = 'all_envs_'
+            env_name = ''
         for i, env in enumerate(envs):
             ax = axis[i]
             ax.set_title(env)
