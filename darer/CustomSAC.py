@@ -12,19 +12,19 @@ from utils import log_class_vars, logger_at_folder
 
 class CustomSAC(SAC):
     def __init__(self,
+                 env_id,
                  policy='MlpPolicy',
-                 env_id=None,
                  log_interval=500, 
                  hidden_dim=64, 
                  tensorboard_log=None,
                  name_suffix='', 
                  max_eval_steps=1000, 
+                 *args,
                  **kwargs):
-
+        
         policy_kwargs = {'net_arch': [hidden_dim, hidden_dim]}
-        if 'env' in kwargs:
-            kwargs.pop('env')
-        super().__init__(policy='MlpPolicy', env=env_id, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
+
+        # Check and prepare the necessary arguments for the super class
         
         self.log_interval = log_interval
         self.eval_auc = 0
@@ -35,10 +35,15 @@ class CustomSAC(SAC):
         self.tensorboard_log = tensorboard_log
         self.name_suffix = name_suffix
         self.eval_env = gym.make(env_id, max_episode_steps=max_eval_steps) if env_id else None
+        
+        super().__init__(policy=policy, env=self.env, verbose=4, policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log, **kwargs)
+
         self.our_logger = logger_at_folder(
             tensorboard_log,
             algo_name='SAC' + str(self.gamma) + str(self.ent_coef) + name_suffix
         ) if tensorboard_log else None
+
+
 
     def train(self, gradient_steps: int, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
