@@ -30,13 +30,12 @@ class CustomSAC(SAC):
         self.eval_auc = 0
         self.eval_time = 0
         self.initial_time = time.thread_time_ns()
-        self.env = env_id
         self.env_id = env_id
         self.tensorboard_log = tensorboard_log
         self.name_suffix = name_suffix
         self.eval_env = gym.make(env_id, max_episode_steps=max_eval_steps) if env_id else None
         
-        super().__init__(policy=policy, env=self.env, verbose=4, policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log, **kwargs)
+        super().__init__(policy=policy, env=env_id, verbose=4, policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log, **kwargs)
 
         self.our_logger = logger_at_folder(
             tensorboard_log,
