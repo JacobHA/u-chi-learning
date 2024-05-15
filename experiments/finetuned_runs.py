@@ -89,8 +89,9 @@ elif algo == 'arddpg':
 
 for i in range(args.count):
     full_config = {}
-
-    agent = AgentClass(env_id, **hparams,
+    from stable_baselines3.sac import SAC
+    # agent = SAC('MlpPolicy', env_id, **hparams, device=device)
+    agent = AgentClass(env_id, **hparams, policy="MlpPolicy",
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         max_eval_steps=args.eval_steps,
