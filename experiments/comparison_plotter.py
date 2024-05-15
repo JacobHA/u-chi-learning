@@ -6,6 +6,13 @@ import os
 from glob import glob
 from tbparse import SummaryReader
 
+def clean_algorithm_name(algo_name, env):
+    prefix = f'{env}-'
+    if algo_name.startswith(prefix):
+        return algo_name[len(prefix):]
+    return algo_name
+
+
 metrics_to_ylabel = {
     'eval/avg_reward': 'Average Evaluation Reward',
     'rollout/ep_reward': 'Average Rollout Reward',
@@ -60,7 +67,8 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
                     reader = SummaryReader(log_file)
                     df = reader.scalars
                     df = df[df['tag'].isin([metric, x_axis])]
-                    clean_algo_name = algo_name.removeprefix(f'{env}-')
+                    clean_algo_name = clean_algorithm_name(algo_name, env)
+                    
                     df['algo'] = clean_algo_name
                     df['run'] = os.path.basename(subfolder).split('_')[1]
                     algo_data = pd.concat([algo_data, df])
@@ -90,7 +98,7 @@ mj = ['HalfCheetah-v4', 'Ant-v4', 'Swimmer-v4', 'Pendulum-v1']
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cc[1:2])
+    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cc[2:3])
     parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
     args = parser.parse_args()
     envs = args.envs
