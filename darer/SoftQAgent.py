@@ -13,7 +13,7 @@ class SoftQAgent(BaseAgent):
                  **kwargs,
                  ):
         super().__init__(*args, **kwargs)
-        self.algo_name = 'SQL'
+        self.algo_name = 'SQL' + self.name_suffix
         self.gamma = gamma
         # Set up the logger:
         self.logger = logger_at_folder(self.tensorboard_log,
@@ -95,7 +95,9 @@ class SoftQAgent(BaseAgent):
 
         # Clip gradient norm
         loss.backward()
-        self.model.clip_grad_norm(self.max_grad_norm)
+        if self.max_grad_norm is not None:
+            self.model.clip_grad_norm(self.max_grad_norm)
+        
         self.optimizers.step()
         
         return None
