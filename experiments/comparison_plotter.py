@@ -90,7 +90,7 @@ mj = ['HalfCheetah-v4', 'Ant-v4', 'Swimmer-v4', 'Pendulum-v1']
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cc)
+    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cc[1:2])
     parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
     args = parser.parse_args()
     envs = args.envs
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         fig, axis = plt.subplots(1, len(envs), figsize=(12*len(envs), 8))
         if len(envs) == 1:
             axis = [axis]
-            env_name = '/' + envs[0] + '/'
+            env_name = envs[0]
         else:
             env_name = 'all_envs_'
         for i, env in enumerate(envs):
@@ -110,7 +110,7 @@ if __name__ == "__main__":
             folder = f'ft_logs/{args.experiment_name}/{env}'
             env_to_settings = {
                 "Acrobot-v1": {
-                    "xlim": (0, 5000),
+                    "xlim": (0, 10000),
                 },
             }
             try:
@@ -139,7 +139,7 @@ if __name__ == "__main__":
             ax.legend().remove()
         axis[0].legend(loc='upper left', ncol=1, borderaxespad=0., labels=unique_labels, handles=unique_handles)
         fig.tight_layout()
-        save_path = os.path.join(f'ft_logs/{args.experiment_name}', env_name + f"{metric.split('/')[-1]}.png")
+        save_path = os.path.join(f'ft_logs/{args.experiment_name}', env_name, f"{metric.split('/')[-1]}.png")
         print(f"Saving plot in {save_path}")
         plt.savefig(save_path, dpi=300)
         plt.close()
