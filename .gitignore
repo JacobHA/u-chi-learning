@@ -9,3 +9,4 @@ multinasium/
 pend/
 *.tfevents.*
 tabular/
+best_models/

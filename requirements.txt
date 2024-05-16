@@ -8,6 +8,7 @@ gymnasium[box2d]
 gymnasium[atari]
 gymnasium[accept-rom-license]
 gymnasium[other]
+autorom[accept-rom-license]
 mujoco<3
 tensorboard
 typeguard
@@ -21,3 +22,4 @@ dm_control
 pytest
 pytest-mock
 imageio
+moviepy
