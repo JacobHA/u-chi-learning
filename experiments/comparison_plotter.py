@@ -26,14 +26,19 @@ all_metrics = [
 sns.set_theme(style="whitegrid")
 sns.set_context("poster")
 plt.rcParams['text.color'] = 'black'
+# increase font size
+plt.rcParams.update({'font.size': 24})
 
 algo_to_color = {
     'SAC0.990.2': 'orange',
     'ASAC': 'blue',
     'arDDPG': 'green',
     'SQL': 'orange',
+    'SQL1net': 'red',
     'ASQL': 'blue',
+    'ASQL1net': 'purple',
     'DQN': 'green',
+
 }
 
 
@@ -81,16 +86,22 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
         print(f"Plotting {metric}...")
         algo_runs = metric_data.groupby('algo')['run'].nunique()
         for algo, runs in algo_runs.items():
-            sns.lineplot(data=metric_data[metric_data['algo']==algo], x='step', y='value', ax=ax, color=algo_to_color.get(algo, 'black'), label=algo)
+            sns.lineplot(data=metric_data[metric_data['algo']==algo], x='step', y='value', ax=ax, 
+                         color=algo_to_color.get(algo, 'black'), label=algo,
+                         lw=5)
             print(f"Plotted {algo}.")
         if metric == 'rollout/avg_entropy':
             ax.set_yscale('log')
 
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
-        ax.set_xlabel('Environment Steps')
-        ax.set_ylabel(metrics_to_ylabel.get(metric, metric))
-        ax.legend()
+        ax.set_xlabel('Environment Steps', fontsize=48)
+        ax.set_ylabel(metrics_to_ylabel.get(metric, metric), fontsize=48)
+        # set xtick fontsize:
+        ax.tick_params(axis='x', labelsize=36)
+        # set ytick fontsize:
+        ax.tick_params(axis='y', labelsize=36)
+        ax.legend(fontsize=36)
 
 cc = ['CartPole-v1', 'Acrobot-v1', 'MountainCar-v0', 'LunarLander-v2']
 mj = ['Pendulum-v1',  'Swimmer-v4', 'HalfCheetah-v4', 'Ant-v4']
@@ -105,7 +116,7 @@ if __name__ == "__main__":
 
     metrics = ['eval/avg_reward']
     for metric in metrics:
-        fig, axis = plt.subplots(1, len(envs), figsize=(12*len(envs), 8))
+        fig, axis = plt.subplots(1, len(envs), figsize=(15*len(envs), 12))
         if len(envs) == 1:
             axis = [axis]
             env_name = envs[0]
@@ -113,7 +124,7 @@ if __name__ == "__main__":
             env_name = ''
         for i, env in enumerate(envs):
             ax = axis[i]
-            ax.set_title(env)
+            ax.set_title(env, fontsize=48)
             print(f"Plotting for {env} env.")
             folder = f'ft_logs/{args.experiment_name}/{env}'
             env_to_settings = {
@@ -145,7 +156,7 @@ if __name__ == "__main__":
                     unique_labels.append(label)
                     unique_handles.append(handle)
             ax.legend().remove()
-        axis[0].legend(loc='upper left', ncol=1, borderaxespad=0., labels=unique_labels, handles=unique_handles)
+        axis[0].legend(loc='upper left', ncol=1, borderaxespad=0., labels=unique_labels, handles=unique_handles, fontsize=36)
         fig.tight_layout()
         save_path = os.path.join(f'ft_logs/{args.experiment_name}', env_name, f"{metric.split('/')[-1]}.png")
         print(f"Saving plot in {save_path}")

@@ -25,8 +25,9 @@ env_to_steps = {
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
     'PongNoFrameskip-v4': 1_200_000,
-    'BreakoutNoFrameskip-v4': 10_000_000
+    'BreakoutNoFrameskip-v4': 10_000_000,
 
+    'MontezumaRevengeNoFrameskip-v4': 10_000_000,
 
 }
 
@@ -43,12 +44,13 @@ env_to_logfreq = {
     'Pendulum-v1': 200,
     'PongNoFrameskip-v4': 10_000,
     'BreakoutNoFrameskip-v4': 10_000,
+    'MontezumaRevengeNoFrameskip-v4': 10_000,
 }
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='CartPole-v1')
-args.add_argument('--algo', type=str, default='asql')
+args.add_argument('--env_id', type=str, default='Pendulum-v1')
+args.add_argument('--algo', type=str, default='sac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
