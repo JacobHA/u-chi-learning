@@ -28,6 +28,7 @@ env_to_steps = {
     'Swimmer-v4': 1_000_000,
     'Reacher-v4': 1_000_000,
     'PongNoFrameskip-v4': 1_200_000,
+    'BreakoutNoFrameskip-v4': 10_000_000,
 }
 
 env_to_logfreq = {
@@ -40,6 +41,7 @@ env_to_logfreq = {
     'Humanoid-v4': 2500,
     'Swimmer-v4': 5000,
     'Reacher-v4': 2500,
+    'BreakoutNoFrameskip-v4': 10_000
 }
 
 algo_to_agent = {
@@ -107,6 +109,9 @@ def main(sweep_config=None, env_id=None, algo=None, project=None, ft_params=None
             for k in int_hparams:
                 if k in full_config:
                     full_config[k] = int(full_config[k])
+            # Replace max grad norm=0 with None:
+            if full_config.get('max_grad_norm', 0) == 0:
+                full_config['max_grad_norm'] = None
 
             # Choose the algo appropriately
             Agent = algo_to_agent[algo]
