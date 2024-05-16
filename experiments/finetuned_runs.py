@@ -25,6 +25,8 @@ env_to_steps = {
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
     'PongNoFrameskip-v4': 1_200_000,
+    'BreakoutNoFrameskip-v4': 10_000_000
+
 
 }
 
@@ -40,6 +42,7 @@ env_to_logfreq = {
     'Pusher-v4': 5000,
     'Pendulum-v1': 200,
     'PongNoFrameskip-v4': 10_000,
+    'BreakoutNoFrameskip-v4': 10_000,
 }
 
 args = argparse.ArgumentParser()
