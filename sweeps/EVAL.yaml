@@ -1,4 +1,4 @@
-method: bayes
+method: random
 metric:
   goal: maximize
   name: eval/auc
@@ -37,6 +37,7 @@ parameters:
   max_grad_norm:
     values:
       - 10.0
+      - 0
   gradient_steps:
     distribution: q_uniform_values
     max: 5
