@@ -24,7 +24,7 @@ env_to_steps = {
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
-    'PongNoFrameskip-v4': 1_200_000,
+    'PongNoFrameskip-v4': 2_000_000,
 
 }
 
@@ -42,10 +42,12 @@ env_to_logfreq = {
     'PongNoFrameskip-v4': 10_000,
 }
 
+cnnpolicy_envs = { 'PongNoFrameskip-v4' }
+
 args = argparse.ArgumentParser()
-args.add_argument('--count', type=int, default=10)
-args.add_argument('--env_id', type=str, default='Pendulum-v1')
-args.add_argument('--algo', type=str, default='sac')
+args.add_argument('--count', type=int, default=30)
+args.add_argument('--env_id', type=str, default='PongNoFrameskip-v4')
+args.add_argument('--algo', type=str, default='dqn')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
@@ -63,6 +65,7 @@ algo = algo.lower()
 print(algo)
 
 hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
+policy = "MlpPolicy" if env_id not in cnnpolicy_envs else "CnnPolicy"
 # Drop the gamma hparam:
 if algo == 'u': 
     try:
@@ -72,6 +75,8 @@ if algo == 'u':
     AgentClass = UAgent
 elif algo == 'dqn':
     AgentClass = CustomDQN
+    hparams.pop('total_timesteps')
+    hparams.pop('log_freq')
 elif algo == 'sql':
     AgentClass = SoftQAgent
 elif algo == 'asac':
@@ -87,7 +92,7 @@ for i in range(args.count):
     full_config = {}
     from stable_baselines3.sac import SAC
     # agent = SAC('MlpPolicy', env_id, **hparams, device=device)
-    agent = AgentClass(env_id, **hparams, policy="MlpPolicy",
+    agent = AgentClass(env_id, **hparams, policy=policy,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         max_eval_steps=args.eval_steps,
@@ -98,5 +103,5 @@ for i in range(args.count):
                         )
     
     # Measure the time it takes to learn: 
-    agent.learn(total_timesteps=env_to_steps.get(env_id, 100_000))
+    agent.learn(total_timesteps=env_to_steps.get(env_id, 100_000), )
     del agent
