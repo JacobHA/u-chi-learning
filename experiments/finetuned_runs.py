@@ -24,9 +24,8 @@ env_to_steps = {
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
-    'PongNoFrameskip-v4': 1_200_000,
+    'PongNoFrameskip-v4': 2_000_000,
     'BreakoutNoFrameskip-v4': 10_000_000,
-
     'MontezumaRevengeNoFrameskip-v4': 10_000_000,
 
 }
