@@ -81,8 +81,8 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
         print(f"Plotting {metric}...")
         algo_runs = metric_data.groupby('algo')['run'].nunique()
         for algo, runs in algo_runs.items():
-            sns.lineplot(data=metric_data[metric_data['algo']==algo], x='step', y='value', ax=ax, color=algo_to_color.get(algo, 'black'), label=algo)
-            print(f"Plotted {algo}.")
+            sns.lineplot(data=metric_data[metric_data['algo']==algo], x='step', y='value', ax=ax, color=algo_to_color.get(algo, 'black'), label=f'{algo} ({runs} runs)')
+            print(f"Plotted {algo} ({runs} runs).")
         if metric == 'rollout/avg_entropy':
             ax.set_yscale('log')
 
@@ -94,11 +94,12 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
 
 cc = ['CartPole-v1', 'Acrobot-v1', 'MountainCar-v0', 'LunarLander-v2']
 mj = ['Pendulum-v1',  'Swimmer-v4', 'HalfCheetah-v4', 'Ant-v4']
+at = ['PongNoFrameskip-v4',]
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cc)
+    parser.add_argument('-e', '--envs', type=str, nargs='+', default=at)
     parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
     args = parser.parse_args()
     envs = args.envs

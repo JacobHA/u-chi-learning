@@ -28,6 +28,8 @@ env_to_steps = {
     'Swimmer-v4': 1_000_000,
     'Reacher-v4': 1_000_000,
     'PongNoFrameskip-v4': 1_200_000,
+    'AlienNoFrameskip-v4': 1_200_000,
+    'AsterixNoFrameskip-v4': 1_200_000,
 }
 
 env_to_logfreq = {
@@ -130,10 +132,10 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser()
     args.add_argument('--count', type=int, default=50)
     args.add_argument('--project', type=str, default='u-chi-learning')
-    args.add_argument('--env', type=str, default='MountainCar-v0')
+    args.add_argument('--env', type=str, default='AlienNoFrameskip-v4')
     args.add_argument('--algo', type=str, default='asql')
     args.add_argument('--device', type=str, default='auto')
-    args.add_argument('--exp-name', type=str, default='general')
+    args.add_argument('--exp-name', type=str, default='atari')
     args.add_argument('--log', type=str, default='tf_logs')
     args.add_argument('--save-best', type=bool, default=True)
 

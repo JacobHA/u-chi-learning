@@ -46,8 +46,8 @@ cnnpolicy_envs = { 'PongNoFrameskip-v4' }
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=30)
-args.add_argument('--env_id', type=str, default='PongNoFrameskip-v4')
-args.add_argument('--algo', type=str, default='dqn')
+args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
+args.add_argument('--algo', type=str, default='asac')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
@@ -65,7 +65,8 @@ algo = algo.lower()
 print(algo)
 
 hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
-policy = "MlpPolicy" if env_id not in cnnpolicy_envs else "CnnPolicy"
+if env_id in cnnpolicy_envs:
+    hparams['policy'] = "CnnPolicy"
 # Drop the gamma hparam:
 if algo == 'u': 
     try:
@@ -92,14 +93,11 @@ for i in range(args.count):
     full_config = {}
     from stable_baselines3.sac import SAC
     # agent = SAC('MlpPolicy', env_id, **hparams, device=device)
-    agent = AgentClass(env_id, **hparams, policy=policy,
+    agent = AgentClass(env_id, **hparams,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
                         tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
                         max_eval_steps=args.eval_steps,
-                        # theta_recent_batch=True,
                         name_suffix=f'{name_suffix}',
-                        # use_dones=False,
-                        # render=False, use_dones=True,
                         )
     
     # Measure the time it takes to learn: 

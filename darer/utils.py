@@ -159,17 +159,18 @@ def atari_env_id_to_envs(env_id, render, n_envs, frameskip=1, framestack_k=None,
 class FireResetEnv(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
+        self.has_fire = env.unwrapped.get_action_meanings()[1] == 'FIRE'
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
     def reset(self, **kwargs):
-        self.env.reset(**kwargs)
-        obs, _, done, _, _ = self.env.step(1)
-        if done:
-            self.env.reset(**kwargs)
-        obs, _, done, _, _ = self.env.step(2)
-        if done:
-            self.env.reset(**kwargs)
+        obs, _ = self.env.reset(**kwargs)
+        if self.has_fire:
+            obs, _, done, _, _ = self.env.step(1)
+            if done:
+                self.env.reset(**kwargs)
+            obs, _, done, _, _ = self.env.step(2)
+            if done:
+                self.env.reset(**kwargs)
         return obs, {}
 
 
