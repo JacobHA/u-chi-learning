@@ -141,7 +141,7 @@ class BaseAgent:
         if isinstance(train_freq, tuple):
             raise NotImplementedError("train_freq as a tuple is not supported yet.\
                                        \nEnter int corresponding to env_steps")
-        self.max_grad_norm = max_grad_norm
+        self.max_grad_norm = max_grad_norm if max_grad_norm is not 0 else None
         self.num_nets = num_nets
         self.prior = None
         self.learning_starts = learning_starts
