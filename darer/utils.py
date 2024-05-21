@@ -8,15 +8,10 @@ from gymnasium.wrappers.atari_preprocessing import AtariPreprocessing
 import time
 
 import torch
-import sys
-
 import wandb
-sys.path.append("../tabular")
-sys.path.append("tabular")
-from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
+
 from wrappers import FrameStack
-# from gym.wrappers.monitoring.video_recorder import VideoRecorder
-from gymnasium.wrappers import RecordVideo
+
 
 def safe_open(path):
     with open(path) as f:
@@ -207,19 +202,6 @@ def get_eigvec_values(fa, save_name=None, logu=False):
         np.save(f'{save_name}.npy', eigvec)
     return eigvec
 
-def get_true_eigvec(fa, beta):
-    dynamics, rewards = get_dynamics_and_rewards(fa.env.unwrapped)
-    # uniform prior:
-    n_states, SA = dynamics.shape
-    n_actions = int(SA / n_states)
-    prior_policy = np.ones((n_states, n_actions)) / n_actions
-    solution = solve_unconstrained(
-        beta, dynamics, rewards, prior_policy, eig_max_it=1_000_000, tolerance=1e-12)
-    l_true, u_true, v_true, optimal_policy, optimal_dynamics, estimated_distribution = solution
-    
-    # normalize:
-    u_true /= np.linalg.norm(u_true)
-    return u_true
 
 def is_tabular(env):
     return isinstance(env.observation_space, gym.spaces.Discrete) and isinstance(env.action_space, gym.spaces.Discrete)

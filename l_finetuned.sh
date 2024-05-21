@@ -7,4 +7,5 @@ ALGO=${2:-"asql"}
 python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
 python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
 python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
+python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
 python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO

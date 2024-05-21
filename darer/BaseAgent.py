@@ -8,7 +8,7 @@ import gymnasium as gym
 from typing import Optional, Union, List, Tuple, Dict, Any, get_type_hints
 from typeguard import typechecked
 import wandb
-from utils import env_id_to_envs, get_true_eigvec, is_tabular, log_class_vars, get_eigvec_values, find_torch_modules
+from utils import env_id_to_envs, log_class_vars, get_eigvec_values, find_torch_modules
 
 HPARAM_ATTRS = {
     'beta': 'beta',
@@ -115,11 +115,6 @@ class BaseAgent:
             self.env_str = self.env.unwrapped.id
         else:
             self.env_str = str(self.env.unwrapped)
-
-        self.is_tabular = is_tabular(self.env)
-        if self.is_tabular:
-            # calculate the eigenvector exactly:
-            self.true_eigvec = get_true_eigvec(self, beta).A.flatten()
 
         self.learning_rate = learning_rate
         self.beta = float(beta) if isinstance(beta, int) else beta
@@ -392,19 +387,6 @@ class BaseAgent:
         # Get the current learning rate from the optimizer:
         self.lr = 0#self.optimzers.get_lr()
         log_class_vars(self, self.logger, LOG_PARAMS, use_wandb=self.use_wandb)
-
-        if self.is_tabular:
-            # Record the error in the eigenvector:
-            if self.algo_name == 'LogU':
-                log = True
-            elif self.algo_name == 'U':
-                log = False
-            else:
-                raise ValueError(
-                    f"Unknown agent name: {self.name}. Use U/LogU (defaults).")
-            fa_eigvec = get_eigvec_values(self, logu=log).flatten()
-            err = np.abs(self.true_eigvec - fa_eigvec).max()
-            self.logger.record('train/eigvec_err', err.item())
 
         if self.use_wandb:
             wandb.log({'env_steps': self.env_steps,

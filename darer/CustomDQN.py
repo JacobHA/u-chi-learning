@@ -30,7 +30,7 @@ class CustomDQN(DQN):
         env, eval_env = env_id_to_envs(
             env_id, self.render, is_atari=is_atari, max_steps=max_eval_steps,
             render_mode=self.render_mode)
-        super().__init__(policy, env, verbose=4, policy_kwargs=policy_kwargs, **kwargs)
+        super().__init__(policy, env, verbose=4, policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log, **kwargs)
         self.eval_auc = 0
         self.eval_rwd = 0
         self.eval_interval = log_interval

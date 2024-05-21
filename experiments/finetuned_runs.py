@@ -54,7 +54,7 @@ cnnpolicy_envs = { 'PongNoFrameskip-v4', 'AsterixNoFrameskip-v4', 'AlienNoFrames
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=30)
 args.add_argument('--env_id', type=str, default='AsterixNoFrameskip-v4')
-args.add_argument('--algo', type=str, default='asql')
+args.add_argument('--algo', type=str, default='dqn')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
@@ -71,7 +71,10 @@ algo = args.algo
 algo = algo.lower()
 print(algo)
 
-hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
+if 'NoFrameskip-v4' in env_id:
+    hparams = safe_open(f'hparams/PongNoFrameskip-v4/{algo}.yaml')
+else:
+    hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
 
 # Drop the gamma hparam:
 if algo == 'u': 
@@ -84,7 +87,7 @@ elif algo == 'dqn':
     AgentClass = CustomDQN
     hparams.pop('total_timesteps')
     hparams.pop('log_freq')
-    if env_id in cnnpolicy_envs:
+    if 'NoFrameskip-v4' in env_id:
         hparams['policy'] = "CnnPolicy"
 elif algo == 'sql':
     AgentClass = SoftQAgent
@@ -103,14 +106,16 @@ for i in range(args.count):
     from stable_baselines3.sac import SAC
     # agent = SAC('MlpPolicy', env_id, **hparams, device=device)
     agent = AgentClass(env_id, **hparams,
-                        device=device, log_interval=env_to_logfreq.get(env_id, 1000),
+                        device=device, log_interval=env_to_logfreq.get(env_id, 10_000),
                         tensorboard_log=logdir,
                         max_eval_steps=args.eval_steps,
                         name_suffix=f'{name_suffix}',
                         )
+    logger = agent.our_logger if isinstance(agent, CustomDQN) else agent.logger
+    print('saving the logs and model to:', logger.get_dir())
     checkpoint_callback = CheckpointCallback(
         save_freq=10_000,
-        save_path=agent.logger.get_dir(),
+        save_path=logger.get_dir(),
         name_prefix="ft",
     )
     # Measure the time it takes to learn: 
