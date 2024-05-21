@@ -95,11 +95,12 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
 cc = ['CartPole-v1', 'Acrobot-v1', 'MountainCar-v0', 'LunarLander-v2']
 mj = ['Pendulum-v1',  'Swimmer-v4', 'HalfCheetah-v4', 'Ant-v4']
 at = ['PongNoFrameskip-v4',]
+cu = ['HalfCheetah-v4']
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--envs', type=str, nargs='+', default=at)
+    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cu)
     parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
     args = parser.parse_args()
     envs = args.envs

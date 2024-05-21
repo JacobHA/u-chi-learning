@@ -101,7 +101,7 @@ class UAgent(BaseAgent):
         super()._on_step()
         #TODO: put this in _update_target
         if self.use_ppi:
-            if self.env_steps % self.prior_update_interval == 0:
+            if self.num_timesteps % self.prior_update_interval == 0:
                 self.target_prior.polyak(self.online_prior, self.prior_tau)
 
     def gradient_descent(self, batch, grad_step: int):

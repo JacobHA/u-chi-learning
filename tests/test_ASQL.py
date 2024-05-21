@@ -34,13 +34,13 @@ def test_evaluation_policy(asql_agent):
 
 def test_rollout(asql_agent):
     asql_agent.learn(total_timesteps=10)
-    assert asql_agent.env_steps == 10
+    assert asql_agent.num_timesteps == 10
 
 
 def test_on_step_increment_environment_steps(asql_agent):
-    initial_env_steps = asql_agent.env_steps
+    initial_env_steps = asql_agent.num_timesteps
     asql_agent.learn(total_timesteps=1)
-    assert asql_agent.env_steps == initial_env_steps + 1
+    assert asql_agent.num_timesteps == initial_env_steps + 1
 
 
 def test_evaluate(asql_agent):

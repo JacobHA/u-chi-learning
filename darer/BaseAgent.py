@@ -92,6 +92,8 @@ class BaseAgent:
                  save_best: Optional[bool] = False,
                  save_path: Optional[str] = 'best_models',
                  render_mode: Optional[str] = None,
+                 num_timesteps: Optional[int] = 0,
+                 continue_training: Optional[bool] = False,
                  ) -> None:
         self.kwargs = locals()
         self.kwargs.pop('self')
@@ -177,7 +179,9 @@ class BaseAgent:
         self.num_episodes = 0
 
         self._n_updates = 0
-        self.env_steps = 0
+        self.num_timesteps = 0
+        self.env_steps = num_timesteps
+        self.continue_training = continue_training
         # self._initialize_networks()
         self.loss_fn = loss_fn
 
@@ -185,6 +189,12 @@ class BaseAgent:
         # Log the hparams:
         log_class_vars(self, logger, HPARAM_ATTRS)
         logger.dump()
+
+    def get_env(self):
+        return self.env
+
+    def save_replay_buffer(self, path):
+        torch.save(self.replay_buffer, path)
 
     def _initialize_networks(self):
         raise NotImplementedError
@@ -233,10 +243,13 @@ class BaseAgent:
         #             ))
         # self.logger.record("train/max_grad", total_norm.item())
 
-    def learn(self, total_timesteps: int, early_stop: dict = {}) -> bool:
+    def learn(self, total_timesteps: int, early_stop: dict = {}, callback=None) -> bool:
         """
         Train the agent for total_timesteps
         """
+        if callback:
+            callback.init_callback(self)
+            callback.on_training_start(locals(), globals())
         stop_steps = early_stop.get('steps', 0)
         if stop_steps > 0:
             assert stop_steps % self.log_interval == 0, \
@@ -247,7 +260,23 @@ class BaseAgent:
         # Start a timer to log fps:
         self.initial_time = time.thread_time_ns()
 
+        # restore the buffer with the current policy if continuing training
+        if self.continue_training:
+            self.continue_training = False
+            state, _ = self.env.reset()
+            for _ in range(self.env_steps):
+                action, _ = self.exploration_policy(state)
+                next_state, reward, terminated, truncated, infos = self.env.step(
+                    action)
+                self.replay_buffer.add(state, next_state, action, reward, terminated, [infos])
+                state = next_state
+                if terminated:
+                    state, _ = self.env.reset()
+            print("refilled the buffer")
+
         while self.env_steps < total_timesteps:
+            if callback:
+                callback.on_rollout_start()
             state, _ = self.env.reset()
             if isinstance(self.env.action_space, gym.spaces.Discrete):
                 action_freqs = torch.zeros(self.nA)
@@ -258,6 +287,8 @@ class BaseAgent:
             avg_ep_len = 0
             entropy = 0
             while not done and self.env_steps < total_timesteps:
+                if callback:
+                    callback.on_step()
                 # take a random action:
                 # if self.env_steps < self.learning_starts:
                 #     action = self.env.action_space.sample()
@@ -472,6 +503,9 @@ class BaseAgent:
     def save(self, path=None):
         if path is None:
             path = str(self)
+        # save the number of time steps:
+        self.kwargs['num_timesteps'] = self.env_steps
+        self.kwargs['continue_training'] = True
         total_state = {
             "kwargs": self.kwargs,
             "state_dicts": find_torch_modules(self),

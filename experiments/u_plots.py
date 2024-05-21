@@ -66,7 +66,7 @@ for step in range(steps):
     plt.savefig(f'experiments/u_func_plots/{AGG}_{NUM_NETS}_{step}.png')
     plt.close()
     # continue training:
-    agent.env_steps = 0
+    agent.num_timesteps = 0
     agent.learn(total_timesteps=env_to_steps[env_id] // steps)
 
 

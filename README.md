@@ -102,3 +102,11 @@ pip list --format=freeze > requirements.txt
 
 the contents of requirements.txt are a bit sensitive for the git actions testing...
 (e.g. have to remove some conda stuff)
+
+## installation 
+
+install swig before installing dependencies from requriements.txt
+
+```
+pip install swig ; pip install -r requirements.txt
+```

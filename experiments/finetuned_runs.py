@@ -12,6 +12,8 @@ from ASQL import ASQL
 from arDDPG import arDDPG
 from utils import safe_open
 
+from stable_baselines3.common.callbacks import CheckpointCallback
+
 
 env_to_steps = {
     'CartPole-v1': 50_000,
@@ -25,7 +27,9 @@ env_to_steps = {
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
     'PongNoFrameskip-v4': 2_000_000,
-
+    'AsterixNoFrameskip-v4': 2_000_000,
+    'AlienNoFrameskip-v4': 2_000_000,
+    'BreakoutNoFrameskip-v4': 2_000_000,
 }
 
 env_to_logfreq = {
@@ -40,14 +44,17 @@ env_to_logfreq = {
     'Pusher-v4': 5000,
     'Pendulum-v1': 200,
     'PongNoFrameskip-v4': 10_000,
+    'AsterixNoFrameskip-v4': 10_000,
+    'AlienNoFrameskip-v4': 10_000,
+    'BreakoutNoFrameskip-v4': 10_000,
 }
 
-cnnpolicy_envs = { 'PongNoFrameskip-v4' }
+cnnpolicy_envs = { 'PongNoFrameskip-v4', 'AsterixNoFrameskip-v4', 'AlienNoFrameskip-v4', 'BreakoutNoFrameskip-v4'}
 
 args = argparse.ArgumentParser()
 args.add_argument('--count', type=int, default=30)
-args.add_argument('--env_id', type=str, default='HalfCheetah-v4')
-args.add_argument('--algo', type=str, default='asac')
+args.add_argument('--env_id', type=str, default='AsterixNoFrameskip-v4')
+args.add_argument('--algo', type=str, default='asql')
 args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
@@ -65,8 +72,7 @@ algo = algo.lower()
 print(algo)
 
 hparams = safe_open(f'hparams/{env_id}/{algo}.yaml')
-if env_id in cnnpolicy_envs:
-    hparams['policy'] = "CnnPolicy"
+
 # Drop the gamma hparam:
 if algo == 'u': 
     try:
@@ -78,6 +84,8 @@ elif algo == 'dqn':
     AgentClass = CustomDQN
     hparams.pop('total_timesteps')
     hparams.pop('log_freq')
+    if env_id in cnnpolicy_envs:
+        hparams['policy'] = "CnnPolicy"
 elif algo == 'sql':
     AgentClass = SoftQAgent
 elif algo == 'asac':
@@ -91,15 +99,20 @@ elif algo == 'arddpg':
 
 for i in range(args.count):
     full_config = {}
+    logdir = f'ft_logs/{experiment_name}/{env_id}/'
     from stable_baselines3.sac import SAC
     # agent = SAC('MlpPolicy', env_id, **hparams, device=device)
     agent = AgentClass(env_id, **hparams,
                         device=device, log_interval=env_to_logfreq.get(env_id, 1000),
-                        tensorboard_log=f'ft_logs/{experiment_name}/{env_id}',
+                        tensorboard_log=logdir,
                         max_eval_steps=args.eval_steps,
                         name_suffix=f'{name_suffix}',
                         )
-    
+    checkpoint_callback = CheckpointCallback(
+        save_freq=1_000,
+        save_path=agent.logger.get_dir(),
+        name_prefix="ft",
+    )
     # Measure the time it takes to learn: 
-    agent.learn(total_timesteps=env_to_steps.get(env_id, 100_000), )
+    agent.learn(total_timesteps=env_to_steps.get(env_id, 100_000), callback=checkpoint_callback)
     del agent
