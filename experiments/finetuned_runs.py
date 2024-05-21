@@ -109,7 +109,7 @@ for i in range(args.count):
                         name_suffix=f'{name_suffix}',
                         )
     checkpoint_callback = CheckpointCallback(
-        save_freq=1_000,
+        save_freq=10_000,
         save_path=agent.logger.get_dir(),
         name_prefix="ft",
     )
