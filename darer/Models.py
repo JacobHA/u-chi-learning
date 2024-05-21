@@ -304,7 +304,7 @@ class OnlineQNets(OnlineNets):
             q = self.aggregator_fn(qs, dim=0).squeeze(0)
 
             if not self.is_vector_env:
-                log_action_dist = beta * q.clamp(-30,30) + logprior
+                log_action_dist = beta * q + logprior
                 if greedy:
                     action_net_idx = torch.argmax(log_action_dist, dim=0)
                     # action = idxs[action_net_idx].cpu().numpy()
