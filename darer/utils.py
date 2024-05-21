@@ -1,6 +1,7 @@
 import os
 import random
 import yaml
+from gymnasium.core import ActionWrapper
 import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.logger import configure
@@ -11,8 +12,11 @@ import torch
 import sys
 
 import wandb
+
+from gymnasium.wrappers import TimeLimit
 sys.path.append("../tabular")
 sys.path.append("tabular")
+from gymnasium import spaces
 from tabular_utils import get_dynamics_and_rewards, solve_unconstrained
 from wrappers import FrameStack
 # from gym.wrappers.monitoring.video_recorder import VideoRecorder
@@ -84,6 +88,18 @@ class PermuteAtariObs(gym.Wrapper):
         return res, info
 
 def env_id_to_envs(env_id, render, is_atari=False, permute_dims=False, max_steps=None, render_mode=None):
+    # first split off any prefix for discrete action wrapper:
+    if isinstance(env_id, str):
+        if 'DiscA:' in env_id:
+            env_id = env_id.split(":")[1]
+            # Use the get_environment function to get the environment:
+            env = get_environment(env_id, nbins=3)
+            # Make a new copy for the eval env:
+            import copy
+            eval_env = copy.deepcopy(env)
+            return env, eval_env
+        
+
     if isinstance(env_id, gym.Env):
         env = env_id
         # Make a new copy for the eval env:
@@ -306,3 +322,46 @@ def get_max_grad(model):
         # No gradients found, set max_grad_norm to 0
         max_grad_norm = 0.0
     return max_grad_norm
+
+
+
+class DiscretizeAction(ActionWrapper):
+    def __init__(self, env: gym.Env, nbins: int) -> None:
+        super().__init__(env)
+
+        assert isinstance(env.action_space, spaces.Box)
+        assert len(env.action_space.shape) == 1
+
+        self.ndim_actions, = env.action_space.shape
+        self.powers = [nbins ** (i-1) for i in range(self.ndim_actions, 0, -1)]
+
+        low = env.action_space.low
+        high = env.action_space.high
+        self.action_mapping = np.linspace(low, high, nbins)
+        self.action_space = spaces.Discrete(nbins ** self.ndim_actions)
+    
+    def action(self, action):
+        
+        a = action
+        unwrapped_action = np.zeros((self.ndim_actions,), dtype=float)
+
+        for i, p in enumerate(self.powers):
+            idx, a = a // p, a % p
+            unwrapped_action[i] = self.action_mapping[idx, i]
+
+        return unwrapped_action
+
+def get_environment(env_name, nbins=3, max_episode_steps=0):
+
+    if env_name == 'Pendulum-v1':
+        lo_clip = np.array([-np.pi, -8.0])
+        hi_clip = np.array([ np.pi,  8.0])
+        env = gym.make('Pendulum-v1')
+        env = DiscretizeAction(env, nbins=nbins)
+    else:
+        raise ValueError(f'wrong environment name {env_name}')
+
+    if max_episode_steps > 0:
+        env = TimeLimit(env, max_episode_steps)
+
+    return env
