@@ -3,8 +3,9 @@ num_nets: 2
 beta: 20
 batch_size: 256
 buffer_size: 100_000
-gradient_steps: 2
+gradient_steps: 1
 hidden_dim: 256
+learning_rate: 0.0002
 learning_rate: 0.0003
 learning_starts: 10000
 target_update_interval: 1
