@@ -1,11 +1,7 @@
 #!/bin/bash
-source /opt/conda/etc/profile.d/conda.sh
-conda activate myenv
 ENVNAME=${1:-"AsterixNoFrameskip-v4"}
-ALGO=${2:-"asql"}
+DEVICE=${2:-"cuda:0"}
+ALGO=${3:-"asql"}
+N=${3:-"0"}
 
-python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
-python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
-python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
-python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO &
-python experiments/finetuned_runs.py --env_id=$ENVNAME --count 2 --algo=$ALGO
+python experiments/finetuned_runs.py --env_id=$ENVNAME --device=$DEVICE --count 1 --algo=$ALGO &> $ENVNAME-$ALGO-$DEVICE-$N.out &

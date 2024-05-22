@@ -81,7 +81,7 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
         print(f"Plotting {metric}...")
         algo_runs = metric_data.groupby('algo')['run'].nunique()
         for algo, runs in algo_runs.items():
-            sns.lineplot(data=metric_data[metric_data['algo']==algo], x='step', y='value', ax=ax, color=algo_to_color.get(algo, 'black'), label=f'{algo} ({runs} runs)')
+            sns.lineplot(data=metric_data[metric_data['algo']==algo], x='step', y='value', ax=ax, color=algo_to_color.get(algo, 'black'), label=algo)  # color=algo_to_color.get(algo, 'black')
             print(f"Plotted {algo} ({runs} runs).")
         if metric == 'rollout/avg_entropy':
             ax.set_yscale('log')
@@ -94,17 +94,18 @@ def plotter(env, folder, x_axis='step', metric='eval/avg_reward',
 
 cc = ['CartPole-v1', 'Acrobot-v1', 'MountainCar-v0', 'LunarLander-v2']
 mj = ['Pendulum-v1',  'Swimmer-v4', 'HalfCheetah-v4', 'Ant-v4']
-at = ['PongNoFrameskip-v4',]
+at = ['KrullNoFrameskip-v4', 'MsPacmanNoFrameskip-v4', 'FreewayNoFrameskip-v4', 'PitfallNoFrameskip-v4']  # 'PongNoFrameskip-v4',
+at2 = ['BreakoutNoFrameskip-v4', 'QbertNoFrameskip-v4', 'RobotankNoFrameskip-v4', 'TutankhamNoFrameskip-v4']  # 'PongNoFrameskip-v4',
 cu = ['HalfCheetah-v4']
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--envs', type=str, nargs='+', default=cu)
-    parser.add_argument('-n', '--experiment_name', type=str, default='EVAL')
+    parser.add_argument('-e', '--envs', type=str, nargs='+', default=["pongs"])
+    parser.add_argument('-n', '--experiment_name', type=str, default='')
     args = parser.parse_args()
     envs = args.envs
-
+    base_dir = '.'
     metrics = ['eval/avg_reward']
     for metric in metrics:
         fig, axis = plt.subplots(1, len(envs), figsize=(12*len(envs), 8))
@@ -117,7 +118,7 @@ if __name__ == "__main__":
             ax = axis[i]
             ax.set_title(env)
             print(f"Plotting for {env} env.")
-            folder = f'ft_logs/{args.experiment_name}/{env}'
+            folder = f'{base_dir}/{args.experiment_name}/{env}'  # ft_logs  vast_8_3070_ft_logs/ft_logs
             env_to_settings = {
                 "Acrobot-v1": {
                     "xlim": (0, 10000),
@@ -147,9 +148,17 @@ if __name__ == "__main__":
                     unique_labels.append(label)
                     unique_handles.append(handle)
             ax.legend().remove()
-        axis[0].legend(loc='upper left', ncol=1, borderaxespad=0., labels=unique_labels, handles=unique_handles)
+        unique_labels[0] = "ASQL"
+        axis[0].set_title("PongNoFrameskip-v4", fontsize=36 )
+        axis[0].legend(loc='lower right', ncol=1, borderaxespad=0., labels=unique_labels, handles=unique_handles, fontsize=36)
+        axis[0].set_xlabel('Environment Steps', fontsize=36)
+        axis[0].set_ylabel(metrics_to_ylabel.get(metric, metric), fontsize=36)
+        # set xtick fontsize:
+        axis[0].tick_params(axis='x', labelsize=36)
+        # set ytick fontsize:
+        axis[0].tick_params(axis='y', labelsize=36)
         fig.tight_layout()
-        save_path = os.path.join(f'ft_logs/{args.experiment_name}', env_name, f"{metric.split('/')[-1]}.png")
+        save_path = os.path.join(f'{base_dir}/{args.experiment_name}', env_name, f"{metric.split('/')[-1]}.png")
         print(f"Saving plot in {save_path}")
         plt.savefig(save_path, dpi=300)
         plt.close()

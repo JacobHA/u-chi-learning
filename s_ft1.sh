@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=u
-#SBATCH --output=u-%A_%a.out
-#SBATCH --error=u-%A_%a.err
+#SBATCH --job-name=ub
+#SBATCH --output=ub-%A_%a.out
+#SBATCH --error=ub-%A_%a.err
 #SBATCH --time=48:00:00
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=16
@@ -19,10 +19,9 @@ export WANDB_MODE=offline
 wandb offline
 
 # Start the evaluations
-ENVNAME=${1:-"PongNoFrameskip-v4"}
-ALGO=${2:-"asql"}
+ENVNAME=${1:-"HalfCheetah-v4"}
+ALGO=${2:-"asac"}
 EXPNAME=${3:-"EVAL"}
-python experiments/finetuned_runs.py --count=1 --algo=$ALGO --exp-name $EXPNAME --env_id=$ENVNAME &
 python experiments/finetuned_runs.py --count=1 --algo=$ALGO --exp-name $EXPNAME --env_id=$ENVNAME &
 python experiments/finetuned_runs.py --count=1 --algo=$ALGO --exp-name $EXPNAME --env_id=$ENVNAME &
 python experiments/finetuned_runs.py --count=1 --algo=$ALGO --exp-name $EXPNAME --env_id=$ENVNAME

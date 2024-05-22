@@ -21,12 +21,13 @@ env_to_steps = {
     'Humanoid-v4': 5_000_000,
     'Pusher-v4': 1_000_000,
     'Pendulum-v1': 10_000,
+    'PongNoFrameskip-v4': 2_000_000,
 }
 plot_metrics = ['eval/avg_reward']
 
 # parse env arg:
 args = argparse.ArgumentParser()
-args.add_argument('--env', type=str, default='MountainCar-v0')
+args.add_argument('--env', type=str, default='PongNoFrameskip-v4')
 args = args.parse_args()
 
 env = args.env
@@ -34,10 +35,11 @@ env = args.env
 total_steps = env_to_steps[env]
 algorithms = [f'{env}-ASAC', 'SAC0.990.2', 'SAC', f'{env}-arDDPG']
 algorithms += [f'{env}-arSAC-newh', 'SAC0.990.2', 'SAC0.9990.05', 'SAC', f'{env}-arDDPG']
-algorithms += ['DQN', f'{env}-ASQL']
+algorithms += ['DQN', f'{env}-ASQL', f'ASQL']
 algorithms = list(set(algorithms))
 
-folder = f'ft_logs/EVAL/{env}/'
+# folder = f'ft_logs/EVAL/{env}/'
+folder = f'pongs'
 
 score_dict = dict([(algo, []) for algo in algorithms])
 # temporal_score_dict = dict([(algo, []) for algo in algorithms])

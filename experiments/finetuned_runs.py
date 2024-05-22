@@ -59,6 +59,7 @@ args.add_argument('--device', type=str, default='auto')
 args.add_argument('--exp-name', type=str, default='EVAL')
 args.add_argument('--name', type=str, default='')
 args.add_argument('--eval_steps', type=int, default=None)
+args.add_argument('--save_checkpoints', type=bool, default=False)
 
 args = args.parse_args()
 env_id = args.env_id
@@ -111,13 +112,16 @@ for i in range(args.count):
                         max_eval_steps=args.eval_steps,
                         name_suffix=f'{name_suffix}',
                         )
-    logger = agent.our_logger if isinstance(agent, CustomDQN) else agent.logger
-    print('saving the logs and model to:', logger.get_dir())
-    checkpoint_callback = CheckpointCallback(
-        save_freq=10_000,
-        save_path=logger.get_dir(),
-        name_prefix="ft",
-    )
+    if args.save_checkpoints:
+        logger = agent.our_logger if isinstance(agent, CustomDQN) else agent.logger
+        print('saving the logs and model to:', logger.get_dir())
+        checkpoint_callback = CheckpointCallback(
+            save_freq=10_000,
+            save_path=logger.get_dir(),
+            name_prefix="ft",
+        )
+    else:
+        checkpoint_callback = None
     # Measure the time it takes to learn: 
-    agent.learn(total_timesteps=env_to_steps.get(env_id, 100_000), callback=checkpoint_callback)
+    agent.learn(total_timesteps=env_to_steps.get(env_id, 2_000_000), callback=checkpoint_callback)
     del agent
