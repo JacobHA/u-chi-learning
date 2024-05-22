@@ -6,10 +6,11 @@ buffer_size: 100_000
 gradient_steps: 1
 hidden_dim: 256
 learning_rate: 0.0002
+learning_rate: 0.0003
 learning_starts: 10000
 target_update_interval: 1
-tau: 0.003
-tau_theta: 0.8656
+tau: 0.005
+tau_theta: 0.684
 train_freq: 1
 actor_learning_rate: 0.0001
 max_grad_norm: 0
