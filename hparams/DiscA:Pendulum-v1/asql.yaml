@@ -10,5 +10,5 @@ tau: 1.0
 train_freq: 1
 num_nets: 2
 aggregator: max
-num_nets: 2
+num_nets: 1
 max_grad_norm: 10
