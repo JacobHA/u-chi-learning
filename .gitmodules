@@ -1,0 +1,3 @@
+[submodule "BARL"]
+	path = BARL
+	url = git@github.com:JacobHA/BARL.git
